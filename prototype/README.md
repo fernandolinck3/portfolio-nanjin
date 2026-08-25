@@ -56,3 +56,14 @@ Fernando's artwork lands (T-12).
 
 Vigil replaced the Bend (ADR-0006). INSPECT and free rotation were cut for bounded pointer tilt
 (ADR-0007). The Print is phosphorescent, so labels stay legible at full Vigil.
+
+## Screen workbench
+
+    npm run prototype        # http://localhost:5174/screen/
+
+Three directions for the Screen, drawn from the `display` are.na board, each rendering the real
+content from `src/content/modules.ts`. Everything is drawn into a 320x180 buffer and shown twice:
+at 3x so the design can be judged, and at 1x — which is roughly how wide the Screen actually
+draws on the Plate. The 1x panel is the point. Most of the board's references are full screens
+carrying several hundred characters; the Screen is an inset, and density does not survive the trip.
+Motion does.
