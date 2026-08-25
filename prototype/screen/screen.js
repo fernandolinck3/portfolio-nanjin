@@ -12,6 +12,7 @@ import { MODULES } from '../../src/content/modules.ts'
 import { EMBLEMS, disc, ring } from './sprites.js'
 import { drawWizard, drawRaven, updateRaven, flush, drawSpell, castHand,
          heldOrbs, heldBook, heldUnit } from './figure.js'
+import { WIZARD, RAVEN, drawSprite, SPRITE_W, SPRITE_H, HANDS } from './drawn.js'
 
 const W = 320, H = 180
 const buf = document.createElement('canvas'); buf.width = W; buf.height = H
@@ -20,7 +21,7 @@ const big = document.getElementById('big').getContext('2d')
 const real = document.getElementById('real').getContext('2d')
 big.imageSmoothingEnabled = real.imageSmoothingEnabled = false
 
-let dir = 'grimoire', mod = 0, xf = 0.18, figure = 'witch', switchedAt = performance.now()
+let dir = 'grimoire', mod = 0, xf = 0.18, figure = 'drawn', switchedAt = performance.now()
 
 /* ---------- helpers ---------- */
 
@@ -137,12 +138,28 @@ const stage = () => STAGE[mod]
  * shape. On the brim it has the dark ground behind it and reads at 1x.
  */
 function perchOf(st) {
+  if (figure === 'drawn') {
+    const b = spriteBox(st)
+    return [b.x + 3 * b.scale, b.y + 13 * b.scale]
+  }
   const sc = st.fh / 74
   const headY = st.fy - st.fh * .58
   const brimY = headY - 11 * sc * .55
   return [Math.round(st.fx - 19 * sc), Math.round(brimY)]
 }
 const roamOf = st => ({ lo: 34, hi: W - 34, y: st.by + 24 })
+
+/** The hand-drawn sprite placed on the same stage marks as the procedural one. */
+function spriteBox(st) {
+  const scale = Math.max(1, Math.round(st.fh / SPRITE_H))
+  return {
+    scale,
+    x: Math.round(st.fx - (SPRITE_W * scale) / 2),
+    y: Math.round(st.fy - SPRITE_H * scale),
+  }
+}
+const spriteHand = (box, which) =>
+  [box.x + HANDS[which][0] * box.scale, box.y + HANDS[which][1] * box.scale]
 const BODY_W = () => (figure === 'none' ? W - 40 : stage().bw)
 const BODY_X = () => (figure === 'none' ? 20 : stage().bx)
 
@@ -160,7 +177,18 @@ function grimoire(m, t) {
   const casting = figure !== 'none' && cast > 0 && cast < 1
   let hands = null
 
-  if (figure !== 'none') {
+  if (figure === 'drawn') {
+    const box = spriteBox(st)
+    /* she hops on the cast — a bitmap cannot change pose, so it acts with its whole body */
+    const hop = casting && cast < .55 ? Math.round(Math.sin(cast / .55 * Math.PI) * 5) : 0
+    drawSprite(g, WIZARD, box.x, box.y - hop, box.scale, INK, DIM, BG)
+    hands = { leftHand: spriteHand(box, 'l'), rightHand: spriteHand(box, 'r') }
+    if (!casting) {
+      if (m.kind === 'thesis') heldOrbs(g, hands.leftHand, hands.rightHand, xf, INK, DIM, t)
+      else if (st.pose === 'read') heldBook(g, spriteHand(box, 'centre'), spriteHand(box, 'centre'), INK, DIM, BG, t)
+      else if (st.pose === 'craft') heldUnit(g, spriteHand(box, 'centre'), spriteHand(box, 'centre'), INK, DIM, BG, t)
+    }
+  } else if (figure !== 'none') {
     const fig = { x: st.fx, y: st.fy, h: st.fh }
     hands = drawWizard(g, fig, st.pose, t, INK, DIM, BG, casting && cast < .55 ? 1 : 0)
     /* what she is holding is what makes the pose an action rather than a shape */
@@ -262,7 +290,10 @@ function grimoire(m, t) {
 
   /* the raven, then the spell over everything */
   if (figure !== 'none' && hands) {
-    drawRaven(g, perchOf(st), t, INK, DIM)
+    if (figure === 'drawn') {
+      const pc = perchOf(st), sc = spriteBox(st).scale
+      drawSprite(g, RAVEN, pc[0] - 6 * sc, pc[1] - 8 * sc, sc, INK, DIM, BG)
+    } else drawRaven(g, perchOf(st), t, INK, DIM)
     if (casting) drawSpell(g, castHand({ x: st.fx, y: st.fy, h: st.fh }), cast, W, H, INK, GOLD)
   }
 }
