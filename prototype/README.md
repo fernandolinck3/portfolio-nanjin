@@ -39,11 +39,18 @@ turning the Plate into noise or fighting the labels.
 
 ## Still contradicts the ADRs
 
-- the Jog steps between Modules — it should dig *inside* the live one, which needs Modules with
-  more than one Screen's worth of content first
-- all content is drawn into the canvas texture — reversed, the DOM is truth (ADR-0002)
-- slot 4 still renders as `CRATE` — it is `RACK` now, content not yet rewritten
+- the Screen is still the *only* consumer of the content. `src/content/modules.ts` is now the
+  single source it reads from, but the DOM truth layer that should read the same source does not
+  exist yet (ADR-0002, ticket T-02)
+- slot 4 reads `RACK`, but its rows are still influences rather than tools Fernando uses — blocked
+  on him (T-13)
 - geometry is hand-written primitives, convincing top-down only
+
+## Known rough edges
+
+No shadows anywhere (T-07). The lancet window reads rectangular and only the right curtain shows
+(T-08). No vault, pictures or chandelier. Warm candlelight tints the plate art brown — watch it when
+Fernando's artwork lands (T-12).
 
 ## Already in line
 
