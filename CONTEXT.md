@@ -98,13 +98,17 @@ not applied as a palette. The visitor changes it; it never changes which Module 
 _Avoid_: theme, skin, mode, style
 
 **Wizard**:
-The character who inhabits the Screen. Chibi proportions — the head is nearly half her height, which
-is what separates cute from sinister at this size — in a droopy pointed hat with a star at the tip
-and a bell robe. She is in every Module and **doing something different in each**: presenting,
+The character who inhabits the Screen. Not chibi — the register is *Symphony of the Night* by way of
+the 1-bit portraits on the `character` board: a long face with a pointed chin, tall lashed eyes with
+a glint in each, hair falling well past the jaw in continuous locks, a high collar, and hard shadow
+down one side of her face. That shadow is the same tenebrism the room is lit by, on a face.
+
+Her **bust** — hat, hair, face, jaw, collar — is drawn by hand. Everything below the shoulders is
+generated (ADR-0013). She is in every Module and doing something different in each: presenting,
 weighing the two ends of the Crossfader, holding the Unit she made, showing the Rack, reading the
 Method, sending the Raven out. The Module is composed around what she is doing; she is never laid
-over a layout that was designed without her.
-_Avoid_: witch, character, avatar, mascot, figure
+over a layout designed without her.
+_Avoid_: witch, chibi, character, avatar, mascot, figure
 
 **Raven**:
 The Wizard's familiar, perched on the brim of her hat. It is the only thing allowed to move across
