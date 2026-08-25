@@ -16,7 +16,7 @@ scene.background = new THREE.Color(0x060505);
 const camera = new THREE.PerspectiveCamera(38, W() / H(), 0.1, 100);
 /* CAM is the angle off vertical, in degrees. 0 is the spec-sheet view straight down;
    larger angles put the candlesticks into profile so they read as candles at all. */
-let CAM = { tilt: 30, dist: 14.2 };
+let CAM = { tilt: 28, dist: 7.4 };
 function placeCamera() {
   const a = CAM.tilt * Math.PI / 180;
   camera.position.set(0, Math.cos(a) * CAM.dist, Math.sin(a) * CAM.dist);
@@ -835,34 +835,45 @@ cap.position.set(-.47 + .18 * .88, .35, 1.16); cap.userData.ctl = 'fader'; unit.
    candlesticks. Tenebrism is the model — one warm source, deep shadow, and the
    candles put out one at a time until only the Screen is left burning. */
 
-function marbleTexture() {
-  const c = document.createElement('canvas'); c.width = c.height = 1024;
+/** Dark walnut: long grain drifting along the board, with cathedral figure and a few knots. */
+function woodTexture(bump) {
+  const c = document.createElement('canvas'); c.width = 2048; c.height = 1024;
   const g = c.getContext('2d');
-  g.fillStyle = '#0d0c0e'; g.fillRect(0, 0, 1024, 1024);
-  const rnd = rng(4711);
-  /* veining: long branching capillaries, thinning as they split */
-  const vein = (x, y, a, len, w, d) => {
-    if (d <= 0 || len < 8) return;
-    const x2 = x + Math.cos(a) * len, y2 = y + Math.sin(a) * len;
-    g.strokeStyle = `rgba(206,201,190,${.05 + .16 * (d / 5)})`;
-    g.lineWidth = w;
-    g.beginPath(); g.moveTo(x, y);
-    g.quadraticCurveTo(x + Math.cos(a + .5) * len * .6, y + Math.sin(a + .5) * len * .6, x2, y2);
+  const rnd = rng(90210);
+  g.fillStyle = bump ? '#808080' : '#20150F'; g.fillRect(0, 0, 2048, 1024);
+
+  /* the grain: near-horizontal lines that wander, bunching into figure */
+  for (let i = 0; i < 1700; i++) {
+    const y0 = rnd() * 1024;
+    const dark = rnd();
+    g.strokeStyle = bump
+      ? `rgba(${dark < .5 ? 40 : 200},${dark < .5 ? 40 : 200},${dark < .5 ? 40 : 200},${.05 + rnd() * .18})`
+      : `rgba(${dark < .55 ? 18 : 74},${dark < .55 ? 11 : 48},${dark < .55 ? 7 : 30},${.08 + rnd() * .24})`;
+    g.lineWidth = .5 + rnd() * 1.5;
+    g.beginPath();
+    let y = y0;
+    g.moveTo(0, y);
+    for (let x = 0; x <= 2048; x += 48) {
+      y += (rnd() - .5) * 5 + Math.sin(x * .004 + y0 * .02) * 1.6;
+      g.lineTo(x, y);
+    }
     g.stroke();
-    vein(x2, y2, a + (rnd() - .5) * .9, len * .74, w * .68, d - 1);
-    if (rnd() < .45) vein(x2, y2, a + (rnd() - .5) * 1.9, len * .55, w * .5, d - 1);
-  };
-  for (let i = 0; i < 22; i++) vein(rnd() * 1024, rnd() * 1024, rnd() * 6.2832, 150, 7, 5);
-  /* a faint warm mottle so the black is not flat */
-  for (let i = 0; i < 400; i++) {
-    const x = rnd() * 1024, y = rnd() * 1024, r = 20 + rnd() * 90;
-    const gr = g.createRadialGradient(x, y, 0, x, y, r);
-    gr.addColorStop(0, `rgba(74,64,54,${.02 + rnd() * .05})`); gr.addColorStop(1, 'rgba(74,64,54,0)');
-    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+  }
+  /* cathedral figure — nested arches where the saw crossed the growth rings */
+  for (let k = 0; k < 5; k++) {
+    const cx = rnd() * 2048, cy = 200 + rnd() * 600;
+    for (let r = 12; r < 260; r += 5 + rnd() * 7) {
+      g.strokeStyle = bump ? `rgba(60,60,60,${.05 + rnd() * .08})` : `rgba(26,15,9,${.05 + rnd() * .12})`;
+      g.lineWidth = 1 + rnd() * 2;
+      g.beginPath();
+      g.ellipse(cx, cy, r * (2.6 + rnd() * .5), r, 0, Math.PI * .12, Math.PI * .88);
+      g.stroke();
+    }
   }
   const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3);
-  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 1.4);
+  if (!bump) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
   return t;
 }
 
@@ -900,12 +911,13 @@ function clothTexture() {
 
 const altar = new THREE.Group(); scene.add(altar);
 
-const mensa = new THREE.Mesh(new THREE.BoxGeometry(16, .7, 11),
+const mensa = new THREE.Mesh(new THREE.BoxGeometry(18, .62, 12),
   new THREE.MeshPhysicalMaterial({
-    map: marbleTexture(), color: 0x8e8e92, metalness: .1, roughness: .10,
-    clearcoat: .9, clearcoatRoughness: .08,
+    map: woodTexture(false), bumpMap: woodTexture(true), bumpScale: .5,
+    color: 0xA08B78, metalness: 0, roughness: .46,
+    clearcoat: .35, clearcoatRoughness: .30,   /* an old waxed top, not a matte board */
   }));
-mensa.position.y = -.35; altar.add(mensa);
+mensa.position.y = -.31; altar.add(mensa);
 
 const cloth = new THREE.Mesh(new THREE.PlaneGeometry(7.6, 4.75),
   new THREE.MeshPhysicalMaterial({
@@ -945,10 +957,12 @@ function candlestick(x, z, height) {
 }
 
 /* A triangle, as the rite's hearse is a triangle. Ordered as they go out. */
+/* Close enough that their flames stay in frame — an extinguished candle nobody
+   sees go out is not a rite. */
 const CANDLES = [
-  candlestick(0, -3.65, 1.75),      // first to die
-  candlestick(4.55, 2.55, 1.45),
-  candlestick(-4.55, 2.55, 1.45),   // last to die
+  candlestick(0, -2.05, 1.05),      // first to die
+  candlestick(3.42, 1.35, 1.05),
+  candlestick(-3.42, 1.35, 1.05),   // last to die
 ];
 
 /* ---------- vigil: the lights go out one at a time (ADR-0006) ----------
@@ -1004,7 +1018,7 @@ function applyVigil() {
 const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 const el = renderer.domElement;
-let ry = 0, rx = 0, tRy = 0, tRx = 0;   /* bounded tilt only — no orbit (ADR-0007) */
+/* The Unit does not move. It is a heavy object on a table, not a thing that follows a cursor. */
 let active = null, px = 0, py = 0, startVal = 0, jogAcc = 0, jogLast = 0;
 
 function pick(e) {
@@ -1049,9 +1063,6 @@ el.addEventListener('pointerdown', e => {
 });
 
 el.addEventListener('pointermove', e => {
-  /* the Unit leans a few degrees toward the pointer, always, never enough to show its sides */
-  tRy = ((e.clientX / W()) * 2 - 1) * .055;
-  tRx = ((e.clientY / H()) * 2 - 1) * .040;
   if (!active) {
     const hit = pick(e);
     el.style.cursor = hit ? (hit.userData.ctl === 'pad' ? 'pointer'
@@ -1186,8 +1197,6 @@ window.__unit = {
 let t0 = 0;
 function frame(t) {
   const dt = Math.min(.05, (t - t0) / 1000); t0 = t;
-  ry += (tRy - ry) * .10; rx += (tRx - rx) * .10;
-  unit.rotation.y = ry; unit.rotation.x = rx;
   /* the decks keep turning very slowly, opposite ways, so the Unit never looks frozen */
   sun.group.rotation.y -= dt * .04 * (1 - vigil);
   moon.group.rotation.y += dt * .04 * vigil;
