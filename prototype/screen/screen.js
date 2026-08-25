@@ -11,6 +11,7 @@
 import { MODULES } from '../../src/content/modules.ts'
 import { EMBLEMS, disc, ring } from './sprites.js'
 import { updatePet, drawPet, startle } from './pet.js'
+import { drawFigure, updateRaven, drawRaven, flush } from './figure.js'
 
 const W = 320, H = 180
 const buf = document.createElement('canvas'); buf.width = W; buf.height = H
@@ -19,7 +20,7 @@ const big = document.getElementById('big').getContext('2d')
 const real = document.getElementById('real').getContext('2d')
 big.imageSmoothingEnabled = real.imageSmoothingEnabled = false
 
-let dir = 'grimoire', mod = 0, xf = 0.18, pet = 'hare', switchedAt = performance.now()
+let dir = 'grimoire', mod = 0, xf = 0.18, pet = 'none', figure = 'witch', switchedAt = performance.now()
 /* The familiar walks the bottom rule; it must not tread on the readout at the right. */
 const PET_BOUNDS = { lo: 24, hi: W - 84 }
 
@@ -88,15 +89,62 @@ function grimoireChrome(m, t) {
   g.fillText(slot, W - 20 - g.measureText(slot).width, 30)
   tone(18, 44, W - 36, 1, .4, INK)
 
-  /* status line — right only; the bottom-left band belongs to the familiar */
-  g.font = '8px Silkscreen, monospace'; g.fillStyle = DIM
-  const cols = charsAcross(W - 40) + ' COLS'
+}
+
+/* How many lines the Module could not fit. Drawn after the body, so it can say so. */
+let overflow = 0
+const FLOOR = H - 24
+
+/** Lay out lines, stop at the floor, and count what was left over. */
+function flow(all, x, y, step, colour) {
+  g.fillStyle = colour
+  for (const l of all) {
+    if (y > FLOOR) { overflow++; continue }
+    g.fillText(l, x, y); y += step
+  }
+  return y
+}
+
+function grimoireStatus() {
+  g.font = '8px Silkscreen, monospace'
+  const cols = charsAcross(BODY_W()) + ' COLS'
+  g.fillStyle = DIM
   g.fillText(cols, W - 20 - g.measureText(cols).width, H - 14)
+  /* the constraint, said out loud rather than clipped silently */
+  if (overflow) {
+    const over = '+' + overflow + ' LINES'
+    g.fillStyle = GOLD; g.fillText(over, 20, H - 14)
+  }
+}
+
+/* Her panel, and where the raven sits on it. She has a frame of her own — the
+   references all give the figure one rather than floating it behind the text. */
+const PANEL = { x: W - 106, y: 52, w: 90, h: H - 70 }
+const FIG = { cx: PANEL.x + PANEL.w / 2, top: PANEL.y + 6, h: PANEL.h - 12 }
+const PERCH = { x: PANEL.x + 10, y: PANEL.y - 1 }
+const ROAM = { lo: 40, hi: PANEL.x - 16 }
+/* Content gives up the panel's width. This is the cost, and it is why the copy
+   has to get shorter — see the COLS readout. */
+const BODY_W = () => (figure === 'none' ? W - 40 : PANEL.x - 32)
+
+/** The panel: a rule, four corner ticks, and her inside it. */
+function drawPanel(t, ink, dim, bg) {
+  g.fillStyle = bg; g.fillRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h)
+  drawFigure(g, figure, FIG.cx, FIG.top, FIG.h, t, ink, dim, bg)
+  g.fillStyle = dim
+  g.fillRect(PANEL.x, PANEL.y, PANEL.w, 1); g.fillRect(PANEL.x, PANEL.y + PANEL.h - 1, PANEL.w, 1)
+  g.fillRect(PANEL.x, PANEL.y, 1, PANEL.h); g.fillRect(PANEL.x + PANEL.w - 1, PANEL.y, 1, PANEL.h)
+  g.fillStyle = ink
+  for (const [sx, sy] of [[0, 0], [PANEL.w - 3, 0], [0, PANEL.h - 3], [PANEL.w - 3, PANEL.h - 3]]) {
+    g.fillRect(PANEL.x + sx, PANEL.y + sy, 3, 1); g.fillRect(PANEL.x + sx, PANEL.y + sy, 1, 3)
+  }
 }
 
 function grimoire(m, t) {
+  overflow = 0
   grimoireChrome(m, t)
-  const x0 = 20, bodyW = W - 40
+  if (figure !== 'none') drawPanel(t, INK, DIM, BG)
+  const x0 = 20, bodyW = BODY_W()
   let y = 60
   const typed = clamp01(since() / .9)
   g.font = '13px VT323, monospace'
@@ -175,8 +223,7 @@ function grimoire(m, t) {
   } else {
     const all = wrap(m.lines.join(' '), bodyW)
     const shown = Math.max(1, Math.floor(all.length * typed + .0001))
-    g.fillStyle = INK
-    all.slice(0, shown).forEach(l => { g.fillText(l, x0, y); y += 13 })
+    y = flow(all.slice(0, shown), x0, y, 13, INK)
     if (m.mail) {
       /* the one address gets a plate of its own — it is the CTA */
       y += 6
@@ -188,12 +235,15 @@ function grimoire(m, t) {
       g.font = '13px VT323, monospace'
       y += 18
     }
-    g.fillStyle = DIM
-    for (const l of (m.dim || [])) for (const w of wrap(l, bodyW)) { g.fillText(w, x0, y); y += 12 }
-    if (Math.floor(t * 2) % 2) { g.fillStyle = INK; g.fillRect(x0, y - 9, 5, 8) }
+    const dimAll = []
+    for (const l of (m.dim || [])) dimAll.push(...wrap(l, bodyW))
+    y = flow(dimAll, x0, y, 12, DIM)
+    if (y <= FLOOR && Math.floor(t * 2) % 2) { g.fillStyle = INK; g.fillRect(x0, y - 9, 5, 8) }
   }
 
+  grimoireStatus()
   if (pet !== 'none') drawPet(g, pet, H - 11, t, INK, DIM)
+  if (figure !== 'none') drawRaven(g, PERCH, 118, t, INK, DIM)
 }
 
 /* ================= B. INSTRUMENT (kept for comparison, not developed) ================= */
@@ -351,6 +401,10 @@ function cracktro(m, t) {
   g.restore()
 
   if (pet !== 'none') drawPet(g, pet, H - 19, t, BONE, DEEP)
+  if (figure !== 'none') {
+    drawFigure(g, figure, FIG.cx, FIG.top, FIG.h, t, BONE, DEEP, '#08070A')
+    drawRaven(g, PERCH, 120, t, BONE, DEEP)
+  }
 }
 
 /* ---------- drive ---------- */
@@ -370,6 +424,7 @@ function frame(now) {
   const t = now / 1000
   const dt = Math.min(.05, last ? t - last : 0); last = t
   if (pet !== 'none') updatePet(dt, t, PET_BOUNDS)
+  if (figure !== 'none') updateRaven(dt, t, PERCH, ROAM)
   DIRS[dir](MODULES[mod], t)
   curtain()
   big.clearRect(0, 0, 960, 540); big.drawImage(buf, 0, 0, 960, 540)
@@ -387,9 +442,15 @@ function press(attr, apply) {
   })
 }
 press('dir', v => { dir = v })
-press('mod', v => { mod = +v; if (pet !== 'none') startle(PET_BOUNDS) })
+press('mod', v => {
+  mod = +v
+  if (pet !== 'none') startle(PET_BOUNDS)
+  /* something arrived — the raven goes to look at it */
+  if (figure !== 'none') flush(performance.now() / 1000)
+})
 press('xf', v => { xf = +v })
 press('pet', v => { pet = v; if (v !== 'none') startle(PET_BOUNDS) })
+press('fig', v => { figure = v })
 
 /* An unused family silently falls back, and document.fonts.ready will not load a
    face nothing has asked for. Ask for each one by name. */

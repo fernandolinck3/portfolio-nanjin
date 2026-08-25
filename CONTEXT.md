@@ -97,13 +97,20 @@ throughout. Grimoire, Cracktro and Instrument are the three drawn. A Face is aut
 not applied as a palette. The visitor changes it; it never changes which Module is live.
 _Avoid_: theme, skin, mode, style
 
-**Familiar**:
-The creature that lives on the Screen and is present in every Module, walking the bottom rule the
-way an animal walks the margin of a manuscript. It notices when the Module changes and goes to look.
-It has moods, not needs — nothing it does can be neglected and nothing it does asks the visitor for
-anything, because a creature that needed feeding would compete with the Module for attention.
-**Which creature it is has not been decided** — hare, moth and raven are drawn.
-_Avoid_: pet, tamagotchi, mascot, companion
+**Figure**:
+The hooded figure who occupies a framed panel in the right of the Screen, present in every Module.
+She is drawn solid, with a void where her face is and two points of light in it. She is not
+decoration in the margin — she is the Screen's inhabitant, and the Module is written beside her.
+**Which figure she is has not been settled** — a witch (pointed hat) and a cowled figure are drawn.
+_Avoid_: character, avatar, mascot, portrait
+
+**Raven**:
+The Figure's familiar. It perches on her panel, and it is the only thing allowed to move across the
+content — when the Module changes it takes off, crosses the Screen to look at what arrived, and
+comes back. It has moods, not needs: nothing it does can be neglected and nothing it does asks the
+visitor for anything, because a creature that needed feeding would compete with the Module for
+attention.
+_Avoid_: pet, tamagotchi, companion, bird
 
 **Nightwork**:
 The engraving cut into the Plate that is invisible under full light and only becomes legible as the
