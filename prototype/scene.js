@@ -975,12 +975,56 @@ const CANDLES = [
    wall and its window come into view; at full Vigil, when the Candles are out, the
    moon through that window is the only thing left besides the Screen. */
 
+const room = new THREE.Group(); scene.add(room);
+const FLOOR_Y = -2.95, WALL_Z = -11.5, WALL_H = 12;
+/* a lancet opening: jambs, springing, apex */
+const WIN = { x: 2.45, y0: 0.20, spring: 3.55, y1: 6.10 };
+
+/** Dark carved panelling: fielded panels under a run of blind Gothic arcading. */
+function panelTexture(bump) {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 1024;
+  const g = c.getContext('2d');
+  const rnd = rng(5150);
+  g.fillStyle = bump ? '#6a6a6a' : '#241A15'; g.fillRect(0, 0, 1024, 1024);
+  for (let i = 0; i < 500; i++) {
+    g.strokeStyle = bump ? `rgba(120,120,120,${rnd() * .1})` : `rgba(58,40,29,${.04 + rnd() * .12})`;
+    g.lineWidth = .5 + rnd() * 1.6;
+    const y = rnd() * 1024;
+    g.beginPath(); g.moveTo(0, y);
+    for (let x = 0; x <= 1024; x += 64) g.lineTo(x, y + (rnd() - .5) * 4);
+    g.stroke();
+  }
+  /* blind arcade across the top half */
+  const bays = 4, bw = 1024 / bays;
+  for (let b = 0; b < bays; b++) {
+    const x = b * bw + 18, w = bw - 36;
+    g.strokeStyle = bump ? '#d8d8d8' : 'rgba(126,101,74,.55)';
+    g.lineWidth = bump ? 7 : 4;
+    g.beginPath();
+    g.moveTo(x, 470); g.lineTo(x, 250);
+    g.quadraticCurveTo(x + w / 2, 90, x + w, 250);
+    g.lineTo(x + w, 470); g.closePath(); g.stroke();
+    /* cusped head */
+    g.lineWidth = bump ? 4 : 2.5;
+    g.beginPath();
+    g.moveTo(x + w * .16, 268);
+    g.quadraticCurveTo(x + w / 2, 168, x + w * .84, 268);
+    g.stroke();
+    /* fielded panel below */
+    g.strokeRect(x + 14, 520, w - 28, 430);
+    g.strokeRect(x + 30, 540, w - 60, 390);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 1.5);
+  if (!bump) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8; return t;
+}
+
 function stoneTexture(bump) {
   const c = document.createElement('canvas'); c.width = c.height = 1024;
   const g = c.getContext('2d');
   const rnd = rng(1717);
   g.fillStyle = bump ? '#8c8c8c' : '#3B3733'; g.fillRect(0, 0, 1024, 1024);
-  /* flagstones, coursed, with mortar joints cut in */
   const H = 128;
   for (let row = 0, y = 0; y < 1024; row++, y += H) {
     const off = (row % 2) * 96;
@@ -988,98 +1032,207 @@ function stoneTexture(bump) {
       const w = 190 + rnd() * 16, h = H - 8;
       g.fillStyle = bump
         ? `rgba(${170 + rnd() * 50},${170 + rnd() * 50},${170 + rnd() * 50},1)`
-        : `rgba(${58 + rnd() * 26},${53 + rnd() * 24},${48 + rnd() * 22},1)`;
+        : `rgba(${44 + rnd() * 22},${32 + rnd() * 18},${24 + rnd() * 14},1)`;
       g.fillRect(x + 4, y + 4, w, h);
-      /* wear and pitting */
       for (let i = 0; i < 26; i++) {
         const px = x + 8 + rnd() * (w - 16), py = y + 8 + rnd() * (h - 16), pr = 1 + rnd() * 7;
-        g.fillStyle = bump ? `rgba(120,120,120,${rnd() * .5})` : `rgba(30,27,24,${rnd() * .28})`;
+        g.fillStyle = bump ? `rgba(120,120,120,${rnd() * .5})` : `rgba(22,15,10,${rnd() * .3})`;
         g.beginPath(); g.arc(px, py, pr, 0, 6.2832); g.fill();
       }
     }
   }
   const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 4);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 5);
   if (!bump) t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8; return t;
 }
 
-const room = new THREE.Group(); scene.add(room);
-const FLOOR_Y = -2.95, WALL_Z = -11.5, WALL_H = 11;
+/** A worn medallion rug, muted red, to break up the boards. */
+function rugTexture() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 700;
+  const g = c.getContext('2d');
+  const rnd = rng(2468);
+  g.fillStyle = '#5A2321'; g.fillRect(0, 0, 1024, 700);
+  g.strokeStyle = '#8A5A3C'; g.lineWidth = 6;
+  g.strokeRect(34, 34, 956, 632); g.strokeRect(66, 66, 892, 568);
+  g.fillStyle = '#3E1A1A';
+  g.beginPath(); g.ellipse(512, 350, 300, 200, 0, 0, 6.2832); g.fill();
+  g.strokeStyle = '#B98A55'; g.lineWidth = 4;
+  for (const k of [1, .74, .48]) { g.beginPath(); g.ellipse(512, 350, 300 * k, 200 * k, 0, 0, 6.2832); g.stroke(); }
+  for (let i = 0; i < 16; i++) {
+    const a = i / 16 * 6.2832;
+    g.beginPath();
+    g.moveTo(512 + Math.cos(a) * 120, 350 + Math.sin(a) * 80);
+    g.lineTo(512 + Math.cos(a) * 292, 350 + Math.sin(a) * 194);
+    g.stroke();
+  }
+  for (let i = 0; i < 1200; i++) {
+    g.fillStyle = `rgba(0,0,0,${rnd() * .12})`;
+    g.fillRect(rnd() * 1024, rnd() * 700, 3 + rnd() * 9, 2 + rnd() * 5);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
 
 const stoneMat = new THREE.MeshPhysicalMaterial({
-  map: stoneTexture(false), bumpMap: stoneTexture(true), bumpScale: .6,
+  map: stoneTexture(false), bumpMap: stoneTexture(true), bumpScale: .5,
   color: 0x6E6862, roughness: .95, metalness: 0,
 });
-const plasterMat = new THREE.MeshPhysicalMaterial({ color: 0x4A443E, roughness: .98, metalness: 0 });
+const panelMat = new THREE.MeshPhysicalMaterial({
+  map: panelTexture(false), bumpMap: panelTexture(true), bumpScale: .9,
+  color: 0x8A7A6A, roughness: .74, metalness: 0,
+});
 
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), stoneMat);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(70, 70),
+  new THREE.MeshPhysicalMaterial({
+    map: woodTexture(false), bumpMap: woodTexture(true), bumpScale: .4,
+    color: 0x6B584A, roughness: .62, metalness: 0, clearcoat: .25,
+  }));
 floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR_Y; room.add(floor);
 
-/* far wall, built around a window opening */
-const WIN = { x: 2.45, y0: 0.35, y1: 5.35 };
-const wallPiece = (w, h, x, y) => {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, .6), plasterMat);
-  m.position.set(x, y, WALL_Z); room.add(m); return m;
-};
-wallPiece(13, WALL_H, -WIN.x - 6.5, FLOOR_Y + WALL_H / 2);
-wallPiece(13, WALL_H,  WIN.x + 6.5, FLOOR_Y + WALL_H / 2);
-wallPiece(WIN.x * 2, FLOOR_Y + WALL_H - WIN.y1, 0, (WIN.y1 + FLOOR_Y + WALL_H) / 2);
-wallPiece(WIN.x * 2, WIN.y0 - FLOOR_Y, 0, (FLOOR_Y + WIN.y0) / 2);
+const rug = new THREE.Mesh(new THREE.PlaneGeometry(19, 13),
+  new THREE.MeshPhysicalMaterial({ map: rugTexture(), roughness: .98, metalness: 0, color: 0x9a8f86 }));
+rug.rotation.x = -Math.PI / 2; rug.position.set(0, FLOOR_Y + .01, 1.5); room.add(rug);
 
-/* the night beyond: a cold plane with a moon and a scatter of stars */
-function nightTexture() {
+/* far wall, extruded around a lancet opening */
+const wallShape = new THREE.Shape();
+wallShape.moveTo(-15, FLOOR_Y); wallShape.lineTo(15, FLOOR_Y);
+wallShape.lineTo(15, FLOOR_Y + WALL_H); wallShape.lineTo(-15, FLOOR_Y + WALL_H); wallShape.closePath();
+const hole = new THREE.Path();
+hole.moveTo(-WIN.x, WIN.y0);
+hole.lineTo(-WIN.x, WIN.spring);
+hole.quadraticCurveTo(-WIN.x, WIN.y1, 0, WIN.y1);
+hole.quadraticCurveTo(WIN.x, WIN.y1, WIN.x, WIN.spring);
+hole.lineTo(WIN.x, WIN.y0);
+hole.closePath();
+wallShape.holes.push(hole);
+const wall = new THREE.Mesh(new THREE.ExtrudeGeometry(wallShape, { depth: .7, bevelEnabled: false }), panelMat);
+wall.position.z = WALL_Z; room.add(wall);
+
+/* side walls, so turning the view does not find a void */
+for (const sx of [-15, 15]) {
+  const w = new THREE.Mesh(new THREE.BoxGeometry(.7, WALL_H, 30), panelMat);
+  w.position.set(sx, FLOOR_Y + WALL_H / 2, WALL_Z + 15); room.add(w);
+}
+
+/* the sky beyond: day and night, crossfaded by the Vigil */
+function skyTexture(night) {
   const c = document.createElement('canvas'); c.width = 1024; c.height = 1024;
   const g = c.getContext('2d');
+  const rnd = rng(night ? 31337 : 8123);
   const sky = g.createLinearGradient(0, 0, 0, 1024);
-  sky.addColorStop(0, '#0d1626'); sky.addColorStop(.6, '#141d2c'); sky.addColorStop(1, '#1b2130');
+  if (night) { sky.addColorStop(0, '#0d1626'); sky.addColorStop(.6, '#141d2c'); sky.addColorStop(1, '#1b2130'); }
+  else { sky.addColorStop(0, '#9FB4C6'); sky.addColorStop(.55, '#C9CFCE'); sky.addColorStop(1, '#D8D2C2'); }
   g.fillStyle = sky; g.fillRect(0, 0, 1024, 1024);
-  const rnd = rng(31337);
-  for (let i = 0; i < 700; i++) {
-    const x = rnd() * 1024, y = rnd() * 1024, r = rnd() * 1.5 + .3;
-    g.fillStyle = `rgba(214,224,240,${.15 + rnd() * .6})`;
-    g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+  if (night) {
+    for (let i = 0; i < 700; i++) {
+      const x = rnd() * 1024, y = rnd() * 1024, r = rnd() * 1.5 + .3;
+      g.fillStyle = `rgba(214,224,240,${.15 + rnd() * .6})`;
+      g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+    }
   }
-  const mx = 468, my = 648, mr = 72;
-  const halo = g.createRadialGradient(mx, my, mr * .6, mx, my, mr * 5);
-  halo.addColorStop(0, 'rgba(196,214,240,.42)'); halo.addColorStop(1, 'rgba(196,214,240,0)');
-  g.fillStyle = halo; g.beginPath(); g.arc(mx, my, mr * 5, 0, 6.2832); g.fill();
-  g.fillStyle = '#DCE6F4'; g.beginPath(); g.arc(mx, my, mr, 0, 6.2832); g.fill();
-  /* maria, so it is a moon rather than a disc */
-  for (let i = 0; i < 9; i++) {
-    const a = rnd() * 6.2832, d = rnd() * mr * .7, r = mr * (.08 + rnd() * .16);
-    g.fillStyle = `rgba(178,192,214,${.35 + rnd() * .3})`;
-    g.beginPath(); g.arc(mx + Math.cos(a) * d, my + Math.sin(a) * d, r, 0, 6.2832); g.fill();
+  const mx = 468, my = 648, mr = night ? 72 : 62;
+  const halo = g.createRadialGradient(mx, my, mr * .6, mx, my, mr * (night ? 5 : 7));
+  halo.addColorStop(0, night ? 'rgba(196,214,240,.42)' : 'rgba(255,244,214,.75)');
+  halo.addColorStop(1, night ? 'rgba(196,214,240,0)' : 'rgba(255,244,214,0)');
+  g.fillStyle = halo; g.beginPath(); g.arc(mx, my, mr * (night ? 5 : 7), 0, 6.2832); g.fill();
+  g.fillStyle = night ? '#DCE6F4' : '#FFF8E0';
+  g.beginPath(); g.arc(mx, my, mr, 0, 6.2832); g.fill();
+  if (night) {
+    for (let i = 0; i < 9; i++) {
+      const a = rnd() * 6.2832, d = rnd() * mr * .7, r = mr * (.08 + rnd() * .16);
+      g.fillStyle = `rgba(178,192,214,${.35 + rnd() * .3})`;
+      g.beginPath(); g.arc(mx + Math.cos(a) * d, my + Math.sin(a) * d, r, 0, 6.2832); g.fill();
+    }
+  }
+  /* bare branches across the opening, as in the reference */
+  const branch = (x, y, a, len, w, d) => {
+    if (d <= 0 || len < 6) return;
+    const x2 = x + Math.cos(a) * len, y2 = y + Math.sin(a) * len;
+    g.strokeStyle = night ? 'rgba(10,14,22,.85)' : 'rgba(38,34,28,.7)';
+    g.lineWidth = w; g.beginPath(); g.moveTo(x, y); g.lineTo(x2, y2); g.stroke();
+    branch(x2, y2, a - .38 - rnd() * .3, len * .74, w * .66, d - 1);
+    branch(x2, y2, a + .38 + rnd() * .3, len * .70, w * .62, d - 1);
+  };
+  for (let i = 0; i < 4; i++) branch(120 + i * 260, 1024, -1.5 + (rnd() - .5) * .5, 150, 11, 6);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const daySky = new THREE.Mesh(new THREE.PlaneGeometry(26, 22),
+  new THREE.MeshBasicMaterial({ map: skyTexture(false) }));
+daySky.position.set(0, FLOOR_Y + 7.5, WALL_Z - 5); room.add(daySky);
+const nightSky = new THREE.Mesh(new THREE.PlaneGeometry(26, 22),
+  new THREE.MeshBasicMaterial({ map: skyTexture(true), transparent: true, opacity: 0 }));
+nightSky.position.set(0, FLOOR_Y + 7.5, WALL_Z - 4.9); room.add(nightSky);
+
+/* leaded diamond glazing across the opening */
+function leadTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, 512, 512);
+  g.strokeStyle = 'rgba(24,22,20,.92)'; g.lineWidth = 3;
+  const S = 46;
+  for (let i = -12; i < 24; i++) {
+    g.beginPath(); g.moveTo(i * S, 0); g.lineTo(i * S + 512, 512); g.stroke();
+    g.beginPath(); g.moveTo(i * S, 512); g.lineTo(i * S + 512, 0); g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 4);
+  return t;
+}
+const glassShape = new THREE.Shape();
+glassShape.moveTo(-WIN.x, WIN.y0); glassShape.lineTo(-WIN.x, WIN.spring);
+glassShape.quadraticCurveTo(-WIN.x, WIN.y1, 0, WIN.y1);
+glassShape.quadraticCurveTo(WIN.x, WIN.y1, WIN.x, WIN.spring);
+glassShape.lineTo(WIN.x, WIN.y0); glassShape.closePath();
+const glass = new THREE.Mesh(new THREE.ShapeGeometry(glassShape),
+  new THREE.MeshBasicMaterial({ map: leadTexture(), transparent: true }));
+glass.position.z = WALL_Z + .05; room.add(glass);
+
+/* stone tracery: jambs, transom, mullion */
+const stoneTrim = new THREE.MeshPhysicalMaterial({ color: 0x6B655C, roughness: .92 });
+const bar = (w, h, x, y) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, .40), stoneTrim);
+  m.position.set(x, y, WALL_Z + .06); room.add(m); return m;
+};
+bar(.22, WIN.spring - WIN.y0 + 3.0, 0, (WIN.y0 + WIN.spring) / 2 + .6);
+bar(WIN.x * 2, .16, 0, WIN.y0 + (WIN.spring - WIN.y0) * .55);
+bar(WIN.x * 2 + .7, .34, 0, WIN.y0 - .16);
+
+/* red velvet curtains either side, hung from a gilt rail */
+function velvetTexture() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 512;
+  const g = c.getContext('2d');
+  const rnd = rng(9001);
+  g.fillStyle = '#4A0F12'; g.fillRect(0, 0, 256, 512);
+  for (let x = 0; x < 256; x += 4) {
+    const k = Math.sin(x * .18) * .5 + .5;
+    g.fillStyle = `rgba(${140 + k * 70},${28 + k * 26},${28 + k * 22},${.25 + k * .5})`;
+    g.fillRect(x, 0, 4, 512);
+  }
+  for (let i = 0; i < 900; i++) {
+    g.fillStyle = `rgba(0,0,0,${rnd() * .16})`;
+    g.fillRect(rnd() * 256, rnd() * 512, 2, 3 + rnd() * 10);
   }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
-const night = new THREE.Mesh(new THREE.PlaneGeometry(26, 20),
-  new THREE.MeshBasicMaterial({ map: nightTexture() }));
-night.position.set(0, FLOOR_Y + 7, WALL_Z - 4.5); room.add(night);
+const velvet = new THREE.MeshPhysicalMaterial({
+  map: velvetTexture(), color: 0x8C4A46, roughness: .96, metalness: 0, side: THREE.DoubleSide,
+});
+for (const sx of [-1, 1]) {
+  const curtain = new THREE.Mesh(new THREE.CylinderGeometry(.62, .78, 8.0, 20, 1, true, 0, Math.PI), velvet);
+  curtain.position.set(sx * (WIN.x + .95), WIN.y1 - 4.1, WALL_Z + .55);
+  curtain.rotation.y = sx > 0 ? -Math.PI / 2 : Math.PI / 2;
+  room.add(curtain);
+}
+const rail = new THREE.Mesh(new THREE.CylinderGeometry(.075, .075, WIN.x * 2 + 3.4, 16), GILT);
+rail.rotation.z = Math.PI / 2; rail.position.set(0, WIN.y1 + .25, WALL_Z + .55); room.add(rail);
 
-/* window: a stone reveal, mullions and transom */
-const stoneTrim = new THREE.MeshPhysicalMaterial({ color: 0x7A736A, roughness: .9 });
-const bar = (w, h, x, y, z) => {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, .34), stoneTrim);
-  m.position.set(x, y, z ?? WALL_Z + .02); room.add(m); return m;
-};
-bar(WIN.x * 2 + .5, .30, 0, WIN.y0 - .12);
-bar(WIN.x * 2 + .5, .30, 0, WIN.y1 + .12);
-bar(.30, WIN.y1 - WIN.y0 + .6, -WIN.x - .12, (WIN.y0 + WIN.y1) / 2);
-bar(.30, WIN.y1 - WIN.y0 + .6,  WIN.x + .12, (WIN.y0 + WIN.y1) / 2);
-bar(.16, WIN.y1 - WIN.y0, 0, (WIN.y0 + WIN.y1) / 2);            // mullion
-bar(WIN.x * 2, .14, 0, WIN.y0 + (WIN.y1 - WIN.y0) * .62);        // transom
-for (let i = 1; i <= 3; i++) bar(WIN.x * 2, .07, 0, WIN.y0 + (WIN.y1 - WIN.y0) * .62 * i / 4);
-
-/* the wall needs a little light of its own, or the room is just a black hole behind the table */
-const wallWash = new THREE.DirectionalLight(0x8FA3C0, .35);
+/* window light — the decks decide whether it is the sun or the moon out there */
+const skyLight = new THREE.DirectionalLight(0xFFE4BC, 3.2);
+skyLight.position.set(1.1, 4.6, WALL_Z); skyLight.target.position.set(0, 0, 1);
+room.add(skyLight, skyLight.target);
+const wallWash = new THREE.DirectionalLight(0xC8B79A, .5);
 wallWash.position.set(0, 5, 6); wallWash.target.position.set(0, 2, WALL_Z);
 room.add(wallWash, wallWash.target);
-
-/* moonlight through the opening — cold, and it survives the Candles */
-const moonLight = new THREE.DirectionalLight(0x9FB6D8, 1.5);
-moonLight.position.set(1.1, 4.6, WALL_Z); moonLight.target.position.set(0, 0, 1);
-room.add(moonLight, moonLight.target);
 
 /* turned legs, so the table reads as furniture once the camera comes up */
 const legProfile = [
@@ -1133,9 +1286,12 @@ function applyVigil() {
   });
   scene.environmentIntensity = ENV0 * (1 - vigil * .88);
 
-  /* the moon does not go out — it only becomes visible once the Candles stop drowning it */
-  moonLight.intensity = 1.5 + vigil * 1.9;
-  wallWash.intensity = .35 + vigil * .55;
+  /* the decks turn the day. Sun up, and it is afternoon outside; Moon up, and it is night. */
+  nightSky.material.opacity = vigil;
+  skyLight.intensity = 3.2 * (1 - vigil) + 1.1 * vigil;
+  skyLight.color.setRGB(1 - vigil * .38, .894 - vigil * .18, .737 + vigil * .11);
+  wallWash.intensity = .5 * (1 - vigil) + .3 * vigil;
+  wallWash.color.setRGB(.784 - vigil * .22, .718 - vigil * .08, .604 + vigil * .16);
 
   /* the screen takes over the room */
   glow.intensity = 2.4 + vigil * 5.2;
