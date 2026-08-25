@@ -38,6 +38,20 @@ _Avoid_: orbit, inspect, rotation
 The display set into the Plate. The only place Module content appears. It is a Part of the Unit, not
 a browser viewport — "the screen" never means the visitor's monitor.
 
+## The setting
+
+**Altar**:
+What the Unit rests on and everything around it: a slab of black veined marble, an embroidered
+linen cloth, and the Candles. Baroque and liturgical rather than occult-satanic — the register is
+a side chapel, not a ritual site.
+_Avoid_: table, desk, plinth, scene
+
+**Candle**:
+One of three gilt candlesticks standing on the Altar. They are the Vigil's visible body: each holds
+a live flame and its own light, and they go out one at a time as the Vigil rises, until only the
+Screen is burning. Ordered — there is a first to die and a last.
+_Avoid_: light, lamp, torch
+
 ## Content
 
 **Module**:

@@ -6,32 +6,39 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(W(), H());
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.5;
+renderer.toneMappingExposure = 0.92;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.getElementById('stage').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0a0b);
+scene.background = new THREE.Color(0x060505);
 
 const camera = new THREE.PerspectiveCamera(38, W() / H(), 0.1, 100);
-camera.position.set(0, 8.1, 1.30);
-camera.lookAt(0, 0.3, 0.02);
+/* CAM is the angle off vertical, in degrees. 0 is the spec-sheet view straight down;
+   larger angles put the candlesticks into profile so they read as candles at all. */
+let CAM = { tilt: 30, dist: 14.2 };
+function placeCamera() {
+  const a = CAM.tilt * Math.PI / 180;
+  camera.position.set(0, Math.cos(a) * CAM.dist, Math.sin(a) * CAM.dist);
+  camera.lookAt(0, 0.35, 0);
+}
+placeCamera();
 
 /* ---------- environment: a studio built in a canvas ---------- */
 function envTexture() {
   const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
   const g = c.getContext('2d');
   const sky = g.createLinearGradient(0, 0, 0, 512);
-  sky.addColorStop(0, '#8f949c'); sky.addColorStop(0.46, '#3a3d42');
-  sky.addColorStop(0.54, '#17181a'); sky.addColorStop(1, '#0b0c0d');
+  sky.addColorStop(0, '#3a3026'); sky.addColorStop(0.46, '#1c1712');
+  sky.addColorStop(0.54, '#0e0c0a'); sky.addColorStop(1, '#070606');
   g.fillStyle = sky; g.fillRect(0, 0, 1024, 512);
   // key softbox
   const key = g.createRadialGradient(300, 130, 10, 300, 130, 190);
-  key.addColorStop(0, '#ffffff'); key.addColorStop(1, 'rgba(255,255,255,0)');
+  key.addColorStop(0, '#ffd9a0'); key.addColorStop(1, 'rgba(255,217,160,0)');
   g.fillStyle = key; g.fillRect(80, 0, 460, 320);
   // cool rim
   const rim = g.createRadialGradient(790, 190, 8, 790, 190, 150);
-  rim.addColorStop(0, '#9fc8e8'); rim.addColorStop(1, 'rgba(159,200,232,0)');
+  rim.addColorStop(0, '#6b7f96'); rim.addColorStop(1, 'rgba(107,127,150,0)');
   g.fillStyle = rim; g.fillRect(620, 40, 340, 300);
   // warm bounce low
   const bo = g.createRadialGradient(520, 400, 8, 520, 400, 200);
@@ -45,10 +52,12 @@ function envTexture() {
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromEquirectangular(envTexture()).texture;
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-const key = new THREE.DirectionalLight(0xfff4e8, 4.6); key.position.set(-4.2, 2.6, 3.0); scene.add(key);
-const fill = new THREE.DirectionalLight(0xdfe6ee, 1.4); fill.position.set(3.2, 5.4, 3.0); scene.add(fill);
-const rim = new THREE.DirectionalLight(0x9fc8e8, 3.2); rim.position.set(3.8, 1.9, -3.6); scene.add(rim);
+/* Tenebrism: one warm source, deep shadow, a cold sliver for separation. The three
+   directionals are the working rig; the candles below carry the visible light. */
+scene.add(new THREE.AmbientLight(0xffe6c4, 0.10));
+const key = new THREE.DirectionalLight(0xffc98a, 2.3); key.position.set(-4.2, 2.6, 3.0); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffd9ae, 0.6); fill.position.set(3.2, 5.4, 3.0); scene.add(fill);
+const rim = new THREE.DirectionalLight(0x7d90a8, 1.5); rim.position.set(3.8, 1.9, -3.6); scene.add(rim);
 
 /* ---------- ornament: drawn once, baked into the metal ---------- */
 function cusp(g, x, y, a, len, d) {
@@ -821,6 +830,127 @@ const cap = new THREE.Mesh(slab(.11, .24, .11, .02),
   new THREE.MeshPhysicalMaterial({ color: 0xB6B4AA, metalness: .7, roughness: .28 }));
 cap.position.set(-.47 + .18 * .88, .35, 1.16); cap.userData.ctl = 'fader'; unit.add(cap);
 
+/* ---------- the altar ----------
+   Baroque, not satanic: polished veined marble, an embroidered cloth, turned gilt
+   candlesticks. Tenebrism is the model — one warm source, deep shadow, and the
+   candles put out one at a time until only the Screen is left burning. */
+
+function marbleTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const g = c.getContext('2d');
+  g.fillStyle = '#0d0c0e'; g.fillRect(0, 0, 1024, 1024);
+  const rnd = rng(4711);
+  /* veining: long branching capillaries, thinning as they split */
+  const vein = (x, y, a, len, w, d) => {
+    if (d <= 0 || len < 8) return;
+    const x2 = x + Math.cos(a) * len, y2 = y + Math.sin(a) * len;
+    g.strokeStyle = `rgba(206,201,190,${.05 + .16 * (d / 5)})`;
+    g.lineWidth = w;
+    g.beginPath(); g.moveTo(x, y);
+    g.quadraticCurveTo(x + Math.cos(a + .5) * len * .6, y + Math.sin(a + .5) * len * .6, x2, y2);
+    g.stroke();
+    vein(x2, y2, a + (rnd() - .5) * .9, len * .74, w * .68, d - 1);
+    if (rnd() < .45) vein(x2, y2, a + (rnd() - .5) * 1.9, len * .55, w * .5, d - 1);
+  };
+  for (let i = 0; i < 22; i++) vein(rnd() * 1024, rnd() * 1024, rnd() * 6.2832, 150, 7, 5);
+  /* a faint warm mottle so the black is not flat */
+  for (let i = 0; i < 400; i++) {
+    const x = rnd() * 1024, y = rnd() * 1024, r = 20 + rnd() * 90;
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, `rgba(74,64,54,${.02 + rnd() * .05})`); gr.addColorStop(1, 'rgba(74,64,54,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+
+/** Ivory linen with a scalloped, pierced border — the cloth the instrument rests on. */
+function clothTexture() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 640;
+  const g = c.getContext('2d');
+  const M = 54, SC = 26;
+  g.fillStyle = '#b8b0a0';
+  g.beginPath(); g.roundRect(M, M, 1024 - M * 2, 640 - M * 2, 10); g.fill();
+  /* scalloped edge */
+  g.globalCompositeOperation = 'destination-out';
+  for (let x = M; x <= 1024 - M; x += SC) {
+    g.beginPath(); g.arc(x, M, SC * .5, 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(x, 640 - M, SC * .5, 0, 6.2832); g.fill();
+  }
+  for (let y = M; y <= 640 - M; y += SC) {
+    g.beginPath(); g.arc(M, y, SC * .5, 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(1024 - M, y, SC * .5, 0, 6.2832); g.fill();
+  }
+  /* pierced eyelets just inside the hem */
+  for (let x = M + SC; x < 1024 - M; x += SC) {
+    g.beginPath(); g.arc(x, M + 30, 5, 0, 6.2832); g.fill();
+    g.beginPath(); g.arc(x, 640 - M - 30, 5, 0, 6.2832); g.fill();
+  }
+  g.globalCompositeOperation = 'source-over';
+  /* drawn-thread lines and a red embroidered rule */
+  g.strokeStyle = 'rgba(140,128,104,.55)'; g.lineWidth = 2;
+  g.strokeRect(M + 46, M + 46, 1024 - (M + 46) * 2, 640 - (M + 46) * 2);
+  g.strokeStyle = 'rgba(150,44,32,.8)'; g.lineWidth = 3;
+  g.strokeRect(M + 58, M + 58, 1024 - (M + 58) * 2, 640 - (M + 58) * 2);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+
+const altar = new THREE.Group(); scene.add(altar);
+
+const mensa = new THREE.Mesh(new THREE.BoxGeometry(16, .7, 11),
+  new THREE.MeshPhysicalMaterial({
+    map: marbleTexture(), color: 0x8e8e92, metalness: .1, roughness: .10,
+    clearcoat: .9, clearcoatRoughness: .08,
+  }));
+mensa.position.y = -.35; altar.add(mensa);
+
+const cloth = new THREE.Mesh(new THREE.PlaneGeometry(7.6, 4.75),
+  new THREE.MeshPhysicalMaterial({
+    map: clothTexture(), transparent: true, roughness: .95, metalness: 0, color: 0x9a927f,
+  }));
+cloth.rotation.x = -Math.PI / 2; cloth.position.y = .004; altar.add(cloth);
+
+/** A turned baluster candlestick, gilt, with a live flame and its own light. */
+const GILT = new THREE.MeshPhysicalMaterial({
+  color: 0xC9A03C, metalness: 1, roughness: .26, clearcoat: .5,
+});
+function candlestick(x, z, height) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); altar.add(g);
+  const prof = [
+    [.00, .00], [.38, .00], [.40, .04], [.30, .07], [.26, .10],
+    [.13, .14], [.11, .22], [.15, .28], [.13, .34], [.09, .40],
+    [.14, .46], [.19, .52], [.15, .58], [.10, .64], [.09, .78],
+    [.16, .84], [.22, .88], [.20, .92], [.12, .94], [.11, .98],
+  ].map(([r, y]) => new THREE.Vector2(r * 1.0, y * height));
+  const stick = new THREE.Mesh(new THREE.LatheGeometry(prof, 48), GILT);
+  g.add(stick);
+  const wax = new THREE.Mesh(new THREE.CylinderGeometry(.085, .095, .52, 24),
+    new THREE.MeshPhysicalMaterial({
+      color: 0xF3E7CE, roughness: .55, transmission: .35, thickness: .3, metalness: 0,
+    }));
+  wax.position.y = height * .98 + .26; g.add(wax);
+  const flame = new THREE.Mesh(new THREE.SphereGeometry(.075, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xFFD08A, transparent: true, blending: THREE.AdditiveBlending }));
+  flame.scale.set(1, 2.1, 1);
+  flame.position.y = height * .98 + .60; g.add(flame);
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(.20, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xFF9A3C, transparent: true, opacity: .3, blending: THREE.AdditiveBlending }));
+  halo.position.copy(flame.position); g.add(halo);
+  const light = new THREE.PointLight(0xFFB162, 5.5, 13, 2);
+  light.position.copy(flame.position); g.add(light);
+  return { group: g, flame, halo, light, base: { flame: 1, light: 5.5, halo: .3 } };
+}
+
+/* A triangle, as the rite's hearse is a triangle. Ordered as they go out. */
+const CANDLES = [
+  candlestick(0, -3.65, 1.75),      // first to die
+  candlestick(4.55, 2.55, 1.45),
+  candlestick(-4.55, 2.55, 1.45),   // last to die
+];
+
 /* ---------- vigil: the lights go out one at a time (ADR-0006) ----------
    The three-point rig is the three candles. Rim dies first, then fill, then key.
    At full vigil only the Screen's phosphor is left, and it rakes across the Plate
@@ -837,10 +967,24 @@ const ENV0 = scene.environmentIntensity ?? 1;
 /** 1 while the candle burns, 0 once it is out. */
 const candle = (v, from, to) => 1 - Math.min(1, Math.max(0, (v - from) / (to - from)));
 
+/** When each candle dies. The rig light and its visible candle share a ramp. */
+const RAMPS = [[.00, .34], [.28, .62], [.56, .94]];
+
 function applyVigil() {
-  rim.intensity  = RIM0  * candle(vigil, .00, .34);
-  fill.intensity = FILL0 * candle(vigil, .28, .62);
-  key.intensity  = KEY0  * candle(vigil, .56, .94);
+  rim.intensity  = RIM0  * candle(vigil, ...RAMPS[0]);
+  fill.intensity = FILL0 * candle(vigil, ...RAMPS[1]);
+  key.intensity  = KEY0  * candle(vigil, ...RAMPS[2]);
+
+  CANDLES.forEach((c, i) => {
+    const k = candle(vigil, ...RAMPS[i]);
+    c.live = k;
+    /* the flame shortens before it goes, the way a wick drowns in its own wax */
+    c.flame.scale.set(.55 + k * .45, .7 + k * 1.4, .55 + k * .45);
+    c.flame.material.opacity = Math.min(1, k * 1.6);
+    c.halo.material.opacity = c.base.halo * k;
+    c.light.intensity = c.base.light * k;
+    c.flame.visible = c.halo.visible = k > .001;
+  });
   scene.environmentIntensity = ENV0 * (1 - vigil * .88);
 
   /* the screen takes over the room */
@@ -966,6 +1110,20 @@ dial('seed', v => 20260800 + v, v => String(v - 20260800));
 addEventListener('resize', () => {
   camera.aspect = W() / H(); camera.updateProjectionMatrix(); renderer.setSize(W(), H());
 });
+/* the canvas is sized before layout settles often enough to be worth a second pass */
+requestAnimationFrame(() => {
+  camera.aspect = W() / H(); camera.updateProjectionMatrix(); renderer.setSize(W(), H());
+});
+
+const camDial = (id, key, fmt) => {
+  const el = document.getElementById(id), out = document.getElementById(id + 'v');
+  el.addEventListener('input', () => {
+    CAM[key] = +el.value / (key === 'dist' ? 10 : 1);
+    out.textContent = fmt(CAM[key]); placeCamera();
+  });
+};
+camDial('tilt', 'tilt', v => v + '\u00B0');
+camDial('dist', 'dist', v => v.toFixed(1));
 /* Ornament artwork, if it has been dropped in. Falls back to the procedural vine when absent. */
 (async () => {
   for (const f of ['ornament/plate.png', 'ornament/plate.jpg', 'ornament/plate.svg']) {
@@ -1033,6 +1191,13 @@ function frame(t) {
   /* the decks keep turning very slowly, opposite ways, so the Unit never looks frozen */
   sun.group.rotation.y -= dt * .04 * (1 - vigil);
   moon.group.rotation.y += dt * .04 * vigil;
+  /* candlelight is never steady */
+  CANDLES.forEach((c, i) => {
+    if (!c.live) return;
+    const f = .86 + .14 * Math.sin(t * .0043 + i * 2.1) * Math.sin(t * .0111 + i * 5.7);
+    c.light.intensity = c.base.light * c.live * f;
+    c.flame.scale.x = c.flame.scale.z = (.55 + c.live * .45) * (.94 + f * .08);
+  });
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
