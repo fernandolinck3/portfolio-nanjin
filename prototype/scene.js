@@ -92,7 +92,15 @@ function borderOrnament(g, x, y, w, h, s) {
     cusp(g, x + w - s * .55, py, 0, s * .5, 2);
   }
 }
-/* face maps: albedo (printed) + height (engraved) */
+/* face maps: albedo (printed) + height (engraved) + glow (phosphorescent Print) */
+/* Display candidates for the Plate's model name. Flip with ?title=unifraktur|pirata|grenze. */
+const TITLES = {
+  archivo:    { font: '700 66px Archivo, Helvetica, Arial',      track: '13px', y: 148 },
+  unifraktur: { font: '400 82px "UnifrakturMaguntia", serif',    track: '2px',  y: 155 },
+  pirata:     { font: '400 88px "Pirata One", serif',            track: '6px',  y: 157 },
+  grenze:     { font: '600 80px "Grenze Gotisch", serif',        track: '9px',  y: 152 },
+};
+let TITLE = TITLES[new URLSearchParams(location.search).get('title')] || TITLES.archivo;
 function faceMaps() {
   const A = document.createElement('canvas'); A.width = 2048; A.height = 1536;
   const Hh = document.createElement('canvas'); Hh.width = 2048; Hh.height = 1536;
@@ -122,9 +130,9 @@ function faceMaps() {
   /* printed silkscreen — phosphorescent, so it survives the Vigil */
   ink(c => {
     c.fillStyle = c === a ? '#E6E4DB' : '#CFEFE0';
-    c.font = '700 66px Archivo, Helvetica, Arial';
-    c.letterSpacing = '13px';
-    c.fillText('TENEBRAE', 150, 148);
+    c.font = TITLE.font;
+    c.letterSpacing = TITLE.track;
+    c.fillText('TENEBRAE', 150, TITLE.y);
     c.fillStyle = c === a ? '#8A8880' : '#5E8C7A';
     c.font = '500 28px "Azeret Mono", monospace';
     c.letterSpacing = '9px';
@@ -147,7 +155,18 @@ function faceMaps() {
   const et = new THREE.CanvasTexture(E); et.colorSpace = THREE.SRGBColorSpace; et.anisotropy = 8;
   return { albedo: at, height: ht, glow: et };
 }
-const maps = faceMaps();
+let maps = faceMaps();
+
+/** Rebuild the Plate's Print. Webfonts land after first paint, so this runs again once they do. */
+function regenFace() {
+  const m = faceMaps();
+  faceMat.map = m.albedo; faceMat.bumpMap = m.height; faceMat.emissiveMap = m.glow;
+  chassisMat.bumpMap = m.height;
+  /* a swapped-in CanvasTexture is not uploaded until it is marked dirty itself */
+  [m.albedo, m.height, m.glow].forEach(t => { t.needsUpdate = true; });
+  faceMat.needsUpdate = true; chassisMat.needsUpdate = true;
+  maps = m;
+}
 
 /* jog plate texture */
 function jogAlbedo() {
@@ -462,6 +481,14 @@ addEventListener('resize', () => {
 });
 setVigil(vigil);
 
+/* The Print is drawn before webfonts arrive, and document.fonts.ready does not load a face that
+   nothing on the page has used yet — an unused family silently falls back. Ask for each one. */
+Promise.all([
+  ...Object.values(TITLES).map(t => document.fonts.load(t.font.replace(/^(\S+\s+\S+)/, '$1'))),
+  document.fonts.load('500 30px "Azeret Mono"'),
+  document.fonts.load('700 30px Archivo'),
+]).then(regenFace);
+
 /** Workbench hook: lets a browser session drive and verify the Unit without guessing pixels. */
 window.__unit = {
   /** rAF is throttled in a background tab, so never trust the last frame's matrices. */
@@ -472,7 +499,10 @@ window.__unit = {
     return [(v.x * .5 + .5) * W(), (-v.y * .5 + .5) * H()];
   },
   pads: () => padMeshes,
-  parts: () => ({ cap, jogRing, knobBody }),
+  /** Swap the Plate's display face and redraw the Print. */
+  setTitle(t) { TITLE = t; regenFace(); },
+  parts: () => ({ cap, jogRing, knobBody, faceMat, face }),
+  get title() { return TITLE; },
   get page() { return curPage; },
   get vigil() { return vigil; },
   get xf() { return xfVal; },
