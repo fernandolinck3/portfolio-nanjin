@@ -10,8 +10,8 @@
    Every Module has its own layout. Nothing on screen is allowed to sit still. */
 import { MODULES } from '../../src/content/modules.ts'
 import { EMBLEMS, disc, ring } from './sprites.js'
-import { updatePet, drawPet, startle } from './pet.js'
-import { drawFigure, updateRaven, drawRaven, flush } from './figure.js'
+import { drawWizard, drawRaven, updateRaven, flush, drawSpell, castHand,
+         heldOrbs, heldBook, heldUnit } from './figure.js'
 
 const W = 320, H = 180
 const buf = document.createElement('canvas'); buf.width = W; buf.height = H
@@ -20,9 +20,7 @@ const big = document.getElementById('big').getContext('2d')
 const real = document.getElementById('real').getContext('2d')
 big.imageSmoothingEnabled = real.imageSmoothingEnabled = false
 
-let dir = 'grimoire', mod = 0, xf = 0.18, pet = 'none', figure = 'witch', switchedAt = performance.now()
-/* The familiar walks the bottom rule; it must not tread on the readout at the right. */
-const PET_BOUNDS = { lo: 24, hi: W - 84 }
+let dir = 'grimoire', mod = 0, xf = 0.18, figure = 'witch', switchedAt = performance.now()
 
 /* ---------- helpers ---------- */
 
@@ -117,47 +115,74 @@ function grimoireStatus() {
   }
 }
 
-/* Her panel, and where the raven sits on it. She has a frame of her own — the
-   references all give the figure one rather than floating it behind the text. */
-const PANEL = { x: W - 106, y: 52, w: 90, h: H - 70 }
-const FIG = { cx: PANEL.x + PANEL.w / 2, top: PANEL.y + 6, h: PANEL.h - 12 }
-const PERCH = { x: PANEL.x + 10, y: PANEL.y - 1 }
-const ROAM = { lo: 40, hi: PANEL.x - 16 }
-/* Content gives up the panel's width. This is the cost, and it is why the copy
-   has to get shorter — see the COLS readout. */
-const BODY_W = () => (figure === 'none' ? W - 40 : PANEL.x - 32)
+/* ---------- the stage ----------
+   Each Module is composed around what she is doing in it, rather than laid out
+   first and given a panel afterwards. She moves side to side, changes height,
+   and changes what is in her hands; the body of the Module takes what is left.
+   `fy` is her feet. */
+const STAGE = [
+  { fx: W - 50, fy: H - 14, fh: 92, pose: 'present', bx: 20,  bw: W - 118, by: 60 },
+  { fx: W / 2,  fy: H - 10, fh: 66, pose: 'balance', bx: 20,  bw: W - 40,  by: 58 },
+  { fx: 46,     fy: H - 14, fh: 86, pose: 'craft',   bx: 96,  bw: W - 118, by: 60 },
+  { fx: W - 42, fy: H - 14, fh: 86, pose: 'point',   bx: 20,  bw: W - 104, by: 58 },
+  { fx: 42,     fy: H - 14, fh: 86, pose: 'read',    bx: 88,  bw: W - 110, by: 58 },
+  { fx: W - 48, fy: H - 14, fh: 92, pose: 'send',    bx: 20,  bw: W - 116, by: 60 },
+]
+const stage = () => STAGE[mod]
 
-/** The panel: a rule, four corner ticks, and her inside it. */
-function drawPanel(t, ink, dim, bg) {
-  g.fillStyle = bg; g.fillRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h)
-  drawFigure(g, figure, FIG.cx, FIG.top, FIG.h, t, ink, dim, bg)
-  g.fillStyle = dim
-  g.fillRect(PANEL.x, PANEL.y, PANEL.w, 1); g.fillRect(PANEL.x, PANEL.y + PANEL.h - 1, PANEL.w, 1)
-  g.fillRect(PANEL.x, PANEL.y, 1, PANEL.h); g.fillRect(PANEL.x + PANEL.w - 1, PANEL.y, 1, PANEL.h)
-  g.fillStyle = ink
-  for (const [sx, sy] of [[0, 0], [PANEL.w - 3, 0], [0, PANEL.h - 3], [PANEL.w - 3, PANEL.h - 3]]) {
-    g.fillRect(PANEL.x + sx, PANEL.y + sy, 3, 1); g.fillRect(PANEL.x + sx, PANEL.y + sy, 1, 3)
-  }
+/**
+ * The outer edge of her hat brim — where the raven sits.
+ *
+ * It sat on her shoulder first and vanished: bone bird on a bone robe is one
+ * shape. On the brim it has the dark ground behind it and reads at 1x.
+ */
+function perchOf(st) {
+  const sc = st.fh / 74
+  const headY = st.fy - st.fh * .58
+  const brimY = headY - 11 * sc * .55
+  return [Math.round(st.fx - 19 * sc), Math.round(brimY)]
 }
+const roamOf = st => ({ lo: 34, hi: W - 34, y: st.by + 24 })
+const BODY_W = () => (figure === 'none' ? W - 40 : stage().bw)
+const BODY_X = () => (figure === 'none' ? 20 : stage().bx)
+
+/* The cast runs for this long after a Module change, and she holds the casting
+   pose through the first half of it. */
+const CAST_MS = .85
+const castP = () => clamp01(since() / CAST_MS)
 
 function grimoire(m, t) {
   overflow = 0
   grimoireChrome(m, t)
-  if (figure !== 'none') drawPanel(t, INK, DIM, BG)
-  const x0 = 20, bodyW = BODY_W()
-  let y = 60
-  const typed = clamp01(since() / .9)
+
+  const st = stage()
+  const cast = castP()
+  const casting = figure !== 'none' && cast > 0 && cast < 1
+  let hands = null
+
+  if (figure !== 'none') {
+    const fig = { x: st.fx, y: st.fy, h: st.fh }
+    hands = drawWizard(g, fig, st.pose, t, INK, DIM, BG, casting && cast < .55 ? 1 : 0)
+    /* what she is holding is what makes the pose an action rather than a shape */
+    if (!casting) {
+      if (m.kind === 'thesis') heldOrbs(g, hands.leftHand, hands.rightHand, xf, INK, DIM, t)
+      else if (st.pose === 'read') heldBook(g, hands.leftHand, hands.rightHand, INK, DIM, BG, t)
+      else if (st.pose === 'craft') heldUnit(g, hands.leftHand, hands.rightHand, INK, DIM, BG, t)
+    }
+  }
+
+  const x0 = BODY_X(), bodyW = BODY_W()
+  let y = st.by
+  const typed = clamp01((since() - CAST_MS * .5) / .8)
   g.font = '13px VT323, monospace'
 
   if (m.kind === 'thesis') {
-    /* Two facing columns. The fader does not hide a side, it weights it — the
-       honest position is engraved on the Plate and cannot move (ADR-0005).
-       Both sides never fit in full at this size, so the recessive one keeps its
-       heading and gives up its body: the crossfade trades detail between them
-       rather than swapping one block of text for another. */
-    const colW = (bodyW - 14) / 2
-    const FLOOR = H - 34
-    ;[[m.a, x0, 1 - xf], [m.b, x0 + colW + 14, xf]].forEach(([side, cx, weight]) => {
+    /* She is the fader made flesh: an orb in each hand, the heavier one lit.
+       The columns flank her, so the gutter is hers. */
+    const gutter = figure === 'none' ? 14 : 54
+    const colW = (bodyW - gutter) / 2
+    const FL = H - 30
+    ;[[m.a, x0, 1 - xf], [m.b, x0 + colW + gutter, xf]].forEach(([side, cx, weight]) => {
       const lead = weight >= .5
       g.font = '8px Silkscreen, monospace'
       g.fillStyle = lead ? GOLD : DIM
@@ -170,28 +195,21 @@ function grimoire(m, t) {
         yy += 4
         g.fillStyle = MID
         for (const l of wrap(side.lines.join(' '), colW)) {
-          if (yy > FLOOR) break
+          if (yy > FL) { overflow++; continue }
           g.fillText(l, cx, yy); yy += 10
         }
       } else {
-        /* the side you are not on: a rule and a count of what it is holding back */
         yy += 5
         tone(cx, yy, colW, 1, .3, INK)
         g.font = '8px Silkscreen, monospace'; g.fillStyle = DIM
         g.fillText(side.lines.join(' ').length + ' CHARS', cx, yy + 11)
       }
-      /* a weight bar under each column, so the blend is visible not implied */
-      tone(cx, H - 26, colW, 2, .25, INK)
-      g.fillStyle = lead ? GOLD : MID
-      g.fillRect(cx, H - 26, Math.round(colW * (.2 + weight * .8)), 2)
     })
-    g.fillStyle = DIM
-    for (let i = y - 6; i < H - 22; i += 3) g.fillRect(x0 + colW + 6, i, 1, 1)
 
   } else if (m.kind === 'table') {
+    /* She points at it, so it is a shelf she is showing you rather than a table */
     m.rows.forEach((r, i) => {
       if (i / m.rows.length > typed) return
-      /* a tiny ring per row, filled for the one that is this Unit */
       g.fillStyle = i === 0 ? GOLD : DIM
       if (i === 0) disc(g, x0 + 3, y + 4, 3); else ring(g, x0 + 3, y + 4, 3, 1)
       g.font = '13px VT323, monospace'; g.fillStyle = i === 0 ? INK : MID
@@ -199,24 +217,24 @@ function grimoire(m, t) {
       const tw = g.measureText(r[0]).width
       g.font = '8px Silkscreen, monospace'
       const yr = r[2], yw = g.measureText(yr).width
-      leader(x0 + 16 + tw, y + 7, bodyW - 20 - tw - yw, DIM)
+      leader(x0 + 16 + tw, y + 7, Math.max(4, bodyW - 20 - tw - yw), DIM)
       g.fillStyle = i === 0 ? GOLD : DIM
       g.fillText(yr, x0 + bodyW - yw, y + 8)
       y += 18
     })
 
   } else if (m.kind === 'steps') {
-    /* a rule down the left that fills as the steps arrive */
+    /* The steps come off the book in her hands */
     const top = y - 2, span = m.steps.length * 16
-    tone(x0 + 4, top, 1, span, .3, INK)
-    g.fillStyle = MID; g.fillRect(x0 + 4, top, 1, Math.round(span * typed))
+    tone(x0 - 8, top, 1, span, .3, INK)
+    g.fillStyle = MID; g.fillRect(x0 - 8, top, 1, Math.round(span * typed))
     m.steps.forEach((s, i) => {
       if (i / m.steps.length > typed) return
-      g.fillStyle = INK; disc(g, x0 + 4, y + 4, 2)
+      g.fillStyle = INK; disc(g, x0 - 8, y + 4, 2)
       g.font = '8px Silkscreen, monospace'; g.fillStyle = DIM
-      g.fillText('0' + (i + 1), x0 + 11, y + 7)
-      g.font = '13px VT323, monospace'; g.fillStyle = MID
-      g.fillText(s, x0 + 30, y + 8)
+      g.fillText('0' + (i + 1), x0, y + 7)
+      g.font = '12px VT323, monospace'; g.fillStyle = MID
+      g.fillText(s, x0 + 17, y + 8)
       y += 16
     })
 
@@ -225,13 +243,12 @@ function grimoire(m, t) {
     const shown = Math.max(1, Math.floor(all.length * typed + .0001))
     y = flow(all.slice(0, shown), x0, y, 13, INK)
     if (m.mail) {
-      /* the one address gets a plate of its own — it is the CTA */
       y += 6
       g.fillStyle = GOLD
       g.fillRect(x0, y - 10, bodyW, 1); g.fillRect(x0, y + 6, bodyW, 1)
       g.fillRect(x0, y - 10, 1, 17); g.fillRect(x0 + bodyW - 1, y - 10, 1, 17)
       g.font = '8px Silkscreen, monospace'
-      g.fillText(m.mail, x0 + 8, y + 1)
+      g.fillText(m.mail, x0 + 6, y + 1)
       g.font = '13px VT323, monospace'
       y += 18
     }
@@ -242,9 +259,14 @@ function grimoire(m, t) {
   }
 
   grimoireStatus()
-  if (pet !== 'none') drawPet(g, pet, H - 11, t, INK, DIM)
-  if (figure !== 'none') drawRaven(g, PERCH, 118, t, INK, DIM)
+
+  /* the raven, then the spell over everything */
+  if (figure !== 'none' && hands) {
+    drawRaven(g, perchOf(st), t, INK, DIM)
+    if (casting) drawSpell(g, castHand({ x: st.fx, y: st.fy, h: st.fh }), cast, W, H, INK, GOLD)
+  }
 }
+
 
 /* ================= B. INSTRUMENT (kept for comparison, not developed) ================= */
 
@@ -400,10 +422,12 @@ function cracktro(m, t) {
   }
   g.restore()
 
-  if (pet !== 'none') drawPet(g, pet, H - 19, t, BONE, DEEP)
   if (figure !== 'none') {
-    drawFigure(g, figure, FIG.cx, FIG.top, FIG.h, t, BONE, DEEP, '#08070A')
-    drawRaven(g, PERCH, 120, t, BONE, DEEP)
+    const st = { fx: W - 46, fy: H - 20, fh: 74, pose: stage().pose }
+    const cast = castP(), casting = cast > 0 && cast < 1
+    drawWizard(g, st, st.pose, t, BONE, DEEP, '#08070A', casting && cast < .55 ? 1 : 0)
+    drawRaven(g, perchOf(st), t, BONE, DEEP)
+    if (casting) drawSpell(g, castHand(st), cast, W, H, BONE, EMBER)
   }
 }
 
@@ -423,8 +447,7 @@ let last = 0
 function frame(now) {
   const t = now / 1000
   const dt = Math.min(.05, last ? t - last : 0); last = t
-  if (pet !== 'none') updatePet(dt, t, PET_BOUNDS)
-  if (figure !== 'none') updateRaven(dt, t, PERCH, ROAM)
+  if (figure !== 'none') updateRaven(dt, t, perchOf(stage()), roamOf(stage()))
   DIRS[dir](MODULES[mod], t)
   curtain()
   big.clearRect(0, 0, 960, 540); big.drawImage(buf, 0, 0, 960, 540)
@@ -444,12 +467,10 @@ function press(attr, apply) {
 press('dir', v => { dir = v })
 press('mod', v => {
   mod = +v
-  if (pet !== 'none') startle(PET_BOUNDS)
   /* something arrived — the raven goes to look at it */
   if (figure !== 'none') flush(performance.now() / 1000)
 })
 press('xf', v => { xf = +v })
-press('pet', v => { pet = v; if (v !== 'none') startle(PET_BOUNDS) })
 press('fig', v => { figure = v })
 
 /* An unused family silently falls back, and document.fonts.ready will not load a

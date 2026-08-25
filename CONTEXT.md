@@ -97,20 +97,28 @@ throughout. Grimoire, Cracktro and Instrument are the three drawn. A Face is aut
 not applied as a palette. The visitor changes it; it never changes which Module is live.
 _Avoid_: theme, skin, mode, style
 
-**Figure**:
-The hooded figure who occupies a framed panel in the right of the Screen, present in every Module.
-She is drawn solid, with a void where her face is and two points of light in it. She is not
-decoration in the margin — she is the Screen's inhabitant, and the Module is written beside her.
-**Which figure she is has not been settled** — a witch (pointed hat) and a cowled figure are drawn.
-_Avoid_: character, avatar, mascot, portrait
+**Wizard**:
+The character who inhabits the Screen. Chibi proportions — the head is nearly half her height, which
+is what separates cute from sinister at this size — in a droopy pointed hat with a star at the tip
+and a bell robe. She is in every Module and **doing something different in each**: presenting,
+weighing the two ends of the Crossfader, holding the Unit she made, showing the Rack, reading the
+Method, sending the Raven out. The Module is composed around what she is doing; she is never laid
+over a layout that was designed without her.
+_Avoid_: witch, character, avatar, mascot, figure
 
 **Raven**:
-The Figure's familiar. It perches on her panel, and it is the only thing allowed to move across the
-content — when the Module changes it takes off, crosses the Screen to look at what arrived, and
+The Wizard's familiar, perched on the brim of her hat. It is the only thing allowed to move across
+the content — when the Module changes it takes off, crosses the Screen to look at what arrived, and
 comes back. It has moods, not needs: nothing it does can be neglected and nothing it does asks the
 visitor for anything, because a creature that needed feeding would compete with the Module for
 attention.
 _Avoid_: pet, tamagotchi, companion, bird
+
+**Cast**:
+The transition between Modules. The Wizard raises her hand and throws a spell: a dithered front
+sweeps out from her palm across the Screen with sparks running ahead of it, and the new Module types
+itself on behind it. Modules do not cut or fade — she changes them.
+_Avoid_: transition, wipe, animation
 
 **Nightwork**:
 The engraving cut into the Plate that is invisible under full light and only becomes legible as the
