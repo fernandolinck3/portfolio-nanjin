@@ -16,6 +16,15 @@ Pads select Modules; the Crossfader drags and jumps to Now/Next; the knob raises
 in sync with the HUD; the Jog turns and pages. Previously all of this was only ever checked through
 headless stills, which cannot click.
 
+## Engraving workbench
+
+The Plate's engraving is parametric: `BAND`, `DENSITY` and `WEIGHT` dials in the HUD redraw it
+live, and `window.__unit.setEng({band, waves, lw})` does the same from the console. `?title=` swaps
+the display face (`unifraktur` is the chosen one; `pirata`, `grenze`, `archivo` also available).
+
+Known: a wide band runs ornament under the Screen and the controls. The frame has to stay outside
+the cleared field — every reference plate respects that.
+
 ## Still contradicts the ADRs
 
 - the Jog steps between Modules — it should dig *inside* the live one, which needs Modules with

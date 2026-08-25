@@ -92,6 +92,102 @@ function borderOrnament(g, x, y, w, h, s) {
     cusp(g, x + w - s * .55, py, 0, s * .5, 2);
   }
 }
+
+/* ---------- foliate engraving ----------
+   The references agree: a frame around a cleared field, corners carrying the weight,
+   organic motif on a strict mirrored axis, density from repetition rather than thickness. */
+
+/** One acanthus leaf, filled. The references get their weight from solid mass, not outline. */
+function leaf(g, x, y, a, len, curl, w) {
+  const tx = x + Math.cos(a) * len, ty = y + Math.sin(a) * len;
+  const n = a + Math.PI / 2, sp = len * .46;
+  g.beginPath();
+  g.moveTo(x, y);
+  g.quadraticCurveTo(x + Math.cos(a + curl) * sp + Math.cos(n) * sp * .9, y + Math.sin(a + curl) * sp + Math.sin(n) * sp * .9, tx, ty);
+  g.quadraticCurveTo(x + Math.cos(a - curl * .5) * sp - Math.cos(n) * sp * .5, y + Math.sin(a - curl * .5) * sp - Math.sin(n) * sp * .5, x, y);
+  g.fill();
+  g.lineWidth = w; g.stroke();
+  /* the midrib is cut back out, so the mass still reads as carved rather than blobbed */
+  g.save(); g.globalCompositeOperation = 'destination-out';
+  g.lineWidth = w * .9;
+  g.beginPath(); g.moveTo(x, y);
+  g.quadraticCurveTo(x + Math.cos(a + curl * .35) * sp, y + Math.sin(a + curl * .35) * sp, tx, ty);
+  g.stroke(); g.restore();
+}
+
+/** A serpentine stem with leaves thrown alternately off each crest, and berries in the troughs. */
+function vine(g, x0, y0, x1, y1, band, waves, w) {
+  const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy);
+  const ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
+  const amp = band * .30, step = L / waves;
+  g.lineWidth = w;
+  g.beginPath(); g.moveTo(x0, y0);
+  for (let i = 0; i < waves; i++) {
+    const t0 = i * step, sgn = i % 2 ? -1 : 1;
+    g.quadraticCurveTo(
+      x0 + ux * (t0 + step * .5) + nx * amp * sgn, y0 + uy * (t0 + step * .5) + ny * amp * sgn,
+      x0 + ux * (t0 + step),                       y0 + uy * (t0 + step));
+  }
+  g.stroke();
+  for (let i = 0; i < waves; i++) {
+    const t = (i + .5) * step, sgn = i % 2 ? -1 : 1;
+    const cx = x0 + ux * t + nx * amp * sgn * .78, cy = y0 + uy * t + ny * amp * sgn * .78;
+    const a = Math.atan2(ny, nx) * 1 + (sgn > 0 ? 0 : Math.PI);
+    leaf(g, cx, cy, a, band * .60, .95 * sgn, w * .85);
+    leaf(g, cx, cy, a - .85 * sgn, band * .38, .8 * sgn, w * .7);
+    leaf(g, cx, cy, a + .80 * sgn, band * .30, .7 * sgn, w * .65);
+    /* a smaller leaf thrown the other way keeps the run from reading as a single wave */
+    const ox = x0 + ux * (t + step * .5), oy = y0 + uy * (t + step * .5);
+    leaf(g, ox, oy, a + Math.PI, band * .26, -.7 * sgn, w * .6);
+    const bx = x0 + ux * (i + 1) * step, by = y0 + uy * (i + 1) * step;
+    g.lineWidth = w * .8;
+    g.beginPath(); g.arc(bx - nx * amp * sgn * .18, by - ny * amp * sgn * .18, band * .055, 0, 6.2832); g.stroke();
+  }
+}
+
+/** Corner scroll and palmette. The heaviest thing on the Plate. */
+function cartouche(g, cx, cy, s, rot, w) {
+  g.save(); g.translate(cx, cy); g.rotate(rot);
+  g.lineWidth = w;
+  for (const dir of [1, -1]) {
+    g.beginPath();
+    for (let t = 0; t <= 3.2 * Math.PI; t += .12) {
+      const r = s * .085 * t, px = Math.cos(t * dir) * r, py = Math.sin(t * dir) * r - s * .1;
+      t === 0 ? g.moveTo(px, py) : g.lineTo(px, py);
+    }
+    g.stroke();
+  }
+  for (let i = 0; i < 9; i++) {
+    const a = -Math.PI * .96 + i * (Math.PI * .92 / 8);
+    leaf(g, 0, 0, a, s * (.52 + .40 * Math.sin(i / 8 * Math.PI)), .9, w * .85);
+  }
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI * .82 + i * (Math.PI * .64 / 4);
+    leaf(g, 0, 0, a, s * .30, -.7, w * .6);
+  }
+  g.lineWidth = w * 1.3;
+  g.beginPath(); g.arc(0, 0, s * .12, 0, 6.2832); g.fill(); g.stroke();
+  g.restore();
+}
+
+/** The whole frame: two rules, four runs, four corners. */
+function foliateBorder(g, x, y, w, h, band, waves, lw) {
+  g.lineWidth = lw * 1.25;
+  g.strokeRect(x, y, w, h);
+  g.lineWidth = lw * .6;
+  g.strokeRect(x + band, y + band, w - band * 2, h - band * 2);
+  const i = band * .52;
+  vine(g, x + band * 1.5, y + i, x + w - band * 1.5, y + i, band, waves, lw);
+  vine(g, x + w - band * 1.5, y + h - i, x + band * 1.5, y + h - i, band, waves, lw);
+  vine(g, x + i, y + h - band * 1.5, x + i, y + band * 1.5, band, Math.round(waves * h / w), lw);
+  vine(g, x + w - i, y + band * 1.5, x + w - i, y + h - band * 1.5, band, Math.round(waves * h / w), lw);
+  const c = band * 1.15;
+  cartouche(g, x + band * .95, y + band * .95, c, Math.PI * .75, lw);
+  cartouche(g, x + w - band * .95, y + band * .95, c, Math.PI * .25, lw);
+  cartouche(g, x + w - band * .95, y + h - band * .95, c, -Math.PI * .25, lw);
+  cartouche(g, x + band * .95, y + h - band * .95, c, -Math.PI * .75, lw);
+}
+
 /* face maps: albedo (printed) + height (engraved) + glow (phosphorescent Print) */
 /* Display candidates for the Plate's model name. Flip with ?title=unifraktur|pirata|grenze. */
 const TITLES = {
@@ -100,6 +196,8 @@ const TITLES = {
   pirata:     { font: '400 88px "Pirata One", serif',            track: '6px',  y: 157 },
   grenze:     { font: '600 80px "Grenze Gotisch", serif',        track: '9px',  y: 152 },
 };
+/* Engraving parameters — the knobs we tune against references. */
+let ENG = { band: 104, waves: 13, lw: 3.4 };
 let TITLE = TITLES[new URLSearchParams(location.search).get('title')] || TITLES.archivo;
 function faceMaps() {
   const A = document.createElement('canvas'); A.width = 2048; A.height = 1536;
@@ -117,13 +215,11 @@ function faceMaps() {
   h.fillStyle = '#808080'; h.fillRect(0, 0, 2048, 1536);
 
   /* engraved ornament — into both height and a darkened albedo */
-  h.strokeStyle = '#101010'; h.lineWidth = 6;
-  borderOrnament(h, 60, 60, 2048 - 120, 1536 - 120, 56);
-  borderOrnament(h, 150, 640, 1180, 800, 34);
+  h.strokeStyle = '#0C0C0C'; h.fillStyle = '#141414'; h.lineCap = 'round'; h.lineJoin = 'round';
+  foliateBorder(h, 54, 54, 2048 - 108, 1536 - 108, ENG.band, ENG.waves, ENG.lw);
   rosette(h, 1600, 1010, 360, 12);
-  a.strokeStyle = 'rgba(0,0,0,.55)'; a.lineWidth = 5;
-  borderOrnament(a, 60, 60, 2048 - 120, 1536 - 120, 56);
-  borderOrnament(a, 150, 640, 1180, 800, 34);
+  a.strokeStyle = 'rgba(0,0,0,.52)'; a.fillStyle = 'rgba(0,0,0,.34)'; a.lineCap = 'round'; a.lineJoin = 'round';
+  foliateBorder(a, 54, 54, 2048 - 108, 1536 - 108, ENG.band, ENG.waves, ENG.lw * .85);
   a.strokeStyle = 'rgba(0,0,0,.5)';
   rosette(a, 1600, 1010, 360, 12);
 
@@ -476,6 +572,20 @@ document.querySelectorAll('[data-act]').forEach(b => {
 const vslider = document.getElementById('vigil');
 vslider.addEventListener('input', () => setVigil(+vslider.value / 100));
 
+/* engraving dials — tune the Plate live against references */
+const dial = (id, read, fmt) => {
+  const el = document.getElementById(id), out = document.getElementById(id + 'v');
+  el.addEventListener('input', () => {
+    const v = read(+el.value);
+    out.textContent = fmt(v);
+    ENG = { ...ENG, [id === 'lw' ? 'lw' : id === 'band' ? 'band' : 'waves']: v };
+    regenFace();
+  });
+};
+dial('band', v => v, v => String(v));
+dial('waves', v => v, v => String(v));
+dial('lw', v => v / 10, v => v.toFixed(1));
+
 addEventListener('resize', () => {
   camera.aspect = W() / H(); camera.updateProjectionMatrix(); renderer.setSize(W(), H());
 });
@@ -501,6 +611,9 @@ window.__unit = {
   pads: () => padMeshes,
   /** Swap the Plate's display face and redraw the Print. */
   setTitle(t) { TITLE = t; regenFace(); },
+  /** Tune the engraving: band width, wave count along the top run, line weight. */
+  setEng(e) { ENG = { ...ENG, ...e }; regenFace(); },
+  get eng() { return ENG; },
   parts: () => ({ cap, jogRing, knobBody, faceMat, face }),
   get title() { return TITLE; },
   get page() { return curPage; },
