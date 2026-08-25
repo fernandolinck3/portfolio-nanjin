@@ -377,10 +377,11 @@ function ornamentMask(w, h) {
   if (ART) {
     /* The painting itself takes a shallow relief, so it reads as printed on metal
        that has texture rather than as a flat sticker. */
-    const k = Math.max(TW / ART.width, TH / ART.height);
+    const k = Math.max(TW / ART.width, TH / ART.height) * ENG.artZoom;
     const dw = ART.width * k, dh = ART.height * k;
-    g.save(); g.filter = 'grayscale(1) contrast(1.6)';
-    g.drawImage(ART, (TW - dw) / 2, (TH - dh) / 2, dw, dh);
+    g.save();
+    g.filter = ENG.invert ? 'grayscale(1) contrast(1.7)' : 'grayscale(1) invert(1) contrast(1.7)';
+    g.drawImage(ART, (TW - dw) / 2 + ENG.artX, (TH - dh) / 2 + ENG.artY, dw, dh);
     g.restore();
   } else if (ORN) {
     /* tiled artwork */
@@ -451,7 +452,7 @@ const TITLES = {
 };
 /* Engraving parameters — the knobs we tune against references. */
 let ENG = { band: 118, waves: 0, lw: 5.0, hatch: 5, grow: 0, seed: 20260825, ink: .30,
-            tile: 1, bevel: 10, depth: 11, scrim: .34 };
+            tile: 1, bevel: 10, depth: 11, scrim: .34, invert: 1, artZoom: 1, artX: 0, artY: 0 };
 let TITLE = TITLES[new URLSearchParams(location.search).get('title')] || TITLES.archivo;
 function faceMaps() {
   const A = document.createElement('canvas'); A.width = TW; A.height = TH;
@@ -467,9 +468,15 @@ function faceMaps() {
   a.fillStyle = '#26282B'; a.fillRect(0, 0, TW, TH);
   if (ART) {
     /* cover-fit, so the art is never squashed to the Plate's ratio */
-    const k = Math.max(TW / ART.width, TH / ART.height);
+    const k = Math.max(TW / ART.width, TH / ART.height) * ENG.artZoom;
     const dw = ART.width * k, dh = ART.height * k;
-    a.drawImage(ART, (TW - dw) / 2, (TH - dh) / 2, dw, dh);
+    a.save();
+    /* An engraving on parchment is dark ink on light ground. The Unit is the other way round,
+       so the plate art is inverted: pale line on a dark field, which is also how the celestial
+       charts in the reference read. */
+    if (ENG.invert) a.filter = 'invert(1) saturate(.35) brightness(.92)';
+    a.drawImage(ART, (TW - dw) / 2 + ENG.artX, (TH - dh) / 2 + ENG.artY, dw, dh);
+    a.restore();
     /* a scrim keeps the Print readable over whatever the art is doing underneath */
     a.fillStyle = `rgba(10,11,13,${ENG.scrim})`; a.fillRect(0, 0, TW, TH);
   }
@@ -952,6 +959,8 @@ dial('bevel', v => v, v => String(v));
 dial('depth', v => v, v => String(v));
 dial('tile', v => v / 100, v => v.toFixed(2));
 dial('scrim', v => v / 100, v => v.toFixed(2));
+dial('invert', v => v, v => v ? 'on' : 'off');
+dial('artZoom', v => v / 100, v => v.toFixed(2));
 dial('seed', v => 20260800 + v, v => String(v - 20260800));
 
 addEventListener('resize', () => {
