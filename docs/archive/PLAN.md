@@ -1,3 +1,9 @@
+> **Superseded 2026-08-24 — kept as anti-reference.**
+> This document belongs to the July "Divine Machinery" / "Monument" direction, which was
+> abandoned. It is preserved because the reasoning is still worth reading and because knowing
+> what was rejected is part of the record. Current truth: `PRODUCT.md`, `CONTEXT.md`,
+> `docs/adr/`.
+
 # Page Plan — Memory Architecture
 
 ## Status
