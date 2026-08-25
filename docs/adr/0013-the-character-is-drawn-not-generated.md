@@ -1,4 +1,4 @@
-# The Wizard is drawn, not generated
+# The Wizard's face is drawn; her body is generated
 
 Every other mark on the Unit is procedural (ADR-0004). The Wizard is not. She is a bitmap, authored
 by hand as text in `prototype/screen/drawn.js` — one character per pixel, four tones.
@@ -26,9 +26,15 @@ review, and it is a few hundred bytes.
 
 - The Wizard is the one thing in this repo that is authored rather than derived. Expect to edit her
   by hand, in a grid, and expect that to be the right way to change her.
-- A bitmap cannot change pose the way a parameterised figure can. Poses are frames, and frames are
-  drawn. The current placeholder has one, which is why the Cast makes her hop rather than raise her
-  hand — the whole body acts because no part of it can.
+- **The split is at the neck.** The bust — hat, hair, face, jaw — is drawn. Everything below the
+  shoulders is generated: the robe, its shading, its stars, and her arms. This is the same argument
+  the ADR opens with, applied one level down. A face is a set of decisions, so it is drawn; a robe
+  is a system, so it is generated.
+- That split also gives a hand-drawn character poses back. A bitmap has one frame, but a generated
+  body can put her arms wherever the Module needs them — out to the sides holding an orb in each
+  hand for Now/Next, together in front for Project 001, raised for a Cast.
+- The generated half snaps to the drawn half's pixel grid. Without that it reads as a different
+  medium bolted on underneath.
 - **The one in the repo now is a placeholder.** It exists to prove the pipeline and to show the
   difference in kind against the procedural version, which is kept beside it for exactly that
   comparison. Fernando is a designer and is already drawing the faceplate art; the real Wizard

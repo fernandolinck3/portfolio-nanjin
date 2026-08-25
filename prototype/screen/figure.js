@@ -279,3 +279,61 @@ export function drawRaven(g, perch, t, ink, dim) {
   }
   if (Math.floor(t * 1.3) % 5) { g.fillStyle = dim; g.fillRect(x + f * 5, y - 7, 1, 1) }
 }
+
+/* ---------- the generated body ----------
+   The bust is drawn; everything under it is generated. That split is the one
+   ADR-0013 argues for: a face is a set of decisions, a robe is a system. It also
+   gives a hand-drawn character poses again — a bitmap has one frame, but the
+   body beneath it can put her arms wherever the Module needs them. */
+
+/**
+ * A bell robe with arms, drawn on the sprite's own pixel grid so it does not
+ * read as a different medium bolted under the drawing.
+ *
+ * @param px  the sprite's pixel size — everything snaps to it
+ * @returns   hand positions, in screen pixels
+ */
+export function drawRobe(g, cx, top, bottom, px, pose, t, ink, mid, deep, bg) {
+  const snap = v => Math.round(v / px) * px
+  const H = bottom - top
+  const sway = Math.sin(t * .8) * px
+
+  /* shoulders out to hem, easing wide near the bottom the way a heavy robe hangs */
+  for (let y = top; y < bottom; y += px) {
+    const k = (y - top) / H
+    const w = snap(px * 5 + Math.pow(k, 1.45) * px * 8)
+    const drift = snap(sway * k * k)
+    g.fillStyle = mid
+    g.fillRect(snap(cx + drift - w), snap(y), w * 2, px)
+    /* one side falls into shadow, which is what stops it reading as a triangle */
+    g.fillStyle = deep
+    g.fillRect(snap(cx + drift + w - px * 2), snap(y), px * 2, px)
+  }
+  g.fillStyle = ink
+  g.fillRect(snap(cx - px * 13 + sway), snap(bottom - px), px * 26, px)
+
+  /* a few stars, because she is a wizard and the robe is otherwise a shape */
+  g.fillStyle = ink
+  for (const [sx, sk] of [[-3, .45], [4, .62], [-1, .80]]) {
+    const y = snap(top + H * sk), x = snap(cx + sx * px + sway * sk * sk)
+    g.fillRect(x, y, px, px)
+    g.fillRect(x - px, y, px, px); g.fillRect(x + px, y, px, px)
+    g.fillRect(x, y - px, px, px); g.fillRect(x, y + px, px, px)
+  }
+
+  /* arms: chunky segments, so they sit in the same grid as the drawing */
+  const P = POSES[pose] || POSES.present
+  const shoulder = top + px * 2
+  const arm = ([ang, len]) => {
+    const L = len * px * .9
+    const hx = cx + Math.sin(ang) * L, hy = shoulder - Math.cos(ang) * L
+    for (let i = 0; i <= 6; i++) {
+      const k = i / 6
+      const w = Math.max(px, snap(px * (2.6 - k)))
+      g.fillStyle = i > 4 ? ink : mid
+      g.fillRect(snap(cx + (hx - cx) * k - w / 2), snap(shoulder + (hy - shoulder) * k - w / 2), w, w)
+    }
+    return [snap(hx), snap(hy)]
+  }
+  return { leftHand: arm(P.l), rightHand: arm(P.r) }
+}

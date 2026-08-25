@@ -22,7 +22,9 @@
 
    Still a placeholder, and still better if Fernando draws it. */
 
-export const WIZARD = [
+/* The bust: hat, hair, face, jaw. Everything below the shoulders is generated —
+   a face is a set of decisions and has to be drawn; a robe is a shape. */
+export const BUST = [
   '...................#=#..........',
   '.................#====#.........',
   '...............#=======#........',
@@ -48,19 +50,6 @@ export const WIZARD = [
   '.....=#==##############==#=.....',
   '......===oooooooooooooo===......',
   '.......=oooooooooooooooo=.......',
-  '.........--------------.........',
-  '........----------------........',
-  '.......------------------.......',
-  '......#------------------#......',
-  '......#------------------#......',
-  '......--------------------......',
-  '.....----------------------.....',
-  '.....----------#-----------.....',
-  '....------------------------....',
-  '....-----#--------#---------....',
-  '...--------------------------...',
-  '..----------------------------..',
-  '..oooooooooooooooooooooooooooo..',
 ]
 
 /** Her staff. Drawn beside her so the orb can flare on its own during a Cast. */
@@ -110,9 +99,9 @@ export const RAVEN = [
 
 /** Sprite-space anchors: where things she holds and things that sit on her go. */
 export const ANCHOR = {
-  handL: [6, 28], handR: [25, 28], centre: [15, 29],
-  brim:  [3, 6],             /* the raven's perch, on the left tip of the brim */
-  staff: [-3, 4],            /* top-left of the staff sprite, relative to her */
+  brim:  [3, 6],      /* the raven's perch, on the left tip of the brim */
+  staff: [-3, 4],     /* top-left of the staff sprite, relative to her */
+  neck:  [16, 24],    /* where the drawn bust hands over to the generated body */
 }
 
 /**
@@ -131,5 +120,5 @@ export function drawSprite(g, rows, x, y, scale, ink, mid, deep, bg) {
   }
 }
 
-export const SPRITE_W = WIZARD[0].length
-export const SPRITE_H = WIZARD.length
+export const SPRITE_W = BUST[0].length
+export const SPRITE_H = BUST.length

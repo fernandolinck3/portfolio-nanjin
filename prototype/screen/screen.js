@@ -11,8 +11,8 @@
 import { MODULES } from '../../src/content/modules.ts'
 import { EMBLEMS, disc, ring } from './sprites.js'
 import { drawWizard, drawRaven, updateRaven, flush, drawSpell, castHand,
-         heldOrbs, heldBook, heldUnit } from './figure.js'
-import { WIZARD, RAVEN, STAFF, ANCHOR, drawSprite, SPRITE_W, SPRITE_H } from './drawn.js'
+         heldOrbs, heldBook, heldUnit, drawRobe } from './figure.js'
+import { BUST, RAVEN, STAFF, ANCHOR, drawSprite, SPRITE_W, SPRITE_H } from './drawn.js'
 
 const W = 320, H = 180
 const buf = document.createElement('canvas'); buf.width = W; buf.height = H
@@ -153,11 +153,13 @@ const roamOf = st => ({ lo: 34, hi: W - 34, y: st.by + 24 })
 
 /** The hand-drawn sprite placed on the same stage marks as the procedural one. */
 function spriteBox(st) {
-  const scale = Math.max(1, Math.round(st.fh / SPRITE_H))
+  /* the drawn bust is the top ~58% of her; the generated robe fills the rest */
+  const scale = Math.max(1, Math.round((st.fh * .58) / SPRITE_H))
   return {
     scale,
     x: Math.round(st.fx - (SPRITE_W * scale) / 2),
-    y: Math.round(st.fy - SPRITE_H * scale),
+    y: Math.round(st.fy - st.fh),
+    neckY: Math.round(st.fy - st.fh + ANCHOR.neck[1] * scale),
   }
 }
 const at = (box, key) =>
@@ -199,12 +201,14 @@ function grimoire(m, t) {
       disc(g, sx + 2 * sc, sy + 2 * sc, Math.round(3 * sc + flare * 5 * sc))
     }
 
-    drawSprite(g, WIZARD, box.x, by, sc, INK, MID, DIM, BG)
-    hands = { leftHand: at(box, 'handL'), rightHand: at(box, 'handR') }
+    /* the generated body first, then the drawn bust sits on its shoulders */
+    hands = drawRobe(g, st.fx, box.neckY - hop, st.fy - hop, sc,
+                     casting ? 'cast' : st.pose, t, INK, MID, DIM, BG)
+    drawSprite(g, BUST, box.x, by, sc, INK, MID, DIM, BG)
     if (!casting) {
-      const c = [at(box, 'centre')[0], by + ANCHOR.centre[1] * sc]
-      if (m.kind === 'thesis') heldOrbs(g, [hands.leftHand[0], by + ANCHOR.handL[1] * sc],
-                                           [hands.rightHand[0], by + ANCHOR.handR[1] * sc], xf, INK, DIM, t)
+      const c = [Math.round((hands.leftHand[0] + hands.rightHand[0]) / 2),
+                 Math.round((hands.leftHand[1] + hands.rightHand[1]) / 2)]
+      if (m.kind === 'thesis') heldOrbs(g, hands.leftHand, hands.rightHand, xf, INK, DIM, t)
       else if (st.pose === 'read') heldBook(g, c, c, INK, DIM, BG, t)
       else if (st.pose === 'craft') heldUnit(g, c, c, INK, DIM, BG, t)
     }
