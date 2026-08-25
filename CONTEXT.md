@@ -51,6 +51,8 @@ a rack: the set of modules you own and patch together. Every entry must be verif
 against this Unit itself.
 _Avoid_: crate, stack, skills, tech list
 
+Because the Pads are the only navigation, every Module must fit the Screen exactly. Nothing scrolls.
+
 **Flat Plate**:
 The Unit rendered as a printed silkscreen in CSS from the DOM truth layer, served where the 3D
 cannot be carried — no WebGL, low power, reduced motion. A designed deliverable, not a fallback
@@ -60,24 +62,31 @@ _Avoid_: fallback, degraded mode, mobile version
 ## Controls
 
 **Pad**:
-One of the six hot-cue pads. Each selects a Module and lamps to show which is live.
+One of the six hot-cue pads. Each selects a Module and lamps to show which is live. The Pads carry
+navigation alone — there is no other way to change Module.
 
-**Jog**:
-The large wheel. Digs through the contents of the live Module — the Screen moves, the browser page
-never does. Modules may hold more than one Screen's worth; scrolling the Screen is operating the
-Unit, not scrolling a webpage.
-_Avoid_: scroll wheel, dial, browse
+**Deck**:
+One of the two wheels flanking the Screen. There are exactly two, **Sun** on the right and **Moon**
+on the left, and together they are the Vigil: turning the Sun brings the light up, turning the Moon
+puts it out. The rite performed with two hands.
+_Avoid_: jog, wheel, platter, turntable
 
 **Vigil**:
-The knob, silkscreened VIGIL, and the 0–1 value it holds. It is a light control: at 0 the Unit is
-fully lit, at 1 every lamp is out and the Screen's phosphor is the only source in the room. Named
-for the night watch — the rite the model name comes from.
-_Avoid_: bend, dim, brightness, corruption
+The 0–1 state of the light, held between the two Decks. At 0 the Unit is fully lit; at 1 every lamp
+is out and the Screen's phosphor is the only source in the room. Named for the night watch — the
+rite the model name comes from. It is a state, not a control: no single Part owns it.
+_Avoid_: bend, dim, brightness, corruption, knob
 
 **Nightwork**:
 The engraving cut into the Plate that is invisible under full light and only becomes legible as the
 Vigil rises and the light rakes across it. Ornament that has to be earned by darkness.
 _Avoid_: hidden layer, easter egg, second plate
+
+**Relief**:
+The Plate's ornament as cut metal rather than printed line: a coverage mask, blurred into a height
+field so each mark ramps from surface to floor, then differentiated into a normal map. What makes
+the engraving catch light on its bevel walls.
+_Avoid_: bump map, texture, embossing
 
 **Crossfader**:
 The horizontal fader carrying the Now↔Next thesis. It moves freely and re-weights what the Screen

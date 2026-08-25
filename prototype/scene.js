@@ -14,7 +14,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0a0b);
 
 const camera = new THREE.PerspectiveCamera(38, W() / H(), 0.1, 100);
-camera.position.set(0, 7.0, 1.15);
+camera.position.set(0, 8.1, 1.30);
 camera.lookAt(0, 0.3, 0.02);
 
 /* ---------- environment: a studio built in a canvas ---------- */
@@ -177,10 +177,14 @@ function foliateBorder(g, x, y, w, h, band, waves, lw) {
   g.lineWidth = lw * .6;
   g.strokeRect(x + band, y + band, w - band * 2, h - band * 2);
   const i = band * .52;
+  /* waves = 0 leaves the runs bare, which is the restrained Art Nouveau frame:
+     a rule with rounded corners and ornament only where the corners turn. */
+  if (waves >= 1) {
   vine(g, x + band * 1.5, y + i, x + w - band * 1.5, y + i, band, waves, lw);
   vine(g, x + w - band * 1.5, y + h - i, x + band * 1.5, y + h - i, band, waves, lw);
   vine(g, x + i, y + h - band * 1.5, x + i, y + band * 1.5, band, Math.round(waves * h / w), lw);
   vine(g, x + w - i, y + band * 1.5, x + w - i, y + h - band * 1.5, band, Math.round(waves * h / w), lw);
+  }
   const c = band * 1.15;
   cartouche(g, x + band * .95, y + band * .95, c, Math.PI * .75, lw);
   cartouche(g, x + w - band * .95, y + band * .95, c, Math.PI * .25, lw);
@@ -190,23 +194,24 @@ function foliateBorder(g, x, y, w, h, band, waves, lw) {
 
 
 /* ---------- field work ----------
-   World space maps onto the Plate texture as px = (x + 2.29) / 4.58 * 2048,
-   py = (z + 1.59) / 3.18 * 1536. Reserves are the areas the Parts occupy: the
+   World space maps onto the Plate texture through PX / PY below. Reserves are the areas the Parts occupy: the
    engraving fills everything else and is then cut back out of them. */
-const PX = x => (x + 2.29) / 4.58 * 2048, PY = z => (z + 1.59) / 3.18 * 1536;
+/* The Plate is 5.58 x 3.26; the texture matches that ratio so ornament is never stretched. */
+const TW = 2048, TH = 1196;
+const PX = x => (x + 2.79) / 5.58 * TW, PY = z => (z + 1.63) / 3.26 * TH;
 const RESERVES = [
-  { r: [PX(-2.055), PY(-1.10), PX(.295) - PX(-2.055), PY(.42) - PY(-1.10)] },   // Screen + bezel
-  { r: [PX(-2.12), PY(.95), PX(-.02) - PX(-2.12), PY(1.37) - PY(.95)] },        // Pad row
-  { r: [PX(-.15), PY(1.02), PX(.85) - PX(-.15), PY(1.30) - PY(1.02)] },         // Crossfader
-  { c: [PX(1.15), PY(1.16), 132] },                                             // Vigil knob
-  { c: [PX(1.42), PY(-.15), 478] },                                             // Jog
+  { r: [PX(-1.02), PY(-1.24), PX(1.02) - PX(-1.02), PY(-.06) - PY(-1.24)] },    // Screen + bezel
+  { r: [PX(-1.00), PY(.34), PX(1.00) - PX(-1.00), PY(.76) - PY(.34)] },         // Pad row
+  { r: [PX(-.58), PY(1.02), PX(.58) - PX(-.58), PY(1.30) - PY(1.02)] },         // Crossfader
+  { c: [PX(-1.86), PY(-.10), PX(-1.86 + .98) - PX(-1.86)] },                    // Moon deck
+  { c: [PX(1.86), PY(-.10), PX(1.86 + .98) - PX(1.86)] },                       // Sun deck
 ];
 /* The Print gets cleared ground too — labels never fight the field. */
 const PRINT_RESERVES = [
-  [110, 78, 980, 150],     // model name + serial line
-  [1480, 100, 530, 80],    // PROJECT 001
-  [190, 1412, 1570, 84],   // HOT CUE / CROSSFADE / VIGIL
-  [1928, 360, 92, 680],    // vertical edge legend
+  [PX(-1.10), 54, PX(1.10) - PX(-1.10), 128],   // model name + serial, above the Screen
+  [PX(-1.05), PY(.86), PX(1.05) - PX(-1.05), 72],   // HOT CUE / CROSSFADE
+  [PX(-2.30), PY(1.18), PX(-1.42) - PX(-2.30), 72], // MOON
+  [PX(1.42), PY(1.18), PX(2.30) - PX(1.42), 72],    // SUN
 ];
 
 /** A fine ruled ground. Engraving never leaves bare metal. */
@@ -286,7 +291,7 @@ function rng(seed) { let x = seed >>> 0; return () => (x = (x * 1664525 + 101390
 
 /** True where a Part or a label already owns the ground. */
 function occupied(x, y, pad) {
-  if (x < 40 || y < 40 || x > 2008 || y > 1496) return true;
+  if (x < 40 || y < 40 || x > TW - 40 || y > TH - 40) return true;
   for (const [rx, ry, rw, rh] of PRINT_RESERVES)
     if (x > rx - pad && x < rx + rw + pad && y > ry - pad && y < ry + rh + pad) return true;
   for (const o of RESERVES) {
@@ -324,7 +329,7 @@ function tendril(g, x, y, ang, len, w, depth, rnd) {
 /** Seed the field from the corners and the middle of each edge, and let it run inward. */
 function growField(g, band, lw, depth, seed) {
   const rnd = rng(seed);
-  const L = 54 + band, R = 2048 - 54 - band, T = 54 + band, B = 1536 - 54 - band;
+  const L = 54 + band, R = TW - 54 - band, T = 54 + band, B = TH - 54 - band;
   const seeds = [];
   /* seeded all along the inner frame, growing inward */
   for (let i = 0; i <= 14; i++) {
@@ -364,20 +369,19 @@ function ornamentMask(w, h) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d');
   g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
-  const sx = w / 2048, sy = h / 1536;
+  const sx = w / TW, sy = h / TH;
   g.save(); g.scale(sx, sy);
   g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineCap = 'round'; g.lineJoin = 'round';
   if (ORN) {
     /* tiled artwork */
     const tw = ORN.width * ENG.tile, th = ORN.height * ENG.tile;
-    for (let y = 54; y < 1536 - 54; y += th)
-      for (let x = 54; x < 2048 - 54; x += tw) g.drawImage(ORN, x, y, tw, th);
+    for (let y = 54; y < TH - 54; y += th)
+      for (let x = 54; x < TW - 54; x += tw) g.drawImage(ORN, x, y, tw, th);
   } else {
     /* fallback: the procedural vine, so the scene works before any artwork arrives */
-    foliateBorder(g, 54, 54, 2048 - 108, 1536 - 108, ENG.band, ENG.waves, ENG.lw);
-    midOrnaments(g, 54, 54, 2048 - 108, 1536 - 108, ENG.band, ENG.lw);
+    foliateBorder(g, 54, 54, TW - 108, TH - 108, ENG.band, ENG.waves, ENG.lw);
+    if (ENG.waves >= 1) midOrnaments(g, 54, 54, TW - 108, TH - 108, ENG.band, ENG.lw);
     growField(g, ENG.band, ENG.lw * .92, ENG.grow, ENG.seed);
-    rosette(g, PX(1.42), PY(-.15), 620, 16);
   }
   /* Parts and Print own their ground absolutely — nothing is cut inside a reserve. */
   g.fillStyle = '#000';
@@ -436,23 +440,23 @@ const TITLES = {
   grenze:     { font: '600 80px "Grenze Gotisch", serif',        track: '9px',  y: 152 },
 };
 /* Engraving parameters — the knobs we tune against references. */
-let ENG = { band: 130, waves: 13, lw: 6.0, hatch: 5, grow: 8, seed: 20260825, ink: .42,
-            tile: 1, bevel: 7, depth: 26 };
+let ENG = { band: 118, waves: 0, lw: 5.0, hatch: 5, grow: 0, seed: 20260825, ink: .30,
+            tile: 1, bevel: 10, depth: 11 };
 let TITLE = TITLES[new URLSearchParams(location.search).get('title')] || TITLES.archivo;
 function faceMaps() {
-  const A = document.createElement('canvas'); A.width = 2048; A.height = 1536;
-  const Hh = document.createElement('canvas'); Hh.width = 2048; Hh.height = 1536;
+  const A = document.createElement('canvas'); A.width = TW; A.height = TH;
+  const Hh = document.createElement('canvas'); Hh.width = TW; Hh.height = TH;
   /* E carries the Print alone, on black: phosphorescent ink, so labels stay
      legible once the room is gone. Ornament is deliberately absent from it —
      ornament may overgrow, labels never move. */
-  const E = document.createElement('canvas'); E.width = 2048; E.height = 1536;
+  const E = document.createElement('canvas'); E.width = TW; E.height = TH;
   const a = A.getContext('2d'), h = Hh.getContext('2d'), e = E.getContext('2d');
-  e.fillStyle = '#000'; e.fillRect(0, 0, 2048, 1536);
+  e.fillStyle = '#000'; e.fillRect(0, 0, TW, TH);
   /** Every stroke of the Print goes down twice: once as ink, once as glow. */
   const ink = (fn) => { fn(a); fn(e); };
-  a.fillStyle = '#26282B'; a.fillRect(0, 0, 2048, 1536);
+  a.fillStyle = '#26282B'; a.fillRect(0, 0, TW, TH);
   
-  h.fillStyle = '#808080'; h.fillRect(0, 0, 2048, 1536);
+  h.fillStyle = '#808080'; h.fillRect(0, 0, TW, TH);
 
   /* engraved ornament — into both height and a darkened albedo */
   /* Both maps take the same marks; only the ink differs. */
@@ -463,12 +467,11 @@ function faceMaps() {
     g.strokeStyle = ink; g.fillStyle = mass;
     /* the motif is not a backdrop — the same vine grows across the whole field */
     growField(g, ENG.band, ENG.lw * .92, ENG.grow, ENG.seed);
-    foliateBorder(g, 54, 54, 2048 - 108, 1536 - 108, ENG.band, ENG.waves, ENG.lw * k);
+    foliateBorder(g, 54, 54, TW - 108, TH - 108, ENG.band, ENG.waves, ENG.lw * k);
     foliateBorder(g, 54 + ENG.band * 1.15, 54 + ENG.band * 1.15,
-      2048 - 108 - ENG.band * 2.3, 1536 - 108 - ENG.band * 2.3, ENG.band * .62,
+      TW - 108 - ENG.band * 2.3, TH - 108 - ENG.band * 2.3, ENG.band * .62,
       Math.round(ENG.waves * 1.4), ENG.lw * .7 * k);
-    midOrnaments(g, 54, 54, 2048 - 108, 1536 - 108, ENG.band, ENG.lw * k);
-    rosette(g, PX(1.42), PY(-.15), 620, 16);
+    if (ENG.waves >= 1) midOrnaments(g, 54, 54, TW - 108, TH - 108, ENG.band, ENG.lw * k);
     cutReserves(g, base, ENG.lw * k);
   };
   plate(h, '#808080', '#0C0C0C', '#141414', '#4A4A4A', 1);
@@ -479,25 +482,24 @@ function faceMaps() {
 
   /* printed silkscreen — phosphorescent, so it survives the Vigil */
   ink(c => {
+    c.textAlign = 'center';
     c.fillStyle = c === a ? '#E6E4DB' : '#CFEFE0';
     c.font = TITLE.font;
     c.letterSpacing = TITLE.track;
-    c.fillText('TENEBRAE', 150, TITLE.y);
+    c.fillText('TENEBRAE', TW / 2, 96);
     c.fillStyle = c === a ? '#8A8880' : '#5E8C7A';
-    c.font = '500 28px "Azeret Mono", monospace';
+    c.font = '500 26px "Azeret Mono", monospace';
     c.letterSpacing = '9px';
-    c.fillText('FER BITTENCOURT / SER 001 / REV A', 152, 196);
-    c.fillStyle = c === a ? '#C4281C' : '#8E2418';
-    c.fillText('PROJECT 001', 1520, 150);
+    c.fillText('FER BITTENCOURT / SER 001 / REV A', TW / 2, 146);
+
     c.fillStyle = c === a ? '#9A9890' : '#6FA891';
-    c.font = '500 30px "Azeret Mono", monospace';
-    [['HOT CUE', 250, 1462], ['CROSSFADE', 1075, 1462], ['VIGIL', 1478, 1462]]
-      .forEach(([t, x, y]) => c.fillText(t, x, y));
-    /* vertical japanese edge legend */
-    c.save(); c.translate(1975, 420); c.rotate(Math.PI / 2);
-    c.fillStyle = c === a ? '#6E6C64' : '#4C7566';
-    c.font = '500 38px "Azeret Mono", monospace'; c.letterSpacing = '18px';
-    c.fillText('TENEBRAE / BUILD 2026.08', 0, 0); c.restore();
+    c.font = '500 28px "Azeret Mono", monospace';
+    c.fillText('HOT CUE', TW / 2, PY(.86) + 48);
+    c.fillText('CROSSFADE', TW / 2, PY(1.34) + 24);
+    c.fillStyle = c === a ? '#C4281C' : '#8E2418';
+    c.fillText('MOON', PX(-1.86), PY(1.18) + 48);
+    c.fillText('SUN', PX(1.86), PY(1.18) + 48);
+    c.textAlign = 'left';
   });
 
   const at = new THREE.CanvasTexture(A); at.colorSpace = THREE.SRGBColorSpace; at.anisotropy = 8;
@@ -510,7 +512,7 @@ let maps = faceMaps();
 /** Rebuild the Plate's Print. Webfonts land after first paint, so this runs again once they do. */
 function regenFace() {
   const m = faceMaps();
-  const r = reliefMaps(1024, 768);
+  const r = reliefMaps(1024, 598);
   faceMat.map = m.albedo; faceMat.emissiveMap = m.glow; faceMat.normalMap = r.normal;
   /* a swapped-in CanvasTexture is not uploaded until it is marked dirty itself */
   [m.albedo, m.glow, r.normal].forEach(t => { t.needsUpdate = true; });
@@ -519,23 +521,101 @@ function regenFace() {
 }
 
 /* jog plate texture */
-function jogAlbedo() {
+/* ---------- deck faces ----------
+   The two decks are the Vigil made physical, so their faces are the light itself:
+   the Sun in full glory, the Moon in its phases. */
+
+/** Alternating straight and wavy rays, a chased centre, an outer ring of beads. */
+function sunFace(g, cx, cy, R) {
+  g.lineWidth = R * .016;
+  [1, .93, .62, .30, .17].forEach(k => { g.beginPath(); g.arc(cx, cy, R * k, 0, 6.2832); g.stroke(); });
+  for (let i = 0; i < 24; i++) {
+    const a = i / 24 * 6.2832;
+    const inner = R * .64, outer = R * (i % 2 ? .90 : .84);
+    if (i % 2) {
+      /* straight ray, tapered to a point */
+      g.beginPath();
+      g.moveTo(cx + Math.cos(a - .038) * inner, cy + Math.sin(a - .038) * inner);
+      g.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
+      g.lineTo(cx + Math.cos(a + .038) * inner, cy + Math.sin(a + .038) * inner);
+      g.closePath(); g.fill(); g.stroke();
+    } else {
+      /* flame ray, curling one way */
+      g.beginPath();
+      g.moveTo(cx + Math.cos(a - .030) * inner, cy + Math.sin(a - .030) * inner);
+      g.quadraticCurveTo(cx + Math.cos(a + .10) * (inner + outer) * .5, cy + Math.sin(a + .10) * (inner + outer) * .5,
+                         cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
+      g.quadraticCurveTo(cx + Math.cos(a - .12) * (inner + outer) * .5, cy + Math.sin(a - .12) * (inner + outer) * .5,
+                         cx + Math.cos(a + .030) * inner, cy + Math.sin(a + .030) * inner);
+      g.closePath(); g.stroke();
+    }
+  }
+  /* chasing between the inner rings */
+  for (let i = 0; i < 48; i++) {
+    const a = i / 48 * 6.2832;
+    g.beginPath();
+    g.moveTo(cx + Math.cos(a) * R * .30, cy + Math.sin(a) * R * .30);
+    g.lineTo(cx + Math.cos(a + .05) * R * .62, cy + Math.sin(a + .05) * R * .62);
+    g.stroke();
+  }
+  for (let i = 0; i < 60; i++) {
+    const a = i / 60 * 6.2832;
+    g.beginPath(); g.arc(cx + Math.cos(a) * R * .965, cy + Math.sin(a) * R * .965, R * .012, 0, 6.2832); g.stroke();
+  }
+}
+
+/** The phases running the rim, a crescent at the centre, stars in the field. */
+function moonFace(g, cx, cy, R) {
+  g.lineWidth = R * .016;
+  [1, .93, .70, .26].forEach(k => { g.beginPath(); g.arc(cx, cy, R * k, 0, 6.2832); g.stroke(); });
+  const N = 16;
+  for (let i = 0; i < N; i++) {
+    const a = i / N * 6.2832 - Math.PI / 2;
+    const px = cx + Math.cos(a) * R * .815, py = cy + Math.sin(a) * R * .815, r = R * .072;
+    /* full disc, then the shadow bitten out of it by the phase */
+    g.beginPath(); g.arc(px, py, r, 0, 6.2832); g.stroke();
+    const phase = i / N;
+    const k = Math.cos(phase * 6.2832);
+    g.save(); g.beginPath(); g.arc(px, py, r, 0, 6.2832); g.clip();
+    g.beginPath(); g.ellipse(px + k * r * .55, py, r * Math.abs(k) * .9 + r * .1, r, 0, 0, 6.2832);
+    g.fill(); g.restore();
+  }
+  /* centre crescent */
+  g.save();
+  g.beginPath(); g.arc(cx, cy, R * .225, 0, 6.2832);
+  g.arc(cx + R * .105, cy - R * .045, R * .195, 0, 6.2832, true);
+  g.fill('evenodd'); g.stroke();
+  g.restore();
+  /* stars */
+  for (let i = 0; i < 40; i++) {
+    const a = i * 2.399963, rr = R * (.34 + .30 * ((i * 7919) % 97) / 97);
+    const px = cx + Math.cos(a) * rr, py = cy + Math.sin(a) * rr, sr = R * .022;
+    g.lineWidth = R * .009;
+    g.beginPath();
+    g.moveTo(px, py - sr); g.lineTo(px + sr * .28, py - sr * .28); g.lineTo(px + sr, py);
+    g.lineTo(px + sr * .28, py + sr * .28); g.lineTo(px, py + sr);
+    g.lineTo(px - sr * .28, py + sr * .28); g.lineTo(px - sr, py);
+    g.lineTo(px - sr * .28, py - sr * .28); g.closePath(); g.fill();
+  }
+  g.lineWidth = R * .016;
+}
+
+function deckFace(kind, albedo) {
   const c = document.createElement('canvas'); c.width = c.height = 1024;
   const g = c.getContext('2d');
-  g.fillStyle = '#C9C6BA'; g.fillRect(0, 0, 1024, 1024);
-  g.strokeStyle = 'rgba(20,20,20,.85)'; g.lineWidth = 3;
-  rosette(g, 512, 512, 430, 12);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+  g.fillStyle = albedo ? (kind === 'sun' ? '#CFC7B2' : '#BFC2C8') : '#9a9a9a';
+  g.fillRect(0, 0, 1024, 1024);
+  g.strokeStyle = albedo ? 'rgba(20,20,20,.85)' : '#141414';
+  g.fillStyle = albedo ? 'rgba(20,20,20,.72)' : '#171717';
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  (kind === 'sun' ? sunFace : moonFace)(g, 512, 512, 430);
+  const t = new THREE.CanvasTexture(c);
+  if (albedo) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8; return t;
 }
-function jogMap() {
-  const c = document.createElement('canvas'); c.width = c.height = 1024;
-  const g = c.getContext('2d');
-  g.fillStyle = '#9a9a9a'; g.fillRect(0, 0, 1024, 1024);
-  g.strokeStyle = '#141414'; g.lineWidth = 3;
-  rosette(g, 512, 512, 430, 12);
-  const t = new THREE.CanvasTexture(c); t.anisotropy = 8; return t;
-}
-const jogTex = jogMap(); const jogAlb = jogAlbedo();
+
+const DECK = { sun: { alb: deckFace('sun', true), bump: deckFace('sun', false) },
+               moon: { alb: deckFace('moon', true), bump: deckFace('moon', false) } };
 
 /* screen texture — paged */
 const PAGES = [
@@ -642,74 +722,77 @@ const chassisMat = new THREE.MeshPhysicalMaterial({
   color: 0x232528, metalness: .9, roughness: .34,
   clearcoat: .35, clearcoatRoughness: .5,
 });
-const chassis = new THREE.Mesh(slab(4.6, 3.2, .34, .09), chassisMat);
+const chassis = new THREE.Mesh(slab(5.6, 3.28, .34, .09), chassisMat);
 unit.add(chassis);
 
 /* printed face (thin decal plane just above the metal) */
-const relief = reliefMaps(1024, 768);
+const relief = reliefMaps(1024, 598);
 const faceMat = new THREE.MeshPhysicalMaterial({
   map: maps.albedo,
   normalMap: relief.normal, normalScale: new THREE.Vector2(1, 1),
   emissiveMap: maps.glow, emissive: 0xffffff, emissiveIntensity: 0,
   metalness: .85, roughness: .34, clearcoat: .3, clearcoatRoughness: .45,
 });
-const face = new THREE.Mesh(new THREE.PlaneGeometry(4.58, 3.18, 240, 170), faceMat);
+const face = new THREE.Mesh(new THREE.PlaneGeometry(5.58, 3.26, 260, 152), faceMat);
 face.rotation.x = -Math.PI / 2; face.position.y = .353; unit.add(face);
 
 /* screen */
 drawScreen();
 const screenMat = new THREE.MeshBasicMaterial({ map: screenTex });
-const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.35, 1.32), screenMat);
-screen.rotation.x = -Math.PI / 2; screen.position.set(-.88, .452, -.34); unit.add(screen);
-const bezel = new THREE.Mesh(slab(2.55, 1.52, .07, .03),
+const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.94, 1.09), screenMat);
+screen.rotation.x = -Math.PI / 2; screen.position.set(0, .452, -.65); unit.add(screen);
+const bezel = new THREE.Mesh(slab(2.12, 1.27, .07, .03),
   new THREE.MeshPhysicalMaterial({ color: 0x0E0F10, metalness: .8, roughness: .3 }));
-bezel.position.set(-.88, .341, -.34); unit.add(bezel);
+bezel.position.set(0, .341, -.65); unit.add(bezel);
 const glow = new THREE.PointLight(0x7FD9B0, 2.4, 3.4, 2);
-glow.position.set(-.88, .95, -.34); unit.add(glow);
+glow.position.set(0, .95, -.65); unit.add(glow);
 
-/* jog */
-const jog = new THREE.Group(); jog.position.set(1.42, .34, -.15); unit.add(jog);
-const jogRing = new THREE.Mesh(new THREE.CylinderGeometry(1.02, 1.02, .1, 96, 1, false),
-  new THREE.MeshPhysicalMaterial({ color: 0x8E8C84, metalness: 1, roughness: .22, clearcoat: .6 }));
-jogRing.position.y = .05; jogRing.userData.ctl = 'jog'; jog.add(jogRing);
-const jogPlateMat = new THREE.MeshPhysicalMaterial({
-  map: jogAlb, metalness: .6, roughness: .38, bumpMap: jogTex, bumpScale: 4,
-});
-const jogPlate = new THREE.Mesh(new THREE.CylinderGeometry(.9, .9, .105, 128, 1), jogPlateMat);
-jogPlate.position.y = .056; jogPlate.userData.ctl = 'jog'; jog.add(jogPlate);
-const hub = new THREE.Mesh(new THREE.CylinderGeometry(.13, .13, .13, 48),
-  new THREE.MeshPhysicalMaterial({ color: 0x131416, metalness: .9, roughness: .25 }));
-hub.position.y = .075; jog.add(hub);
+/* ---------- the two decks ----------
+   Sun raises the light, Moon puts it out. The rite performed with two hands: there is no
+   Vigil knob, and the Pads carry navigation alone. */
+/** Rays for the Sun, phases for the Moon — the face is the only thing that differs. */
+function deck(x, kind) {
+  const g = new THREE.Group(); g.position.set(x, .34, -.10); unit.add(g);
+  const ring = new THREE.Mesh(new THREE.CylinderGeometry(.98, .98, .1, 96, 1, false),
+    new THREE.MeshPhysicalMaterial({ color: 0x8E8C84, metalness: 1, roughness: .22, clearcoat: .6 }));
+  ring.position.y = .05; ring.userData.ctl = kind; g.add(ring);
+  const plate = new THREE.Mesh(new THREE.CylinderGeometry(.86, .86, .105, 128, 1),
+    new THREE.MeshPhysicalMaterial({
+      map: DECK[kind].alb, bumpMap: DECK[kind].bump, bumpScale: 4,
+      metalness: kind === 'sun' ? .75 : .55, roughness: kind === 'sun' ? .30 : .44,
+    }));
+  plate.position.y = .056; plate.userData.ctl = kind; g.add(plate);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(.12, .12, .13, 48),
+    new THREE.MeshPhysicalMaterial({ color: kind === 'sun' ? 0x2A2118 : 0x14161A, metalness: .9, roughness: .25 }));
+  hub.position.y = .075; g.add(hub);
+  return { group: g, ring, plate };
+}
+const moon = deck(-1.86, 'moon');
+const sun = deck(1.86, 'sun');
+const deckMats = [moon.plate.material, sun.plate.material];
 
 /* pads */
 const padMat = () => new THREE.MeshPhysicalMaterial({ color: 0x101112, metalness: .3, roughness: .55 });
 const lampMats = [];
 const padMeshes = [];
 for (let i = 0; i < 6; i++) {
+  const px = -.85 + i * .34;
   const p = new THREE.Mesh(slab(.30, .30, .07, .02), padMat());
-  p.position.set(-1.90 + i * .34, .34, 1.16);
+  p.position.set(px, .34, .55);
   p.userData.ctl = 'pad'; p.userData.i = i; unit.add(p); padMeshes.push(p);
   const lm = new THREE.MeshBasicMaterial({ color: i === 0 ? 0xF03A22 : 0x3A100C });
   lampMats.push(lm);
   const lamp = new THREE.Mesh(new THREE.PlaneGeometry(.22, .032), lm);
-  lamp.rotation.x = -Math.PI / 2; lamp.position.set(-1.90 + i * .34, .437, 1.09); unit.add(lamp);
+  lamp.rotation.x = -Math.PI / 2; lamp.position.set(px, .437, .48); unit.add(lamp);
 }
-/* knob */
-const knob = new THREE.Group(); knob.position.set(1.15, .34, 1.16); unit.add(knob);
-const knobBody = new THREE.Mesh(new THREE.CylinderGeometry(.19, .21, .22, 48),
-  new THREE.MeshPhysicalMaterial({ color: 0x141517, metalness: .6, roughness: .34 }));
-knobBody.position.y = .11; knobBody.userData.ctl = 'knob'; knob.add(knobBody);
-const ptr = new THREE.Mesh(new THREE.BoxGeometry(.022, .01, .16),
-  new THREE.MeshBasicMaterial({ color: 0xEDEBE3 }));
-ptr.position.set(0, .222, -.09); knob.add(ptr);
 
-/* fader */
-const slot = new THREE.Mesh(slab(.92, .12, .04, .015),
+/* crossfader */
+const slot = new THREE.Mesh(slab(1.10, .12, .04, .015),
   new THREE.MeshPhysicalMaterial({ color: 0x0C0D0E, metalness: .5, roughness: .6 }));
-slot.position.set(.35, .335, 1.16); unit.add(slot);
+slot.position.set(0, .335, 1.16); unit.add(slot);
 const cap = new THREE.Mesh(slab(.11, .24, .11, .02),
   new THREE.MeshPhysicalMaterial({ color: 0xB6B4AA, metalness: .7, roughness: .28 }));
-cap.position.set(-.11 + .18 * .88, .35, 1.16); cap.userData.ctl = 'fader'; unit.add(cap);
+cap.position.set(-.47 + .18 * .88, .35, 1.16); cap.userData.ctl = 'fader'; unit.add(cap);
 
 /* ---------- vigil: the lights go out one at a time (ADR-0006) ----------
    The three-point rig is the three candles. Rim dies first, then fill, then key.
@@ -743,7 +826,7 @@ function applyVigil() {
 
   /* Nightwork: the engraving deepens as the light gets meaner */
   faceMat.normalScale.set(1 + vigil * 1.6, 1 + vigil * 1.6);
-  jogPlateMat.bumpScale = 4 + vigil * 5;
+  deckMats.forEach(m => { m.bumpScale = 4 + vigil * 5; });
 }
 
 /* ---------- interaction: everything on the unit is clickable ---------- */
@@ -770,12 +853,12 @@ function setPage(n) {
 function setVigil(v) {
   vigil = Math.max(0, Math.min(1, v));
   applyVigil();
-  vslider.value = String(vigil * 100);
+  vslider.value = String(Math.round(vigil * 100));
   document.getElementById('vv').textContent = String(Math.round(vigil * 100)).padStart(2, '0');
 }
-function jogAngle(e) {
+function deckAngle(e, g) {
   const r = el.getBoundingClientRect();
-  const p = new THREE.Vector3(1.42, .4, -.15).applyMatrix4(unit.matrixWorld).project(camera);
+  const p = new THREE.Vector3().setFromMatrixPosition(g.matrixWorld).project(camera);
   const cx = r.left + (p.x * .5 + .5) * r.width, cy = r.top + (-p.y * .5 + .5) * r.height;
   return Math.atan2(e.clientY - cy, e.clientX - cx);
 }
@@ -786,9 +869,11 @@ el.addEventListener('pointerdown', e => {
   if (hit) {
     const c = hit.userData.ctl;
     if (c === 'pad') { setPage(hit.userData.i); return; }
-    if (c === 'knob') { active = 'knob'; startVal = vigil; el.setPointerCapture(e.pointerId); return; }
     if (c === 'fader') { active = 'fader'; startVal = xfVal; el.setPointerCapture(e.pointerId); setPage(1); return; }
-    if (c === 'jog') { active = 'jog'; jogLast = jogAngle(e); el.setPointerCapture(e.pointerId); return; }
+    if (c === 'sun' || c === 'moon') {
+      active = c; jogLast = deckAngle(e, c === 'sun' ? sun.group : moon.group);
+      el.setPointerCapture(e.pointerId); return;
+    }
   }
 });
 
@@ -799,19 +884,20 @@ el.addEventListener('pointermove', e => {
   if (!active) {
     const hit = pick(e);
     el.style.cursor = hit ? (hit.userData.ctl === 'pad' ? 'pointer'
-      : hit.userData.ctl === 'jog' ? 'grab' : 'ns-resize') : 'default';
+      : hit.userData.ctl === 'fader' ? 'ew-resize' : 'grab') : 'default';
     return;
   }
-  if (active === 'knob') setVigil(startVal + (py - e.clientY) / 170);
-  else if (active === 'fader') {
+  if (active === 'fader') {
     xfVal = Math.max(0, Math.min(1, startVal + (e.clientX - px) / 300));
-    cap.position.x = -.11 + xfVal * .88;
+    cap.position.x = -.47 + xfVal * .94;
     drawScreen();
-  } else if (active === 'jog') {
-    const a = jogAngle(e); let d = a - jogLast;
+  } else if (active === 'sun' || active === 'moon') {
+    const d0 = active === 'sun' ? sun : moon;
+    const a = deckAngle(e, d0.group); let d = a - jogLast;
     if (d > Math.PI) d -= 6.2832; if (d < -Math.PI) d += 6.2832;
-    jogLast = a; jog.rotation.y -= d; jogAcc += d;
-    if (Math.abs(jogAcc) > 1.15) { setPage(curPage + (jogAcc > 0 ? 1 : -1)); jogAcc = 0; }
+    jogLast = a; d0.group.rotation.y -= d;
+    /* Sun brings the light up, Moon puts it out — whichever way you turn it. */
+    setVigil(vigil + (active === 'moon' ? 1 : -1) * Math.abs(d) * .34);
   }
 });
 
@@ -891,7 +977,7 @@ window.__unit = {
   /** Tune the engraving: band width, wave count along the top run, line weight. */
   setEng(e) { ENG = { ...ENG, ...e }; regenFace(); },
   get eng() { return ENG; },
-  parts: () => ({ cap, jogRing, knobBody, faceMat, face }),
+  parts: () => ({ cap, sun: sun.ring, moon: moon.ring, faceMat, face }),
   get title() { return TITLE; },
   get page() { return curPage; },
   get vigil() { return vigil; },
@@ -903,6 +989,9 @@ function frame(t) {
   const dt = Math.min(.05, (t - t0) / 1000); t0 = t;
   ry += (tRy - ry) * .10; rx += (tRx - rx) * .10;
   unit.rotation.y = ry; unit.rotation.x = rx;
+  /* the decks keep turning very slowly, opposite ways, so the Unit never looks frozen */
+  sun.group.rotation.y -= dt * .04 * (1 - vigil);
+  moon.group.rotation.y += dt * .04 * vigil;
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
