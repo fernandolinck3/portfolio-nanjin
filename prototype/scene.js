@@ -1,4 +1,7 @@
 import * as THREE from 'three'
+/* The copy is not in this file. ADR-0002: the DOM is truth and the Screen renders it,
+   so both consumers read the same source. See src/content/modules.ts. */
+import { MODULES } from '../src/content/modules.ts'
 /* ============ Tenebrae — 3D material & form study ============ */
 const W = () => innerWidth, H = () => innerHeight;
 
@@ -659,27 +662,6 @@ const DECK = { sun: { alb: deckFace('sun', true), bump: deckFace('sun', false) }
                moon: { alb: deckFace('moon', true), bump: deckFace('moon', false) } };
 
 /* screen texture — paged */
-const PAGES = [
-  { t: 'IDENT', lines: ['I build interfaces in the browser, and I think',
-      'about who is reading them. Frontend execution',
-      'with a marketing head on it, and a read on',
-      'culture that is mine rather than borrowed.'],
-    dim: ['No agency. No client case studies yet. This unit', 'is the first thing I have made in public.'] },
-  { t: 'NOW / NEXT', lines: [], dim: [], xf: true },
-  { t: 'PROJECT 001', lines: ['This unit is the project. The plate is a generated',
-      'rose window. The vigil knob puts the lights out.',
-      'Every control does something real.'],
-    dim: ['Every claim here points at something visible on', 'this panel. That is the only proof I have yet.'] },
-  { t: 'CRATE', rows: [['Tenebrae unit','Build','2026'],['Serial Experiments Lain','Influence','1998'],
-      ['Baroque · Sting','Influence','1998'],['Alva Noto — Xerrox','Influence','2007'],
-      ['In the Mood for Love','Influence','2000']] },
-  { t: 'METHOD', steps: ['Look at the context before deciding.','Write down what is actually true.',
-      'Choose a direction and commit to it.','Build deliberately, one stage at a time.',
-      'Check the result against the promise.','Keep the notes.'] },
-  { t: 'OUT', lines: ['A role, a project, or something odd you need built.',
-      'Write to me directly — no form, no funnel.'],
-    mail: 'fernandolinck3@gmail.com', dim: ['São Paulo. English or Portuguese.'] },
-];
 const scrCanvas = document.createElement('canvas');
 scrCanvas.width = 1024; scrCanvas.height = 576;
 const screenTex = new THREE.CanvasTexture(scrCanvas);
@@ -687,52 +669,61 @@ screenTex.colorSpace = THREE.SRGBColorSpace; screenTex.anisotropy = 8;
 let curPage = 0, xfVal = 0.18;
 
 function drawScreen() {
-  const g = scrCanvas.getContext('2d'), P = PAGES[curPage];
+  const g = scrCanvas.getContext('2d'), P = MODULES[curPage];
   g.fillStyle = '#080B0A'; g.fillRect(0, 0, 1024, 576);
   g.strokeStyle = '#1F3830'; g.lineWidth = 3; g.strokeRect(14, 14, 996, 548);
   g.strokeStyle = '#24443A'; borderOrnament(g, 26, 26, 972, 524, 20);
   g.fillStyle = '#F03A22'; g.font = '500 22px "Azeret Mono", monospace'; g.letterSpacing = '6px';
-  g.fillText('MOD 0' + (curPage + 1) + '/06', 70, 92);
+  g.fillText('MOD 0' + P.slot + '/06', 70, 92);
   g.fillStyle = '#DCE4DE'; g.font = '700 30px Archivo, Arial'; g.letterSpacing = '7px';
-  g.fillText(P.t, 400, 92);
+  g.fillText(P.title, 400, 92);
   g.letterSpacing = '0px';
   let y = 180;
-  if (P.xf) {
-    const b = xfVal > .5;
-    g.fillStyle = '#fff'; g.font = '700 27px Archivo, Arial';
-    g.fillText(b ? 'B — What I am building toward.' : 'A — What I can do today.', 72, y); y += 46;
-    g.fillStyle = '#DCE4DE'; g.font = '400 26px Archivo, Arial';
-    (b ? ['AI for small business, process automation, data','analytics. A learning direction — not professional','experience, and not described as such.']
-       : ['Semantic HTML, modern CSS, TypeScript. Positioning,','message hierarchy, and the difference between a','sentence that sounds impressive and one that says','something.']
-    ).forEach(l => { g.fillText(l, 72, y); y += 38; });
-    g.fillStyle = '#6E8079'; g.font = '400 22px "Azeret Mono", monospace';
-    g.fillText('CROSSFADE  ' + String(Math.round(xfVal * 100)).padStart(3, '0') + ' / 100  — set honestly', 72, 430);
-    g.fillStyle = '#1F3830'; g.fillRect(72, 452, 880, 10);
-    g.fillStyle = '#F03A22'; g.fillRect(72 + xfVal * 866, 446, 14, 22);
-  } else if (P.rows) {
-    g.font = '400 23px "Azeret Mono", monospace';
-    g.fillStyle = '#F03A22'; g.fillText('TITLE', 72, 170); g.fillText('TYPE', 620, 170); g.fillText('YEAR', 840, 170);
-    y = 214;
-    P.rows.forEach(r => {
-      g.fillStyle = '#DCE4DE'; g.fillText(r[0], 72, y);
-      g.fillStyle = '#6E8079'; g.fillText(r[1], 620, y); g.fillText(r[2], 840, y);
-      g.fillStyle = '#152420'; g.fillRect(72, y + 12, 880, 1); y += 48;
-    });
-  } else if (P.steps) {
-    g.font = '400 25px Archivo, Arial'; y = 176;
-    P.steps.forEach((t, i) => {
-      g.fillStyle = '#F03A22'; g.font = '400 20px "Azeret Mono", monospace';
-      g.fillText('0' + (i + 1), 72, y);
-      g.fillStyle = '#DCE4DE'; g.font = '400 25px Archivo, Arial';
-      g.fillText(t, 130, y);
-      g.fillStyle = '#152420'; g.fillRect(72, y + 12, 880, 1); y += 46;
-    });
-  } else {
-    g.fillStyle = '#DCE4DE'; g.font = '400 27px Archivo, Arial';
-    (P.lines || []).forEach(l => { g.fillText(l, 72, y); y += 40; });
-    if (P.mail) { g.fillStyle = '#57C98E'; g.font = '500 28px "Azeret Mono", monospace'; y += 14; g.fillText(P.mail, 72, y); y += 44; }
-    g.fillStyle = '#6E8079'; g.font = '400 23px Archivo, Arial';
-    (P.dim || []).forEach(l => { g.fillText(l, 72, y); y += 34; });
+  switch (P.kind) {
+    /* The Crossfader's own Module. The fader picks a side; the engraved index
+       mark on the Plate does not move with it (ADR-0005). */
+    case 'thesis': {
+      const side = xfVal > .5 ? P.b : P.a;
+      g.fillStyle = '#fff'; g.font = '700 27px Archivo, Arial';
+      g.fillText(side.heading, 72, y); y += 46;
+      g.fillStyle = '#DCE4DE'; g.font = '400 26px Archivo, Arial';
+      side.lines.forEach(l => { g.fillText(l, 72, y); y += 38; });
+      g.fillStyle = '#6E8079'; g.font = '400 22px "Azeret Mono", monospace';
+      g.fillText('CROSSFADE  ' + String(Math.round(xfVal * 100)).padStart(3, '0') + ' / 100  — set honestly', 72, 430);
+      g.fillStyle = '#1F3830'; g.fillRect(72, 452, 880, 10);
+      g.fillStyle = '#F03A22'; g.fillRect(72 + xfVal * 866, 446, 14, 22);
+      break;
+    }
+    case 'table': {
+      g.font = '400 23px "Azeret Mono", monospace';
+      g.fillStyle = '#F03A22';
+      g.fillText(P.head[0], 72, 170); g.fillText(P.head[1], 620, 170); g.fillText(P.head[2], 840, 170);
+      y = 214;
+      P.rows.forEach(r => {
+        g.fillStyle = '#DCE4DE'; g.fillText(r[0], 72, y);
+        g.fillStyle = '#6E8079'; g.fillText(r[1], 620, y); g.fillText(r[2], 840, y);
+        g.fillStyle = '#152420'; g.fillRect(72, y + 12, 880, 1); y += 48;
+      });
+      break;
+    }
+    case 'steps': {
+      y = 176;
+      P.steps.forEach((t, i) => {
+        g.fillStyle = '#F03A22'; g.font = '400 20px "Azeret Mono", monospace';
+        g.fillText('0' + (i + 1), 72, y);
+        g.fillStyle = '#DCE4DE'; g.font = '400 25px Archivo, Arial';
+        g.fillText(t, 130, y);
+        g.fillStyle = '#152420'; g.fillRect(72, y + 12, 880, 1); y += 46;
+      });
+      break;
+    }
+    default: {
+      g.fillStyle = '#DCE4DE'; g.font = '400 27px Archivo, Arial';
+      P.lines.forEach(l => { g.fillText(l, 72, y); y += 40; });
+      if (P.mail) { g.fillStyle = '#57C98E'; g.font = '500 28px "Azeret Mono", monospace'; y += 14; g.fillText(P.mail, 72, y); y += 44; }
+      g.fillStyle = '#6E8079'; g.font = '400 23px Archivo, Arial';
+      (P.dim || []).forEach(l => { g.fillText(l, 72, y); y += 34; });
+    }
   }
   /* waveform footer — six segments, current one lit */
   for (let i = 0; i < 210; i++) {
@@ -1323,7 +1314,7 @@ function pick(e) {
   return null;
 }
 function setPage(n) {
-  curPage = (n + 6) % 6;
+  curPage = (n + MODULES.length) % MODULES.length;
   lampMats.forEach((m, i) => m.color.setHex(i === curPage ? 0xF03A22 : 0x3A100C));
   drawScreen();
 }
