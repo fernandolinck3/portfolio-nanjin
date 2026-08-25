@@ -1,0 +1,117 @@
+# Handoff — Fer Bittencourt portfolio ("Tenebrae")
+
+**Date:** 2026-08-24 · **Language:** user writes EN and PT-BR; reply in whichever he used last.
+
+## Where the work stands
+
+A long design exploration that **restarted the portfolio from zero**. The old direction is dead;
+a new one is settled and has two working prototypes. **Nothing is committed to the repo yet** —
+all durable decisions live in this handoff and in the two artifacts below.
+
+The work is in the `/prototype` detour of the main flow. Prototypes answered their questions.
+Next step is to bring the learning back and give it a paper trail.
+
+## Artifacts and paths (do not duplicate — read these)
+
+| What | Where |
+|---|---|
+| Reference board, 81 plates, 3 parts | https://claude.ai/code/artifact/c5b02f47-8cf8-4423-b969-f75c5f56f2ec |
+| **Live 3D unit prototype** (current state of the art) | https://claude.ai/code/artifact/b7acaf29-6eca-4a74-92b5-f966eef1d42c |
+| 3D prototype source | `/tmp/unit3d/scene.js`, `gen.mjs`, `unit.html` (regen: `node gen.mjs`) |
+| Earlier flat CSS panel (superseded, useful as anti-reference) | https://claude.ai/code/artifact/c4ec64c1-2df7-41e2-8f56-008079741b93 |
+| Existing repo — **July build, to be replaced** | `~/Documents/fernando-portfolio` |
+| Product truth — **still valid, do not rewrite** | `~/Documents/fernando-portfolio/PRODUCT.md` |
+| Old direction — **now anti-reference** | `~/Documents/fernando-portfolio/DIRECTION.md` (“Divine Machinery”) |
+| His moodboards | are.na `fernando-bittencourt-hky3pjv778a` → channels `portfolio-…`, `digital-occultism-…` |
+| His 3D toolchain, already on disk | `~/blenderkit_data` (HDRIs), `~/Documents/folio-2019-master` (Bruno Simon three.js template + Draco pipeline) |
+
+`PRODUCT.md` predates the current Impeccable schema — `init` would fill the gaps by interview.
+
+## Decisions locked
+
+**Product truth (unchanged).** No invented case studies, testimonials or metrics. The portfolio *is*
+Project 001. "Now" (frontend, marketing) stays visibly separate from "Next" (AI, automation,
+analytics) — the latter is a stated direction, never claimed experience.
+
+**Form.** The portfolio is a **physical instrument**, rendered in real-time WebGL, viewed **top-down**.
+One screen, **no page scroll**. Content lives inside the unit's own display, paged by pressing
+hardware. Model name *Tenebrae* (placeholder, from the Holy Week rite of candles extinguished one
+by one — a ritual of gradual corruption).
+
+**Navigation.** Six hot-cue pads select modules (Ident / Now-Next / Project 001 / Crate / Method /
+Out). The jog wheel browses. A crossfader carries the Now↔Next thesis and sits at an honest position.
+
+**The three-layer model** (the key synthesis — his boards mix layers, they don't conflict):
+- *Structure* — grid, cells, labels, hierarchy (eurorack faceplate, spec sheet, RPG stat panel, mandala)
+- *Ornament* — what fills and surrounds them (tracery, engraving, woodcut, borders)
+- *Rendering* — how it reaches the screen (dither, halftone, limited palette)
+
+**Ornament is structure, shown.** Gothic tracery is load-bearing stone; a signal-flow diagram is
+wiring made visible. Same move. The resolving object is the **boutique guitar pedal** (Old Blood
+Noise Endeavors, Oddfellow): a working control panel silkscreened over a woodcut.
+
+**The bend.** Corruption the visitor *causes*, grown from the panel's own structure — tracery
+foliates, render degrades through dither, chassis flows toward chrome.
+**Hard rule: ornament may overgrow, labels never move.**
+
+**Discipline.** Restraint in the layout, excess in the plate.
+
+**Technical.** Procedural three.js, **not** a Blender model — he chose this and will fine-tune
+part by part against references he supplies. Controls are **raycast-clickable in the 3D scene**.
+Rotation is **off by default**, behind an `INSPECT` button on the unit. Note this **reverses** the
+July decision to strip three.js (863kB→7kB) — deliberate, not an oversight.
+
+## Ruled out (he was explicit)
+
+Flesh-organic / Videodrome / Cronenberg. Chrome-and-spikes cyber-sigilism tattoo flash. Cloning a
+Pioneer CDJ (trademark — his own machine). Fake claims of any kind. Scrolling pages.
+
+## Open — the polish queue
+
+He offered to send references and work **part by part**. Suggested order:
+1. **Engraving system** — line weight, density, motif. Currently generic cusped tracery. Biggest lever.
+2. **Jog pattern** — currently a 12-fold rose window. He likes it; wants it polished.
+3. **Chassis form and material** — proportions, bevel, colour, matte vs polished.
+4. **Screen** — frame, type, whether it takes a proper PC-98 ornamental border.
+5. **Controls** — knob and pad shapes, fader cap, lamp colours.
+
+## Known issues in the 3D prototype
+
+- **Pointer interaction is unverified.** Validated only via headless stills, which cannot click or
+  drag. Pads / jog / knob / fader code paths are untested in a real browser.
+- Geometry is hand-written primitives; convincing top-down, will not hold at other angles.
+- Mobile / narrow layout not addressed at all for the 3D unit.
+- Contact email is hard-coded in `scene.js` and the flat panel — it's his public contact, but treat
+  it as PII when sharing.
+
+## Cautions — mistakes already made, don't repeat them
+
+- **Descriptions do not land with this user. Build and show.** Two directions were rejected after
+  being described well; both times a rendered prototype resolved it in one turn.
+- **A locked direction can be superseded by new input.** "Clinical / Raster-Noton" was chosen before
+  the digital-occultism board existed, then wrongly kept driving. Result: a Braun-looking product
+  when he wanted a haunted pedal. When a new moodboard arrives, re-weigh the direction, don't append.
+- Do not re-litigate settled ground (see *Decisions locked*). He has moved on.
+- He corrected an early assumption: **his aesthetic is not Brazilian** — it's underground,
+  eurorack / boutique-synth / Japanese-occult.
+
+## Suggested skills
+
+1. **`/grill-with-docs`** — first. There *is* a codebase, so use the stateful one. It should produce
+   a `CONTEXT.md` glossary (Unit, Module, Plate, Bend, Jog, Crate, Print, Inspect all now mean
+   something specific) and ADRs for the hard-to-reverse calls: procedural over Blender, one screen
+   over scroll, three.js weight reversed, ornament grown from structure. This paper trail has been
+   missing since July and is the single biggest gap.
+2. **`/domain-modeling`** — pulled in underneath the above. Same pattern his `atendente-whatsapp`
+   project already uses; stay consistent with it.
+3. **`/to-spec` → `/to-tickets`** — unambiguously a multi-session build. The five polish parts map
+   cleanly onto tickets with real blocking edges; aesthetic decisions stay open *inside* each ticket
+   and get resolved against his references.
+4. **`/implement`** per ticket, fresh context each time.
+5. **`/setup-matt-pocock-skills`** — precondition, appears never to have been run here.
+6. **`/impeccable`** — already in use this session; `context.mjs` has been run, do not rerun. Its
+   `new-work` playbook governs; the seed key from the direction roll was `ca6aa38c`, later superseded
+   by a user-pinned direction (a pinned direction beats the roll).
+
+Not applicable: `/triage` (no incoming issues), `/diagnosing-bugs` (nothing broken),
+`/improve-codebase-architecture` (codebase is being replaced), `/wayfinder` (fog has cleared).
