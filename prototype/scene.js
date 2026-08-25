@@ -349,6 +349,84 @@ function growField(g, band, lw, depth, seed) {
       tendril(g, sx, sy, sa + k * .48, band * (1.1 + rnd() * .7), lw, depth, rnd);
 }
 
+
+/* ---------- relief ----------
+   A line drawing shoved straight into bumpMap reads as a scratch. Real engraving has walls: the
+   mark has to ramp from the surface down to its floor, and light has to catch that ramp. So the
+   ornament is drawn as a coverage mask, blurred into a height field, and differentiated into a
+   normal map. Motif-agnostic — the mask is the only thing that changes. */
+
+/** Ornament artwork, once it exists. Null until a file is dropped in ornament/. */
+let ORN = null;
+
+/** Paint the ornament mask: white where the metal is cut away, black where it stands. */
+function ornamentMask(w, h) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
+  const sx = w / 2048, sy = h / 1536;
+  g.save(); g.scale(sx, sy);
+  g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineCap = 'round'; g.lineJoin = 'round';
+  if (ORN) {
+    /* tiled artwork */
+    const tw = ORN.width * ENG.tile, th = ORN.height * ENG.tile;
+    for (let y = 54; y < 1536 - 54; y += th)
+      for (let x = 54; x < 2048 - 54; x += tw) g.drawImage(ORN, x, y, tw, th);
+  } else {
+    /* fallback: the procedural vine, so the scene works before any artwork arrives */
+    foliateBorder(g, 54, 54, 2048 - 108, 1536 - 108, ENG.band, ENG.waves, ENG.lw);
+    midOrnaments(g, 54, 54, 2048 - 108, 1536 - 108, ENG.band, ENG.lw);
+    growField(g, ENG.band, ENG.lw * .92, ENG.grow, ENG.seed);
+    rosette(g, PX(1.42), PY(-.15), 620, 16);
+  }
+  /* Parts and Print own their ground absolutely — nothing is cut inside a reserve. */
+  g.fillStyle = '#000';
+  PRINT_RESERVES.forEach(([x, y, rw, rh]) => g.fillRect(x, y, rw, rh));
+  RESERVES.forEach(o => {
+    g.beginPath();
+    if (o.r) { const [x, y, rw, rh] = o.r; g.rect(x - 16, y - 16, rw + 32, rh + 32); }
+    else { const [cx, cy, r] = o.c; g.arc(cx, cy, r + 16, 0, 6.2832); }
+    g.fill();
+  });
+  g.restore();
+  return c;
+}
+
+/** Blur the mask into a height field, then read its slope as a tangent-space normal map. */
+function reliefMaps(w, h) {
+  const mask = ornamentMask(w, h);
+  const blurC = document.createElement('canvas'); blurC.width = w; blurC.height = h;
+  const b = blurC.getContext('2d');
+  b.filter = `blur(${ENG.bevel}px)`;
+  b.drawImage(mask, 0, 0);
+  b.filter = 'none';
+
+  const src = b.getImageData(0, 0, w, h).data;
+  const out = b.createImageData(w, h), o = out.data;
+  const d = ENG.depth;
+  for (let y = 0; y < h; y++) {
+    const yUp = y > 0 ? y - 1 : 0, yDn = y < h - 1 ? y + 1 : h - 1;
+    for (let x = 0; x < w; x++) {
+      const xL = x > 0 ? x - 1 : 0, xR = x < w - 1 ? x + 1 : w - 1;
+      /* the mask is depth, so height is its inverse; the sign flip is the cut going down */
+      const gx = (src[(y * w + xR) * 4] - src[(y * w + xL) * 4]) / 255 * d;
+      const gy = (src[(yDn * w + x) * 4] - src[(yUp * w + x) * 4]) / 255 * d;
+      const len = Math.hypot(gx, gy, 1);
+      const i = (y * w + x) * 4;
+      o[i]     = (gx / len * .5 + .5) * 255;
+      o[i + 1] = (-gy / len * .5 + .5) * 255;
+      o[i + 2] = (1 / len * .5 + .5) * 255;
+      o[i + 3] = 255;
+    }
+  }
+  const normC = document.createElement('canvas'); normC.width = w; normC.height = h;
+  normC.getContext('2d').putImageData(out, 0, 0);
+
+  const nt = new THREE.CanvasTexture(normC); nt.anisotropy = 8; nt.needsUpdate = true;
+  const bt = new THREE.CanvasTexture(blurC); bt.anisotropy = 8; bt.needsUpdate = true;
+  return { normal: nt, height: bt, mask };
+}
+
 /* face maps: albedo (printed) + height (engraved) + glow (phosphorescent Print) */
 /* Display candidates for the Plate's model name. Flip with ?title=unifraktur|pirata|grenze. */
 const TITLES = {
@@ -358,7 +436,8 @@ const TITLES = {
   grenze:     { font: '600 80px "Grenze Gotisch", serif',        track: '9px',  y: 152 },
 };
 /* Engraving parameters — the knobs we tune against references. */
-let ENG = { band: 130, waves: 13, lw: 6.0, hatch: 5, grow: 8, seed: 20260825, ink: .42 };
+let ENG = { band: 130, waves: 13, lw: 6.0, hatch: 5, grow: 8, seed: 20260825, ink: .42,
+            tile: 1, bevel: 7, depth: 26 };
 let TITLE = TITLES[new URLSearchParams(location.search).get('title')] || TITLES.archivo;
 function faceMaps() {
   const A = document.createElement('canvas'); A.width = 2048; A.height = 1536;
@@ -431,11 +510,11 @@ let maps = faceMaps();
 /** Rebuild the Plate's Print. Webfonts land after first paint, so this runs again once they do. */
 function regenFace() {
   const m = faceMaps();
-  faceMat.map = m.albedo; faceMat.bumpMap = m.height; faceMat.emissiveMap = m.glow;
-  chassisMat.bumpMap = m.height;
+  const r = reliefMaps(1024, 768);
+  faceMat.map = m.albedo; faceMat.emissiveMap = m.glow; faceMat.normalMap = r.normal;
   /* a swapped-in CanvasTexture is not uploaded until it is marked dirty itself */
-  [m.albedo, m.height, m.glow].forEach(t => { t.needsUpdate = true; });
-  faceMat.needsUpdate = true; chassisMat.needsUpdate = true;
+  [m.albedo, m.glow, r.normal].forEach(t => { t.needsUpdate = true; });
+  faceMat.needsUpdate = true;
   maps = m;
 }
 
@@ -562,14 +641,15 @@ const unit = new THREE.Group(); scene.add(unit);
 const chassisMat = new THREE.MeshPhysicalMaterial({
   color: 0x232528, metalness: .9, roughness: .34,
   clearcoat: .35, clearcoatRoughness: .5,
-  bumpMap: maps.height, bumpScale: .55,
 });
 const chassis = new THREE.Mesh(slab(4.6, 3.2, .34, .09), chassisMat);
 unit.add(chassis);
 
 /* printed face (thin decal plane just above the metal) */
+const relief = reliefMaps(1024, 768);
 const faceMat = new THREE.MeshPhysicalMaterial({
-  map: maps.albedo, bumpMap: maps.height, bumpScale: 6,
+  map: maps.albedo,
+  normalMap: relief.normal, normalScale: new THREE.Vector2(1, 1),
   emissiveMap: maps.glow, emissive: 0xffffff, emissiveIntensity: 0,
   metalness: .85, roughness: .34, clearcoat: .3, clearcoatRoughness: .45,
 });
@@ -662,8 +742,7 @@ function applyVigil() {
   faceMat.emissiveIntensity = Math.pow(vigil, 1.4) * 1.15;
 
   /* Nightwork: the engraving deepens as the light gets meaner */
-  faceMat.bumpScale = 6 + vigil * 12;
-  chassisMat.bumpScale = .55 + vigil * 1.1;
+  faceMat.normalScale.set(1 + vigil * 1.6, 1 + vigil * 1.6);
   jogPlateMat.bumpScale = 4 + vigil * 5;
 }
 
@@ -763,11 +842,30 @@ dial('waves', v => v, v => String(v));
 dial('lw', v => v / 10, v => v.toFixed(1));
 dial('grow', v => v, v => String(v));
 dial('ink', v => v / 100, v => v.toFixed(2));
+dial('bevel', v => v, v => String(v));
+dial('depth', v => v, v => String(v));
+dial('tile', v => v / 100, v => v.toFixed(2));
 dial('seed', v => 20260800 + v, v => String(v - 20260800));
 
 addEventListener('resize', () => {
   camera.aspect = W() / H(); camera.updateProjectionMatrix(); renderer.setSize(W(), H());
 });
+/* Ornament artwork, if it has been dropped in. Falls back to the procedural vine when absent. */
+(async () => {
+  for (const f of ['ornament/pattern.svg', 'ornament/pattern.png']) {
+    try {
+      const res = await fetch(f, { method: 'HEAD' });
+      if (!res.ok) continue;
+      const img = new Image();
+      await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = f; });
+      ORN = img; regenFace();
+      console.log('[tenebrae] ornament loaded:', f, img.width + 'x' + img.height);
+      return;
+    } catch { /* not there yet */ }
+  }
+  console.log('[tenebrae] no ornament artwork; using the procedural vine');
+})();
+
 setVigil(vigil);
 
 /* The Print is drawn before webfonts arrive, and document.fonts.ready does not load a face that
