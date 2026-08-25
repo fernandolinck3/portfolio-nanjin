@@ -203,7 +203,7 @@ const RESERVES = [
 ];
 /* The Print gets cleared ground too — labels never fight the field. */
 const PRINT_RESERVES = [
-  [110, 78, 900, 145],     // model name + serial line
+  [110, 78, 980, 150],     // model name + serial line
   [1480, 100, 530, 80],    // PROJECT 001
   [190, 1412, 1570, 84],   // HOT CUE / CROSSFADE / VIGIL
   [1928, 360, 92, 680],    // vertical edge legend
@@ -280,6 +280,75 @@ function midOrnaments(g, x, y, w, h, band, lw) {
   cartouche(g, x + w - band * .55, y + h / 2, band * .9, Math.PI, lw);
 }
 
+
+/** Deterministic noise. A dial change must not reshuffle the Plate, or nothing can be judged. */
+function rng(seed) { let x = seed >>> 0; return () => (x = (x * 1664525 + 1013904223) >>> 0) / 4294967296; }
+
+/** True where a Part or a label already owns the ground. */
+function occupied(x, y, pad) {
+  if (x < 40 || y < 40 || x > 2008 || y > 1496) return true;
+  for (const [rx, ry, rw, rh] of PRINT_RESERVES)
+    if (x > rx - pad && x < rx + rw + pad && y > ry - pad && y < ry + rh + pad) return true;
+  for (const o of RESERVES) {
+    if (o.r) { const [a2, b2, w2, h2] = o.r; if (x > a2 - pad && x < a2 + w2 + pad && y > b2 - pad && y < b2 + h2 + pad) return true; }
+    else { const [cx, cy, r] = o.c; if (Math.hypot(x - cx, y - cy) < r + pad) return true; }
+  }
+  return false;
+}
+
+/** One growing stem. Branches, throws leaves, and dies where the ground is already taken. */
+function tendril(g, x, y, ang, len, w, depth, rnd) {
+  if (depth <= 0 || len < 11 || w < .45) return;
+  /* A stem meeting a Part turns away from it rather than dying — that is what makes the
+     field feel grown around the hardware instead of stamped behind it. */
+  let curve = 0, mx = 0, my = 0, ex = 0, ey = 0, ok = false;
+  for (let attempt = 0; attempt < 6 && !ok; attempt++) {
+    curve = (rnd() - .5) * 1.15 + (attempt ? (attempt % 2 ? 1 : -1) * attempt * .38 : 0);
+    mx = x + Math.cos(ang + curve * .5) * len * .55; my = y + Math.sin(ang + curve * .5) * len * .55;
+    ex = x + Math.cos(ang + curve) * len; ey = y + Math.sin(ang + curve) * len;
+    ok = !occupied(ex, ey, 12) && !occupied(mx, my, 10);
+  }
+  if (!ok) return;
+  g.lineWidth = w;
+  g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(mx, my, ex, ey); g.stroke();
+
+  const side = rnd() < .5 ? 1 : -1;
+  leaf(g, mx, my, ang + curve + side * 1.25, len * .52, .9 * side, w * .8);
+  if (rnd() < .55) leaf(g, mx, my, ang + curve - side * 1.15, len * .34, -.8 * side, w * .65);
+  if (rnd() < .30) { g.lineWidth = w * .7; g.beginPath(); g.arc(ex, ey, w * 1.5, 0, 6.2832); g.stroke(); }
+
+  if (rnd() < .60) tendril(g, ex, ey, ang + curve + (rnd() < .5 ? 1 : -1) * (.6 + rnd() * .5), len * .66, w * .72, depth - 1, rnd);
+  tendril(g, ex, ey, ang + curve, len * .90, w * .88, depth - 1, rnd);
+}
+
+/** Seed the field from the corners and the middle of each edge, and let it run inward. */
+function growField(g, band, lw, depth, seed) {
+  const rnd = rng(seed);
+  const L = 54 + band, R = 2048 - 54 - band, T = 54 + band, B = 1536 - 54 - band;
+  const seeds = [];
+  /* seeded all along the inner frame, growing inward */
+  for (let i = 0; i <= 14; i++) {
+    const t = i / 14;
+    seeds.push([L + (R - L) * t, T, Math.PI / 2], [L + (R - L) * t, B, -Math.PI / 2]);
+  }
+  for (let i = 1; i < 10; i++) {
+    const t = i / 10;
+    seeds.push([L, T + (B - T) * t, 0], [R, T + (B - T) * t, Math.PI]);
+  }
+  /* and out of the four corner cartouches, which is where the weight already is */
+  seeds.push([L, T, .78], [R, T, Math.PI - .78], [R, B, Math.PI + .78], [L, B, -.78]);
+  /* Open ground gets its own seeds — growth from the frame alone never reaches the middle. */
+  const step = band * .78;
+  for (let py = T; py < B; py += step)
+    for (let px = L; px < R; px += step) {
+      const jx = px + (rnd() - .5) * step * .7, jy = py + (rnd() - .5) * step * .7;
+      if (!occupied(jx, jy, 34)) seeds.push([jx, jy, rnd() * 6.2832]);
+    }
+  for (const [sx, sy, sa] of seeds)
+    for (let k = -1; k <= 1; k++)
+      tendril(g, sx, sy, sa + k * .48, band * (1.1 + rnd() * .7), lw, depth, rnd);
+}
+
 /* face maps: albedo (printed) + height (engraved) + glow (phosphorescent Print) */
 /* Display candidates for the Plate's model name. Flip with ?title=unifraktur|pirata|grenze. */
 const TITLES = {
@@ -289,7 +358,7 @@ const TITLES = {
   grenze:     { font: '600 80px "Grenze Gotisch", serif',        track: '9px',  y: 152 },
 };
 /* Engraving parameters — the knobs we tune against references. */
-let ENG = { band: 104, waves: 13, lw: 3.4, hatch: 11 };
+let ENG = { band: 130, waves: 13, lw: 6.0, hatch: 5, grow: 8, seed: 20260825, ink: .42 };
 let TITLE = TITLES[new URLSearchParams(location.search).get('title')] || TITLES.archivo;
 function faceMaps() {
   const A = document.createElement('canvas'); A.width = 2048; A.height = 1536;
@@ -311,11 +380,10 @@ function faceMaps() {
   const plate = (g, base, ink, mass, ground, k) => {
     g.strokeStyle = ink; g.fillStyle = mass; g.lineCap = 'round'; g.lineJoin = 'round';
     /* The ground is cut into the metal, not printed onto it: strong in height, faint in colour. */
-    g.strokeStyle = ground;
-    hatch(g, ENG.hatch, -0.42, ENG.lw * .30);
-    hatch(g, ENG.hatch * 2.6, 1.15, ENG.lw * .24);
-    diaper(g, 54, 54, 2048 - 108, 1536 - 108, ENG.band * .58, ENG.lw * .38);
+    if (ENG.hatch > 6) { g.strokeStyle = ground; hatch(g, ENG.hatch, -0.42, ENG.lw * .26); }
     g.strokeStyle = ink; g.fillStyle = mass;
+    /* the motif is not a backdrop — the same vine grows across the whole field */
+    growField(g, ENG.band, ENG.lw * .92, ENG.grow, ENG.seed);
     foliateBorder(g, 54, 54, 2048 - 108, 1536 - 108, ENG.band, ENG.waves, ENG.lw * k);
     foliateBorder(g, 54 + ENG.band * 1.15, 54 + ENG.band * 1.15,
       2048 - 108 - ENG.band * 2.3, 1536 - 108 - ENG.band * 2.3, ENG.band * .62,
@@ -325,7 +393,10 @@ function faceMaps() {
     cutReserves(g, base, ENG.lw * k);
   };
   plate(h, '#808080', '#0C0C0C', '#141414', '#4A4A4A', 1);
-  plate(a, '#26282B', 'rgba(0,0,0,.52)', 'rgba(0,0,0,.34)', 'rgba(0,0,0,.10)', .85);
+  /* The Plate is dark, so the engraving reads light — bare metal showing through the finish,
+     which is how every one of the references carries its ornament. */
+  plate(a, '#26282B', `rgba(206,203,193,${ENG.ink})`, `rgba(178,175,166,${ENG.ink * .26})`,
+        `rgba(206,203,193,${ENG.ink * .20})`, .85);
 
   /* printed silkscreen — phosphorescent, so it survives the Vigil */
   ink(c => {
@@ -690,6 +761,9 @@ dial('band', v => v, v => String(v));
 dial('hatch', v => v, v => String(v));
 dial('waves', v => v, v => String(v));
 dial('lw', v => v / 10, v => v.toFixed(1));
+dial('grow', v => v, v => String(v));
+dial('ink', v => v / 100, v => v.toFixed(2));
+dial('seed', v => 20260800 + v, v => String(v - 20260800));
 
 addEventListener('resize', () => {
   camera.aspect = W() / H(); camera.updateProjectionMatrix(); renderer.setSize(W(), H());

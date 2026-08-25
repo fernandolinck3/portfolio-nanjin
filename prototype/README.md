@@ -18,8 +18,18 @@ headless stills, which cannot click.
 
 ## Engraving workbench
 
-The Plate's engraving is parametric: `BAND`, `DENSITY`, `WEIGHT` and `GROUND` dials in the HUD
-redraw it live, and `window.__unit.setEng({band, waves, lw, hatch})` does the same from the console. `?title=` swaps
+The Plate's engraving is parametric. HUD dials: `BAND` (frame width), `DENSITY` (waves per run),
+`WEIGHT` (line weight), `GROUND` (ruled ground spacing, off below 6), `GROWTH` (how far the vine
+runs), `INK` (contrast), `SEED` (reshuffles the growth). `window.__unit.setEng({...})` does the same
+from the console.
+
+The vine grows from the frame, the corner cartouches and open ground alike, turns away from Parts
+rather than dying at them, and is seeded deterministically so a dial change alters one variable
+instead of reshuffling the Plate.
+
+The engraving reads **light on dark** — bare metal through the finish. Dark-on-dark was invisible at
+the size the Unit actually renders: the texture is 2048px wide but the Plate draws around 590px on
+screen, so anything under ~5px of texture line weight disappears. `?title=` swaps
 the display face (`unifraktur` is the chosen one; `pirata`, `grenze`, `archivo` also available).
 
 The field is worked edge to edge; the Parts and the Print are then cut back out of it as reserves
