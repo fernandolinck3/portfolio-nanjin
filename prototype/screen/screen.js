@@ -12,7 +12,7 @@ import { MODULES } from '../../src/content/modules.ts'
 import { EMBLEMS, disc, ring } from './sprites.js'
 import { drawWizard, drawRaven, updateRaven, flush, drawSpell, castHand,
          heldOrbs, heldBook, heldUnit } from './figure.js'
-import { WIZARD, RAVEN, drawSprite, SPRITE_W, SPRITE_H, HANDS } from './drawn.js'
+import { WIZARD, RAVEN, STAFF, ANCHOR, drawSprite, SPRITE_W, SPRITE_H } from './drawn.js'
 
 const W = 320, H = 180
 const buf = document.createElement('canvas'); buf.width = W; buf.height = H
@@ -140,7 +140,9 @@ const stage = () => STAGE[mod]
 function perchOf(st) {
   if (figure === 'drawn') {
     const b = spriteBox(st)
-    return [b.x + 3 * b.scale, b.y + 13 * b.scale]
+    /* the far brim tip from the frame edge she is standing against */
+    const col = st.fx < W / 2 ? SPRITE_W - ANCHOR.brim[0] : ANCHOR.brim[0]
+    return [b.x + col * b.scale, b.y + ANCHOR.brim[1] * b.scale]
   }
   const sc = st.fh / 74
   const headY = st.fy - st.fh * .58
@@ -158,8 +160,8 @@ function spriteBox(st) {
     y: Math.round(st.fy - SPRITE_H * scale),
   }
 }
-const spriteHand = (box, which) =>
-  [box.x + HANDS[which][0] * box.scale, box.y + HANDS[which][1] * box.scale]
+const at = (box, key) =>
+  [box.x + ANCHOR[key][0] * box.scale, box.y + ANCHOR[key][1] * box.scale]
 const BODY_W = () => (figure === 'none' ? W - 40 : stage().bw)
 const BODY_X = () => (figure === 'none' ? 20 : stage().bx)
 
@@ -179,14 +181,32 @@ function grimoire(m, t) {
 
   if (figure === 'drawn') {
     const box = spriteBox(st)
-    /* she hops on the cast — a bitmap cannot change pose, so it acts with its whole body */
-    const hop = casting && cast < .55 ? Math.round(Math.sin(cast / .55 * Math.PI) * 5) : 0
-    drawSprite(g, WIZARD, box.x, box.y - hop, box.scale, INK, DIM, BG)
-    hands = { leftHand: spriteHand(box, 'l'), rightHand: spriteHand(box, 'r') }
+    const sc = box.scale
+    /* A bitmap has one pose, so it acts with its whole body: she hops on the Cast
+       and her staff's orb does the rest. */
+    const hop = casting && cast < .55 ? Math.round(Math.sin(cast / .55 * Math.PI) * 3 * sc) : 0
+    const by = box.y - hop
+
+    /* The staff goes on her outboard side, so it never falls off the frame when
+       the stage puts her against an edge. */
+    const outboard = st.fx < W / 2 ? SPRITE_W : ANCHOR.staff[0]
+    const [sx, sy] = [box.x + outboard * sc, by + ANCHOR.staff[1] * sc]
+    drawSprite(g, STAFF, sx, sy, sc, INK, MID, DIM, BG)
+    /* the orb answers the Cast */
+    if (casting) {
+      const flare = Math.sin(Math.min(1, cast / .55) * Math.PI)
+      g.fillStyle = GOLD
+      disc(g, sx + 2 * sc, sy + 2 * sc, Math.round(3 * sc + flare * 5 * sc))
+    }
+
+    drawSprite(g, WIZARD, box.x, by, sc, INK, MID, DIM, BG)
+    hands = { leftHand: at(box, 'handL'), rightHand: at(box, 'handR') }
     if (!casting) {
-      if (m.kind === 'thesis') heldOrbs(g, hands.leftHand, hands.rightHand, xf, INK, DIM, t)
-      else if (st.pose === 'read') heldBook(g, spriteHand(box, 'centre'), spriteHand(box, 'centre'), INK, DIM, BG, t)
-      else if (st.pose === 'craft') heldUnit(g, spriteHand(box, 'centre'), spriteHand(box, 'centre'), INK, DIM, BG, t)
+      const c = [at(box, 'centre')[0], by + ANCHOR.centre[1] * sc]
+      if (m.kind === 'thesis') heldOrbs(g, [hands.leftHand[0], by + ANCHOR.handL[1] * sc],
+                                           [hands.rightHand[0], by + ANCHOR.handR[1] * sc], xf, INK, DIM, t)
+      else if (st.pose === 'read') heldBook(g, c, c, INK, DIM, BG, t)
+      else if (st.pose === 'craft') heldUnit(g, c, c, INK, DIM, BG, t)
     }
   } else if (figure !== 'none') {
     const fig = { x: st.fx, y: st.fy, h: st.fh }
@@ -292,7 +312,8 @@ function grimoire(m, t) {
   if (figure !== 'none' && hands) {
     if (figure === 'drawn') {
       const pc = perchOf(st), sc = spriteBox(st).scale
-      drawSprite(g, RAVEN, pc[0] - 6 * sc, pc[1] - 8 * sc, sc, INK, DIM, BG)
+      const flip = stage().fx < W / 2 ? 0 : -7
+      drawSprite(g, RAVEN, pc[0] + flip * sc, pc[1] - 7 * sc, sc, INK, MID, DIM, BG)
     } else drawRaven(g, perchOf(st), t, INK, DIM)
     if (casting) drawSpell(g, castHand({ x: st.fx, y: st.fy, h: st.fh }), cast, W, H, INK, GOLD)
   }

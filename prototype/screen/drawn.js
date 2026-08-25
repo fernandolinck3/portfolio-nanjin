@@ -1,91 +1,135 @@
-/* The Wizard, hand-drawn.
+/* The Wizard, hand-drawn — second pass, against the `character` board.
 
-   The `character` are.na board is nine references and not one of them is a
-   silhouette. The rabbit knight, the caped cat, the 1-bit portrait grid, the
-   robed girl with the cat on her back, the 2-bit schoolgirl, the chibi with the
-   red bag — every one is DRAWN: an outline, interior detail, hair, and a real
-   face with pupils in it. The procedural figure beside this one can never get
-   there, because a profile function has no opinion about a face.
+   What the references actually agree on, and what the first pass got wrong:
 
-   So she is a bitmap, authored as text so the repo still ships no binary asset
-   (which is what ADR-0004 was actually protecting). One character per pixel:
+   - A HAIR MASS, not a hairline. The 2-bit schoolgirl, the chibi with the red
+     bag and the dithered portraits all lead with a heavy fringe and hair falling
+     past the jaw. It frames the face and is most of the silhouette.
+   - EYES WITH A HIGHLIGHT. Every face on that board has a glint in the pupil.
+     Two dark squares read as a mask; two dark squares with one lit pixel read as
+     someone looking at you.
+   - FOUR TONES. The green schoolgirl is Game Boy 4-tone and the portrait tiles
+     dither greys. Two tones cannot hold a fringe, a face and a robe apart.
+   - SHE CARRIES SOMETHING. The rabbit knight has a mace-staff, the cat a sword,
+     the chibi a bag. The prop does the work a pose would.
 
-     .  transparent      #  ink, her light body
-     -  mid, shading     o  dark, the ground showing through as a drawn line
+   Authored as text so the repo still ships no binary (ADR-0013). One character
+   per pixel:
 
-   THIS IS A PLACEHOLDER. It is here to prove the pipeline and to show the
-   difference in kind against the procedural version. Fernando is a designer and
-   is already drawing the faceplate art; the real one should be his. */
+     .  transparent    #  light — face, highlights
+     -  mid — the robe    =  deep — hair, shadow
+     o  the ground showing through, as a drawn line
+
+   Still a placeholder, and still better if Fernando draws it. */
 
 export const WIZARD = [
-  '..................#.........',
-  '.................##.........',
-  '................####........',
-  '..............######........',
-  '.............#######........',
-  '............#########.......',
-  '...........##########.......',
-  '.........############.......',
-  '........##############......',
-  '.......###############......',
-  '......################......',
-  '......oooooooooooooooo......',
-  '.....##################.....',
-  '..########################..',
-  '.##########################.',
-  '..oooooooooooooooooooooooo..',
-  '.......-############-.......',
-  '.....--##############--.....',
-  '.....--##############--.....',
-  '.....--###oo####oo###--.....',
-  '.....--###oo####oo###--.....',
-  '.....--##############--.....',
-  '.....--######oo######--.....',
-  '......--############--......',
-  '.......-############-.......',
-  '........############........',
-  '.........##########.........',
-  '..........########..........',
-  '.........##########.........',
-  '........############........',
-  '.......##############.......',
-  '.......##############.......',
-  '......################......',
-  '......######-##-######......',
-  '.....##################.....',
-  '.....#####-######-#####.....',
-  '....####################....',
-  '....####################....',
-  '...######################...',
-  '..------------------------..',
+  '......................#.........',
+  '.....................##.........',
+  '....................####........',
+  '..................######........',
+  '................#########.......',
+  '..............###########.......',
+  '............##############......',
+  '..........################......',
+  '.........##################.....',
+  '.......####################.....',
+  '......#####################.....',
+  '.....ooooooooooooooooooooooo....',
+  '..############################..',
+  '.##############################.',
+  '..oooooooooooooooooooooooooooo..',
+  '.......==================.......',
+  '.......==================.......',
+  '.......===############===.......',
+  '.......===##oo####oo##===.......',
+  '.......===##o#####o###===.......',
+  '.......===############===.......',
+  '.......===#-###oo###-#===.......',
+  '.......===############===.......',
+  '........==############==........',
+  '.........==##########==.........',
+  '.........==============.........',
+  '..........============..........',
+  '.........--------------.........',
+  '........----------------........',
+  '........----------------........',
+  '.......------------------.......',
+  '......#------------------#......',
+  '......#------------------#......',
+  '......--------------------......',
+  '.....----------------------.....',
+  '.....----------#-----------.....',
+  '....------------------------....',
+  '....-----#--------#---------....',
+  '...--------------------------...',
+  '...--------------------------...',
+  '..----------------------------..',
+  '..oooooooooooooooooooooooooooo..',
 ]
 
-/** Her raven. Small, and light so it reads against the dark ground. */
+/** Her staff. Drawn beside her so the orb can flare on its own during a Cast. */
+export const STAFF = [
+  '..#..',
+  '.#o#.',
+  '#o#o#',
+  '.#o#.',
+  '..#..',
+  '..#..',
+  '..=..',
+  '..#..',
+  '..#..',
+  '..=..',
+  '..#..',
+  '..#..',
+  '..=..',
+  '..#..',
+  '..#..',
+  '..=..',
+  '..#..',
+  '..#..',
+  '..=..',
+  '..#..',
+  '..#..',
+  '..=..',
+  '..#..',
+  '..#..',
+  '..=..',
+  '..#..',
+  '..#..',
+  '..=..',
+  '..#..',
+]
+
+/** Her raven. Deep body with a light edge, so it never merges into her hat. */
 export const RAVEN = [
-  '.....##...',
-  '....####..',
-  '...######.',
-  '..#######-',
-  '.#########',
-  '-####o###.',
-  '..#....#..',
+  '....oo....',
+  '...o==o...',
+  '..o====o..',
+  '.o==#==o#o',
+  'o========o',
+  '.o==o===o.',
+  '..o.oo.o..',
   '..........',
 ]
 
-/** Where her hands sit, in sprite pixels, so held things land in front of her. */
-export const HANDS = { l: [4, 33], r: [23, 33], centre: [14, 33] }
+/** Sprite-space anchors: where things she holds and things that sit on her go. */
+export const ANCHOR = {
+  handL: [6, 31], handR: [25, 31], centre: [15, 32],
+  brim:  [3, 13],            /* the raven's perch, on the left tip of the brim */
+  staff: [-3, 8],            /* top-left of the staff sprite, relative to her */
+}
 
 /**
- * Draw a text sprite at `scale`. Nearest-neighbour by construction — every
- * source pixel becomes a scale x scale block, so it never goes soft.
+ * Draw a text sprite. Nearest-neighbour by construction — every source pixel is
+ * a scale x scale block, so it never goes soft the way an upscaled image does.
  */
-export function drawSprite(g, rows, x, y, scale, ink, dim, bg) {
+export function drawSprite(g, rows, x, y, scale, ink, mid, deep, bg) {
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r]
     for (let c = 0; c < row.length; c++) {
       const ch = row[c]
       if (ch === '.') continue
-      g.fillStyle = ch === '#' ? ink : ch === '-' ? dim : bg
+      g.fillStyle = ch === '#' ? ink : ch === '-' ? mid : ch === '=' ? deep : bg
       g.fillRect(x + c * scale, y + r * scale, scale, scale)
     }
   }
