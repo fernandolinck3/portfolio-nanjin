@@ -3,5 +3,4 @@ dist/
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
-prototype/unit.html
 prototype/*.png

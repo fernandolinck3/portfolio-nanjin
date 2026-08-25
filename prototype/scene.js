@@ -1,3 +1,4 @@
+import * as THREE from 'three'
 /* ============ Tenebrae — 3D material & form study ============ */
 const W = () => innerWidth, H = () => innerHeight;
 
@@ -95,7 +96,14 @@ function borderOrnament(g, x, y, w, h, s) {
 function faceMaps() {
   const A = document.createElement('canvas'); A.width = 2048; A.height = 1536;
   const Hh = document.createElement('canvas'); Hh.width = 2048; Hh.height = 1536;
-  const a = A.getContext('2d'), h = Hh.getContext('2d');
+  /* E carries the Print alone, on black: phosphorescent ink, so labels stay
+     legible once the room is gone. Ornament is deliberately absent from it —
+     ornament may overgrow, labels never move. */
+  const E = document.createElement('canvas'); E.width = 2048; E.height = 1536;
+  const a = A.getContext('2d'), h = Hh.getContext('2d'), e = E.getContext('2d');
+  e.fillStyle = '#000'; e.fillRect(0, 0, 2048, 1536);
+  /** Every stroke of the Print goes down twice: once as ink, once as glow. */
+  const ink = (fn) => { fn(a); fn(e); };
   a.fillStyle = '#26282B'; a.fillRect(0, 0, 2048, 1536);
   
   h.fillStyle = '#808080'; h.fillRect(0, 0, 2048, 1536);
@@ -111,29 +119,33 @@ function faceMaps() {
   a.strokeStyle = 'rgba(0,0,0,.5)';
   rosette(a, 1600, 1010, 360, 12);
 
-  /* printed silkscreen — albedo only */
-  a.fillStyle = '#E6E4DB';
-  a.font = '700 66px Archivo, Helvetica, Arial';
-  a.letterSpacing = '13px';
-  a.fillText('TENEBRAE', 150, 148);
-  a.fillStyle = '#8A8880';
-  a.font = '500 28px "Azeret Mono", monospace';
-  a.letterSpacing = '9px';
-  a.fillText('FER BITTENCOURT / SER 001 / REV A', 152, 196);
-  a.fillStyle = '#C4281C';
-  a.fillText('PROJECT 001', 1520, 150);
-  a.fillStyle = '#9A9890';
-  a.font = '500 30px "Azeret Mono", monospace';
-  const labels = [['HOT CUE', 250, 1462], ['CROSSFADE', 1075, 1462], ['BEND', 1478, 1462], ['INSPECT', 1672, 1462]];
-  labels.forEach(([t, x, y]) => a.fillText(t, x, y));
-  /* vertical japanese edge legend */
-  a.save(); a.translate(1975, 420); a.rotate(Math.PI / 2);
-  a.fillStyle = '#6E6C64'; a.font = '500 38px "Azeret Mono", monospace'; a.letterSpacing = '18px';
-  a.fillText('TENEBRAE / BUILD 2026.08', 0, 0); a.restore();
+  /* printed silkscreen — phosphorescent, so it survives the Vigil */
+  ink(c => {
+    c.fillStyle = c === a ? '#E6E4DB' : '#CFEFE0';
+    c.font = '700 66px Archivo, Helvetica, Arial';
+    c.letterSpacing = '13px';
+    c.fillText('TENEBRAE', 150, 148);
+    c.fillStyle = c === a ? '#8A8880' : '#5E8C7A';
+    c.font = '500 28px "Azeret Mono", monospace';
+    c.letterSpacing = '9px';
+    c.fillText('FER BITTENCOURT / SER 001 / REV A', 152, 196);
+    c.fillStyle = c === a ? '#C4281C' : '#8E2418';
+    c.fillText('PROJECT 001', 1520, 150);
+    c.fillStyle = c === a ? '#9A9890' : '#6FA891';
+    c.font = '500 30px "Azeret Mono", monospace';
+    [['HOT CUE', 250, 1462], ['CROSSFADE', 1075, 1462], ['VIGIL', 1478, 1462]]
+      .forEach(([t, x, y]) => c.fillText(t, x, y));
+    /* vertical japanese edge legend */
+    c.save(); c.translate(1975, 420); c.rotate(Math.PI / 2);
+    c.fillStyle = c === a ? '#6E6C64' : '#4C7566';
+    c.font = '500 38px "Azeret Mono", monospace'; c.letterSpacing = '18px';
+    c.fillText('TENEBRAE / BUILD 2026.08', 0, 0); c.restore();
+  });
 
   const at = new THREE.CanvasTexture(A); at.colorSpace = THREE.SRGBColorSpace; at.anisotropy = 8;
   const ht = new THREE.CanvasTexture(Hh); ht.anisotropy = 8;
-  return { albedo: at, height: ht };
+  const et = new THREE.CanvasTexture(E); et.colorSpace = THREE.SRGBColorSpace; et.anisotropy = 8;
+  return { albedo: at, height: ht, glow: et };
 }
 const maps = faceMaps();
 
@@ -165,7 +177,7 @@ const PAGES = [
     dim: ['No agency. No client case studies yet. This unit', 'is the first thing I have made in public.'] },
   { t: 'NOW / NEXT', lines: [], dim: [], xf: true },
   { t: 'PROJECT 001', lines: ['This unit is the project. The plate is a generated',
-      'rose window. The bend knob melts the chassis.',
+      'rose window. The vigil knob puts the lights out.',
       'Every control does something real.'],
     dim: ['Every claim here points at something visible on', 'this panel. That is the only proof I have yet.'] },
   { t: 'CRATE', rows: [['Tenebrae unit','Build','2026'],['Serial Experiments Lain','Influence','1998'],
@@ -268,6 +280,7 @@ unit.add(chassis);
 /* printed face (thin decal plane just above the metal) */
 const faceMat = new THREE.MeshPhysicalMaterial({
   map: maps.albedo, bumpMap: maps.height, bumpScale: 6,
+  emissiveMap: maps.glow, emissive: 0xffffff, emissiveIntensity: 0,
   metalness: .85, roughness: .34, clearcoat: .3, clearcoatRoughness: .45,
 });
 const face = new THREE.Mesh(new THREE.PlaneGeometry(4.58, 3.18, 240, 170), faceMat);
@@ -311,13 +324,6 @@ for (let i = 0; i < 6; i++) {
   const lamp = new THREE.Mesh(new THREE.PlaneGeometry(.22, .032), lm);
   lamp.rotation.x = -Math.PI / 2; lamp.position.set(-1.90 + i * .34, .437, 1.09); unit.add(lamp);
 }
-/* inspect toggle */
-const inspBtn = new THREE.Mesh(slab(.34, .30, .07, .02), padMat());
-inspBtn.position.set(1.62, .34, 1.16); inspBtn.userData.ctl = 'inspect'; unit.add(inspBtn);
-const inspLampMat = new THREE.MeshBasicMaterial({ color: 0x0E2C22 });
-const inspLamp = new THREE.Mesh(new THREE.PlaneGeometry(.24, .032), inspLampMat);
-inspLamp.rotation.x = -Math.PI / 2; inspLamp.position.set(1.62, .437, 1.09); unit.add(inspLamp);
-
 /* knob */
 const knob = new THREE.Group(); knob.position.set(1.15, .34, 1.16); unit.add(knob);
 const knobBody = new THREE.Mesh(new THREE.CylinderGeometry(.19, .21, .22, 48),
@@ -335,27 +341,47 @@ const cap = new THREE.Mesh(slab(.11, .24, .11, .02),
   new THREE.MeshPhysicalMaterial({ color: 0xB6B4AA, metalness: .7, roughness: .28 }));
 cap.position.set(-.11 + .18 * .88, .35, 1.16); cap.userData.ctl = 'fader'; unit.add(cap);
 
-/* ---------- the bend: chrome flow ---------- */
-let bend = +(new URLSearchParams(location.search).get('bend')||0)/100;
-const melt = { value: 0 };
-[chassisMat, faceMat, jogPlateMat].forEach(m => {
-  m.onBeforeCompile = s => {
-    s.uniforms.uMelt = melt;
-    s.vertexShader = 'uniform float uMelt;\n' + s.vertexShader.replace('#include <begin_vertex>', `
-      #include <begin_vertex>
-      float n = sin(position.x*7.3+position.z*5.1)*cos(position.z*6.7-position.x*3.9);
-      float n2 = sin(position.x*19.0)*sin(position.z*17.0);
-      transformed += normal * (n*0.085 + n2*0.03) * uMelt;
-    `);
-  };
-  m.customProgramCacheKey = () => 'melt';
-});
+/* ---------- vigil: the lights go out one at a time (ADR-0006) ----------
+   The three-point rig is the three candles. Rim dies first, then fill, then key.
+   At full vigil only the Screen's phosphor is left, and it rakes across the Plate
+   at a grazing angle so the Nightwork engraved there finally reads. */
+let vigil = +(new URLSearchParams(location.search).get('vigil') || 0) / 100;
+
+/** Grazing phosphor spill. Absent under room light, it is the only source at full vigil. */
+const rake = new THREE.DirectionalLight(0x7FD9B0, 0);
+rake.position.set(-3.4, .34, -2.2); unit.add(rake);
+
+const KEY0 = key.intensity, FILL0 = fill.intensity, RIM0 = rim.intensity;
+const ENV0 = scene.environmentIntensity ?? 1;
+
+/** 1 while the candle burns, 0 once it is out. */
+const candle = (v, from, to) => 1 - Math.min(1, Math.max(0, (v - from) / (to - from)));
+
+function applyVigil() {
+  rim.intensity  = RIM0  * candle(vigil, .00, .34);
+  fill.intensity = FILL0 * candle(vigil, .28, .62);
+  key.intensity  = KEY0  * candle(vigil, .56, .94);
+  scene.environmentIntensity = ENV0 * (1 - vigil * .88);
+
+  /* the screen takes over the room */
+  glow.intensity = 2.4 + vigil * 5.2;
+  glow.distance = 3.4 + vigil * 2.6;
+  rake.intensity = Math.max(0, (vigil - .42) / .58) * 3.1;
+
+  /* the phosphorescent Print charges under light and burns without it */
+  faceMat.emissiveIntensity = Math.pow(vigil, 1.4) * 1.15;
+
+  /* Nightwork: the engraving deepens as the light gets meaner */
+  faceMat.bumpScale = 6 + vigil * 12;
+  chassisMat.bumpScale = .55 + vigil * 1.1;
+  jogPlateMat.bumpScale = 4 + vigil * 5;
+}
 
 /* ---------- interaction: everything on the unit is clickable ---------- */
 const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 const el = renderer.domElement;
-let inspect = false, ry = 0, rx = 0, tRy = 0, tRx = 0;
+let ry = 0, rx = 0, tRy = 0, tRx = 0;   /* bounded tilt only — no orbit (ADR-0007) */
 let active = null, px = 0, py = 0, startVal = 0, jogAcc = 0, jogLast = 0;
 
 function pick(e) {
@@ -372,17 +398,11 @@ function setPage(n) {
   lampMats.forEach((m, i) => m.color.setHex(i === curPage ? 0xF03A22 : 0x3A100C));
   drawScreen();
 }
-function setBendVal(v) {
-  bend = Math.max(0, Math.min(1, v));
-  bslider.value = String(bend * 100);
-  document.getElementById('bv').textContent = String(Math.round(bend * 100)).padStart(2, '0');
-}
-function setInspect(on) {
-  inspect = on;
-  inspLampMat.color.setHex(on ? 0x2FE06B : 0x0E2C22);
-  el.style.cursor = on ? 'grab' : 'default';
-  document.getElementById('mode').textContent = on ? 'INSPECT ON — drag to turn' : 'INSPECT OFF';
-  if (!on) { tRy = 0; tRx = 0; }
+function setVigil(v) {
+  vigil = Math.max(0, Math.min(1, v));
+  applyVigil();
+  vslider.value = String(vigil * 100);
+  document.getElementById('vv').textContent = String(Math.round(vigil * 100)).padStart(2, '0');
 }
 function jogAngle(e) {
   const r = el.getBoundingClientRect();
@@ -397,22 +417,23 @@ el.addEventListener('pointerdown', e => {
   if (hit) {
     const c = hit.userData.ctl;
     if (c === 'pad') { setPage(hit.userData.i); return; }
-    if (c === 'inspect') { setInspect(!inspect); return; }
-    if (c === 'knob') { active = 'knob'; startVal = bend; el.setPointerCapture(e.pointerId); return; }
+    if (c === 'knob') { active = 'knob'; startVal = vigil; el.setPointerCapture(e.pointerId); return; }
     if (c === 'fader') { active = 'fader'; startVal = xfVal; el.setPointerCapture(e.pointerId); setPage(1); return; }
     if (c === 'jog') { active = 'jog'; jogLast = jogAngle(e); el.setPointerCapture(e.pointerId); return; }
   }
-  if (inspect) { active = 'orbit'; el.setPointerCapture(e.pointerId); el.style.cursor = 'grabbing'; }
 });
 
 el.addEventListener('pointermove', e => {
+  /* the Unit leans a few degrees toward the pointer, always, never enough to show its sides */
+  tRy = ((e.clientX / W()) * 2 - 1) * .055;
+  tRx = ((e.clientY / H()) * 2 - 1) * .040;
   if (!active) {
     const hit = pick(e);
-    el.style.cursor = hit ? (hit.userData.ctl === 'pad' || hit.userData.ctl === 'inspect' ? 'pointer'
-      : hit.userData.ctl === 'jog' ? 'grab' : 'ns-resize') : (inspect ? 'grab' : 'default');
+    el.style.cursor = hit ? (hit.userData.ctl === 'pad' ? 'pointer'
+      : hit.userData.ctl === 'jog' ? 'grab' : 'ns-resize') : 'default';
     return;
   }
-  if (active === 'knob') setBendVal(startVal + (py - e.clientY) / 170);
+  if (active === 'knob') setVigil(startVal + (py - e.clientY) / 170);
   else if (active === 'fader') {
     xfVal = Math.max(0, Math.min(1, startVal + (e.clientX - px) / 300));
     cap.position.x = -.11 + xfVal * .88;
@@ -422,45 +443,46 @@ el.addEventListener('pointermove', e => {
     if (d > Math.PI) d -= 6.2832; if (d < -Math.PI) d += 6.2832;
     jogLast = a; jog.rotation.y -= d; jogAcc += d;
     if (Math.abs(jogAcc) > 1.15) { setPage(curPage + (jogAcc > 0 ? 1 : -1)); jogAcc = 0; }
-  } else if (active === 'orbit') {
-    tRy += (e.clientX - px) * .006; tRx += (e.clientY - py) * .004;
-    tRx = Math.max(-.85, Math.min(.35, tRx)); tRy = Math.max(-.8, Math.min(.8, tRy));
-    px = e.clientX; py = e.clientY;
   }
 });
 
-el.addEventListener('pointerup', () => { active = null; if (inspect) el.style.cursor = 'grab'; });
+el.addEventListener('pointerup', () => { active = null; });
 
 /* keyboard + screen-reader layer */
 document.querySelectorAll('[data-act]').forEach(b => {
   b.addEventListener('click', () => {
-    const a = b.dataset.act;
-    if (a === 'inspect') setInspect(!inspect);
-    else setPage(+a);
+    setPage(+b.dataset.act);
   });
 });
-const bslider = document.getElementById('bend');
-bslider.value = String(bend * 100);
-document.getElementById('bv').textContent = String(Math.round(bend * 100)).padStart(2, '0');
-bslider.addEventListener('input', () => setBendVal(+bslider.value / 100));
+const vslider = document.getElementById('vigil');
+vslider.addEventListener('input', () => setVigil(+vslider.value / 100));
 
 addEventListener('resize', () => {
   camera.aspect = W() / H(); camera.updateProjectionMatrix(); renderer.setSize(W(), H());
 });
-setInspect(false);
+setVigil(vigil);
+
+/** Workbench hook: lets a browser session drive and verify the Unit without guessing pixels. */
+window.__unit = {
+  /** rAF is throttled in a background tab, so never trust the last frame's matrices. */
+  render() { camera.updateMatrixWorld(true); scene.updateMatrixWorld(true); renderer.render(scene, camera); },
+  screenOf(o) {
+    camera.updateMatrixWorld(true); scene.updateMatrixWorld(true);
+    const v = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld).project(camera);
+    return [(v.x * .5 + .5) * W(), (-v.y * .5 + .5) * H()];
+  },
+  pads: () => padMeshes,
+  parts: () => ({ cap, jogRing, knobBody }),
+  get page() { return curPage; },
+  get vigil() { return vigil; },
+  get xf() { return xfVal; },
+};
 
 let t0 = 0;
 function frame(t) {
   const dt = Math.min(.05, (t - t0) / 1000); t0 = t;
   ry += (tRy - ry) * .10; rx += (tRx - rx) * .10;
   unit.rotation.y = ry; unit.rotation.x = rx;
-  if (bend > .01) jog.rotation.y += dt * bend * .55;
-  melt.value += (bend - melt.value) * .1;
-  chassisMat.roughness = .38 - bend * .3;
-  chassisMat.clearcoat = .35 + bend * .65;
-  chassisMat.clearcoatRoughness = .5 - bend * .45;
-  jogPlateMat.metalness = .55 + bend * .45;
-  jogPlateMat.roughness = .42 - bend * .34;
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }

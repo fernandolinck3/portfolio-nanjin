@@ -1,18 +1,30 @@
-# Prototype — the Tenebrae Unit, as it stood 2026-08-24
+# Prototype — the Tenebrae Unit
 
-The working 3D unit that settled the direction. This is the reference the real build in `src/` is
-ported from, Part by Part — not the build itself.
+The working 3D unit that settled the direction, and where Parts get tuned before they are ported
+into `src/`. Not the real build.
 
-    node prototype/gen.mjs      # inlines three.js + scene.js into prototype/unit.html, then open it
+    npm run prototype        # http://localhost:5174
 
-`unit.html` is generated and gitignored. `three.js` comes from `node_modules`, so run `npm install`
-first.
+`window.__unit` is a workbench hook: `screenOf(mesh)` projects a Part to page coordinates,
+`pads()` / `parts()` return the control meshes, `render()` forces a frame. It exists so a browser
+session can drive and verify the controls without guessing pixel positions — rAF is throttled in a
+background tab, so never trust the last painted frame's matrices.
 
-**It predates the decisions in `docs/adr/` and contradicts several of them.** Read it as a record of
-where the object got to, not as a spec:
+## Verified in a real browser, 2026-08-25
 
-- the knob drives a `bend` melt shader — dead, replaced by Vigil (ADR-0006)
-- there is an `INSPECT` toggle and free rotation — cut, replaced by bounded tilt (ADR-0007)
+Pads select Modules; the Crossfader drags and jumps to Now/Next; the knob raises the Vigil and stays
+in sync with the HUD; the Jog turns and pages. Previously all of this was only ever checked through
+headless stills, which cannot click.
+
+## Still contradicts the ADRs
+
+- the Jog steps between Modules — it should dig *inside* the live one, which needs Modules with
+  more than one Screen's worth of content first
 - all content is drawn into the canvas texture — reversed, the DOM is truth (ADR-0002)
-- slot 4 is `CRATE`, a list of influences — now `RACK`, the tools actually used
-- pointer interaction was only ever validated through headless stills, never clicked in a browser
+- slot 4 still renders as `CRATE` — it is `RACK` now, content not yet rewritten
+- geometry is hand-written primitives, convincing top-down only
+
+## Already in line
+
+Vigil replaced the Bend (ADR-0006). INSPECT and free rotation were cut for bounded pointer tilt
+(ADR-0007). The Print is phosphorescent, so labels stay legible at full Vigil.
