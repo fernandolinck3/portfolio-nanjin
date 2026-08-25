@@ -16,11 +16,16 @@ scene.background = new THREE.Color(0x060505);
 const camera = new THREE.PerspectiveCamera(38, W() / H(), 0.1, 100);
 /* CAM is the angle off vertical, in degrees. 0 is the spec-sheet view straight down;
    larger angles put the candlesticks into profile so they read as candles at all. */
-let CAM = { tilt: 28, dist: 7.4 };
+let CAM = { tilt: 28, dist: 7.4, yaw: 0 };
+/* Clamped so the visitor can look up into the room but never behind or under the Unit,
+   whose sides are not modelled to hold up there. */
+const CAM_LIMITS = { tilt: [4, 74], yaw: [-42, 42] };
 function placeCamera() {
-  const a = CAM.tilt * Math.PI / 180;
-  camera.position.set(0, Math.cos(a) * CAM.dist, Math.sin(a) * CAM.dist);
-  camera.lookAt(0, 0.35, 0);
+  const a = CAM.tilt * Math.PI / 180, y = CAM.yaw * Math.PI / 180;
+  const h = Math.sin(a) * CAM.dist;
+  camera.position.set(Math.sin(y) * h, Math.cos(a) * CAM.dist, Math.cos(y) * h);
+  /* look a little higher as the view comes up, so the window enters frame naturally */
+  camera.lookAt(0, .35 + Math.max(0, (CAM.tilt - 34) / 40) * 2.4, 0);
 }
 placeCamera();
 
@@ -911,7 +916,7 @@ function clothTexture() {
 
 const altar = new THREE.Group(); scene.add(altar);
 
-const mensa = new THREE.Mesh(new THREE.BoxGeometry(18, .62, 12),
+const mensa = new THREE.Mesh(new THREE.BoxGeometry(14.6, .62, 8.6),
   new THREE.MeshPhysicalMaterial({
     map: woodTexture(false), bumpMap: woodTexture(true), bumpScale: .5,
     color: 0xA08B78, metalness: 0, roughness: .46,
@@ -965,6 +970,133 @@ const CANDLES = [
   candlestick(-3.42, 1.35, 1.05),   // last to die
 ];
 
+/* ---------- the room ----------
+   The Unit stands on a table in a chapel-like room. Tilt the camera up and the far
+   wall and its window come into view; at full Vigil, when the Candles are out, the
+   moon through that window is the only thing left besides the Screen. */
+
+function stoneTexture(bump) {
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const g = c.getContext('2d');
+  const rnd = rng(1717);
+  g.fillStyle = bump ? '#8c8c8c' : '#3B3733'; g.fillRect(0, 0, 1024, 1024);
+  /* flagstones, coursed, with mortar joints cut in */
+  const H = 128;
+  for (let row = 0, y = 0; y < 1024; row++, y += H) {
+    const off = (row % 2) * 96;
+    for (let x = -off; x < 1024; x += 200) {
+      const w = 190 + rnd() * 16, h = H - 8;
+      g.fillStyle = bump
+        ? `rgba(${170 + rnd() * 50},${170 + rnd() * 50},${170 + rnd() * 50},1)`
+        : `rgba(${58 + rnd() * 26},${53 + rnd() * 24},${48 + rnd() * 22},1)`;
+      g.fillRect(x + 4, y + 4, w, h);
+      /* wear and pitting */
+      for (let i = 0; i < 26; i++) {
+        const px = x + 8 + rnd() * (w - 16), py = y + 8 + rnd() * (h - 16), pr = 1 + rnd() * 7;
+        g.fillStyle = bump ? `rgba(120,120,120,${rnd() * .5})` : `rgba(30,27,24,${rnd() * .28})`;
+        g.beginPath(); g.arc(px, py, pr, 0, 6.2832); g.fill();
+      }
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 4);
+  if (!bump) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8; return t;
+}
+
+const room = new THREE.Group(); scene.add(room);
+const FLOOR_Y = -2.95, WALL_Z = -11.5, WALL_H = 11;
+
+const stoneMat = new THREE.MeshPhysicalMaterial({
+  map: stoneTexture(false), bumpMap: stoneTexture(true), bumpScale: .6,
+  color: 0x6E6862, roughness: .95, metalness: 0,
+});
+const plasterMat = new THREE.MeshPhysicalMaterial({ color: 0x4A443E, roughness: .98, metalness: 0 });
+
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), stoneMat);
+floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR_Y; room.add(floor);
+
+/* far wall, built around a window opening */
+const WIN = { x: 2.45, y0: 0.35, y1: 5.35 };
+const wallPiece = (w, h, x, y) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, .6), plasterMat);
+  m.position.set(x, y, WALL_Z); room.add(m); return m;
+};
+wallPiece(13, WALL_H, -WIN.x - 6.5, FLOOR_Y + WALL_H / 2);
+wallPiece(13, WALL_H,  WIN.x + 6.5, FLOOR_Y + WALL_H / 2);
+wallPiece(WIN.x * 2, FLOOR_Y + WALL_H - WIN.y1, 0, (WIN.y1 + FLOOR_Y + WALL_H) / 2);
+wallPiece(WIN.x * 2, WIN.y0 - FLOOR_Y, 0, (FLOOR_Y + WIN.y0) / 2);
+
+/* the night beyond: a cold plane with a moon and a scatter of stars */
+function nightTexture() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 1024;
+  const g = c.getContext('2d');
+  const sky = g.createLinearGradient(0, 0, 0, 1024);
+  sky.addColorStop(0, '#0d1626'); sky.addColorStop(.6, '#141d2c'); sky.addColorStop(1, '#1b2130');
+  g.fillStyle = sky; g.fillRect(0, 0, 1024, 1024);
+  const rnd = rng(31337);
+  for (let i = 0; i < 700; i++) {
+    const x = rnd() * 1024, y = rnd() * 1024, r = rnd() * 1.5 + .3;
+    g.fillStyle = `rgba(214,224,240,${.15 + rnd() * .6})`;
+    g.beginPath(); g.arc(x, y, r, 0, 6.2832); g.fill();
+  }
+  const mx = 468, my = 648, mr = 72;
+  const halo = g.createRadialGradient(mx, my, mr * .6, mx, my, mr * 5);
+  halo.addColorStop(0, 'rgba(196,214,240,.42)'); halo.addColorStop(1, 'rgba(196,214,240,0)');
+  g.fillStyle = halo; g.beginPath(); g.arc(mx, my, mr * 5, 0, 6.2832); g.fill();
+  g.fillStyle = '#DCE6F4'; g.beginPath(); g.arc(mx, my, mr, 0, 6.2832); g.fill();
+  /* maria, so it is a moon rather than a disc */
+  for (let i = 0; i < 9; i++) {
+    const a = rnd() * 6.2832, d = rnd() * mr * .7, r = mr * (.08 + rnd() * .16);
+    g.fillStyle = `rgba(178,192,214,${.35 + rnd() * .3})`;
+    g.beginPath(); g.arc(mx + Math.cos(a) * d, my + Math.sin(a) * d, r, 0, 6.2832); g.fill();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const night = new THREE.Mesh(new THREE.PlaneGeometry(26, 20),
+  new THREE.MeshBasicMaterial({ map: nightTexture() }));
+night.position.set(0, FLOOR_Y + 7, WALL_Z - 4.5); room.add(night);
+
+/* window: a stone reveal, mullions and transom */
+const stoneTrim = new THREE.MeshPhysicalMaterial({ color: 0x7A736A, roughness: .9 });
+const bar = (w, h, x, y, z) => {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, .34), stoneTrim);
+  m.position.set(x, y, z ?? WALL_Z + .02); room.add(m); return m;
+};
+bar(WIN.x * 2 + .5, .30, 0, WIN.y0 - .12);
+bar(WIN.x * 2 + .5, .30, 0, WIN.y1 + .12);
+bar(.30, WIN.y1 - WIN.y0 + .6, -WIN.x - .12, (WIN.y0 + WIN.y1) / 2);
+bar(.30, WIN.y1 - WIN.y0 + .6,  WIN.x + .12, (WIN.y0 + WIN.y1) / 2);
+bar(.16, WIN.y1 - WIN.y0, 0, (WIN.y0 + WIN.y1) / 2);            // mullion
+bar(WIN.x * 2, .14, 0, WIN.y0 + (WIN.y1 - WIN.y0) * .62);        // transom
+for (let i = 1; i <= 3; i++) bar(WIN.x * 2, .07, 0, WIN.y0 + (WIN.y1 - WIN.y0) * .62 * i / 4);
+
+/* the wall needs a little light of its own, or the room is just a black hole behind the table */
+const wallWash = new THREE.DirectionalLight(0x8FA3C0, .35);
+wallWash.position.set(0, 5, 6); wallWash.target.position.set(0, 2, WALL_Z);
+room.add(wallWash, wallWash.target);
+
+/* moonlight through the opening — cold, and it survives the Candles */
+const moonLight = new THREE.DirectionalLight(0x9FB6D8, 1.5);
+moonLight.position.set(1.1, 4.6, WALL_Z); moonLight.target.position.set(0, 0, 1);
+room.add(moonLight, moonLight.target);
+
+/* turned legs, so the table reads as furniture once the camera comes up */
+const legProfile = [
+  [.00, .00], [.30, .00], [.30, .10], [.17, .16], [.14, .34],
+  [.22, .48], [.24, .60], [.16, .74], [.13, 1.0], [.20, 1.14],
+  [.22, 1.30], [.15, 1.46], [.14, 1.90], [.24, 2.00], [.26, 2.16],
+];
+const legMat = new THREE.MeshPhysicalMaterial({
+  map: woodTexture(false), color: 0x8A7563, roughness: .55, metalness: 0,
+});
+for (const lx of [-6.2, 6.2]) for (const lz of [-3.5, 3.5]) {
+  const h = (-.62 - FLOOR_Y) / 2.16;
+  const leg = new THREE.Mesh(
+    new THREE.LatheGeometry(legProfile.map(([r, y]) => new THREE.Vector2(r, y * h)), 32), legMat);
+  leg.position.set(lx, FLOOR_Y, lz); room.add(leg);
+}
+
 /* ---------- vigil: the lights go out one at a time (ADR-0006) ----------
    The three-point rig is the three candles. Rim dies first, then fill, then key.
    At full vigil only the Screen's phosphor is left, and it rakes across the Plate
@@ -1000,6 +1132,10 @@ function applyVigil() {
     c.flame.visible = c.halo.visible = k > .001;
   });
   scene.environmentIntensity = ENV0 * (1 - vigil * .88);
+
+  /* the moon does not go out — it only becomes visible once the Candles stop drowning it */
+  moonLight.intensity = 1.5 + vigil * 1.9;
+  wallWash.intensity = .35 + vigil * .55;
 
   /* the screen takes over the room */
   glow.intensity = 2.4 + vigil * 5.2;
@@ -1060,13 +1196,25 @@ el.addEventListener('pointerdown', e => {
       el.setPointerCapture(e.pointerId); return;
     }
   }
+  /* nothing on the Unit: the drag moves the view instead */
+  active = 'cam'; el.setPointerCapture(e.pointerId); el.style.cursor = 'grabbing';
 });
 
 el.addEventListener('pointermove', e => {
   if (!active) {
     const hit = pick(e);
     el.style.cursor = hit ? (hit.userData.ctl === 'pad' ? 'pointer'
-      : hit.userData.ctl === 'fader' ? 'ew-resize' : 'grab') : 'default';
+      : hit.userData.ctl === 'fader' ? 'ew-resize' : 'grab') : 'grab';
+    return;
+  }
+  if (active === 'cam') {
+    const cl = (v, [lo, hi]) => Math.max(lo, Math.min(hi, v));
+    CAM.tilt = cl(CAM.tilt + (e.clientY - py) * .16, CAM_LIMITS.tilt);
+    CAM.yaw  = cl(CAM.yaw  - (e.clientX - px) * .16, CAM_LIMITS.yaw);
+    px = e.clientX; py = e.clientY;
+    placeCamera();
+    const t = document.getElementById('tilt'), d = document.getElementById('tiltv');
+    if (t) { t.value = String(Math.round(CAM.tilt)); d.textContent = Math.round(CAM.tilt) + '\u00B0'; }
     return;
   }
   if (active === 'fader') {
@@ -1083,7 +1231,7 @@ el.addEventListener('pointermove', e => {
   }
 });
 
-el.addEventListener('pointerup', () => { active = null; });
+el.addEventListener('pointerup', () => { active = null; el.style.cursor = 'default'; });
 
 /* keyboard + screen-reader layer */
 document.querySelectorAll('[data-act]').forEach(b => {
@@ -1187,6 +1335,8 @@ window.__unit = {
   /** Tune the engraving: band width, wave count along the top run, line weight. */
   setEng(e) { ENG = { ...ENG, ...e }; regenFace(); },
   get eng() { return ENG; },
+  get cam() { return { ...CAM, pos: camera.position.toArray().map(n => +n.toFixed(2)) }; },
+  setCam(c) { Object.assign(CAM, c); placeCamera(); },
   parts: () => ({ cap, sun: sun.ring, moon: moon.ring, faceMat, face }),
   get title() { return TITLE; },
   get page() { return curPage; },
