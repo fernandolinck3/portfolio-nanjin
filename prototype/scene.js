@@ -188,6 +188,98 @@ function foliateBorder(g, x, y, w, h, band, waves, lw) {
   cartouche(g, x + band * .95, y + h - band * .95, c, -Math.PI * .75, lw);
 }
 
+
+/* ---------- field work ----------
+   World space maps onto the Plate texture as px = (x + 2.29) / 4.58 * 2048,
+   py = (z + 1.59) / 3.18 * 1536. Reserves are the areas the Parts occupy: the
+   engraving fills everything else and is then cut back out of them. */
+const PX = x => (x + 2.29) / 4.58 * 2048, PY = z => (z + 1.59) / 3.18 * 1536;
+const RESERVES = [
+  { r: [PX(-2.055), PY(-1.10), PX(.295) - PX(-2.055), PY(.42) - PY(-1.10)] },   // Screen + bezel
+  { r: [PX(-2.12), PY(.95), PX(-.02) - PX(-2.12), PY(1.37) - PY(.95)] },        // Pad row
+  { r: [PX(-.15), PY(1.02), PX(.85) - PX(-.15), PY(1.30) - PY(1.02)] },         // Crossfader
+  { c: [PX(1.15), PY(1.16), 132] },                                             // Vigil knob
+  { c: [PX(1.42), PY(-.15), 478] },                                             // Jog
+];
+/* The Print gets cleared ground too — labels never fight the field. */
+const PRINT_RESERVES = [
+  [110, 78, 900, 145],     // model name + serial line
+  [1480, 100, 530, 80],    // PROJECT 001
+  [190, 1412, 1570, 84],   // HOT CUE / CROSSFADE / VIGIL
+  [1928, 360, 92, 680],    // vertical edge legend
+];
+
+/** A fine ruled ground. Engraving never leaves bare metal. */
+function hatch(g, step, ang, w) {
+  g.save(); g.lineWidth = w;
+  g.beginPath();
+  const D = 2600, ca = Math.cos(ang), sa = Math.sin(ang);
+  for (let t = -D; t < D * 1.6; t += step) {
+    g.moveTo(t * ca - D * sa, t * sa + D * ca);
+    g.lineTo(t * ca + D * sa, t * sa - D * ca);
+  }
+  g.stroke(); g.restore();
+}
+
+/** Lozenge lattice with a quatrefoil at every node — the diaper of a carved ground. */
+function diaper(g, x, y, w, h, s, lw) {
+  g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
+  g.lineWidth = lw;
+  for (let py = y - s; py < y + h + s; py += s) {
+    for (let px = x - s; px < x + w + s; px += s) {
+      const o = (Math.round((py - y) / s) % 2) * s / 2;
+      g.beginPath();
+      g.moveTo(px + o, py - s / 2); g.lineTo(px + o + s / 2, py);
+      g.lineTo(px + o, py + s / 2); g.lineTo(px + o - s / 2, py);
+      g.closePath(); g.stroke();
+      for (let k = 0; k < 4; k++) {
+        const a = k * Math.PI / 2;
+        g.beginPath();
+        g.arc(px + o + Math.cos(a) * s * .17, py + Math.sin(a) * s * .17, s * .085, 0, 6.2832);
+        g.stroke();
+      }
+    }
+  }
+  g.restore();
+}
+
+/** Cut the Parts back out of the field, then bead the edge so the cut reads as intentional. */
+function cutReserves(g, base, lw) {
+  g.save();
+  g.fillStyle = base;
+  PRINT_RESERVES.forEach(([x, y, w, h]) => { g.beginPath(); g.rect(x, y, w, h); g.fill(); });
+  RESERVES.forEach(o => {
+    g.beginPath();
+    if (o.r) { const [x, y, w, h] = o.r; g.rect(x - 16, y - 16, w + 32, h + 32); }
+    else { const [cx, cy, r] = o.c; g.arc(cx, cy, r + 16, 0, 6.2832); }
+    g.fill();
+  });
+  g.restore();
+  g.lineWidth = lw * .8;
+  RESERVES.forEach(o => {
+    g.beginPath();
+    if (o.r) { const [x, y, w, h] = o.r; g.rect(x - 16, y - 16, w + 32, h + 32); }
+    else { const [cx, cy, r] = o.c; g.arc(cx, cy, r + 16, 0, 6.2832); }
+    g.stroke();
+    /* beading */
+    if (o.c) {
+      const [cx, cy, r] = o.c;
+      for (let i = 0; i < 48; i++) {
+        const a = i / 48 * 6.2832;
+        g.beginPath(); g.arc(cx + Math.cos(a) * (r + 30), cy + Math.sin(a) * (r + 30), lw * 1.1, 0, 6.2832); g.stroke();
+      }
+    }
+  });
+}
+
+/** A run of ornament pinned to the middle of each edge, as the reference plates all carry. */
+function midOrnaments(g, x, y, w, h, band, lw) {
+  cartouche(g, x + w / 2, y + band * .55, band * .9, Math.PI / 2, lw);
+  cartouche(g, x + w / 2, y + h - band * .55, band * .9, -Math.PI / 2, lw);
+  cartouche(g, x + band * .55, y + h / 2, band * .9, 0, lw);
+  cartouche(g, x + w - band * .55, y + h / 2, band * .9, Math.PI, lw);
+}
+
 /* face maps: albedo (printed) + height (engraved) + glow (phosphorescent Print) */
 /* Display candidates for the Plate's model name. Flip with ?title=unifraktur|pirata|grenze. */
 const TITLES = {
@@ -197,7 +289,7 @@ const TITLES = {
   grenze:     { font: '600 80px "Grenze Gotisch", serif',        track: '9px',  y: 152 },
 };
 /* Engraving parameters — the knobs we tune against references. */
-let ENG = { band: 104, waves: 13, lw: 3.4 };
+let ENG = { band: 104, waves: 13, lw: 3.4, hatch: 11 };
 let TITLE = TITLES[new URLSearchParams(location.search).get('title')] || TITLES.archivo;
 function faceMaps() {
   const A = document.createElement('canvas'); A.width = 2048; A.height = 1536;
@@ -215,13 +307,25 @@ function faceMaps() {
   h.fillStyle = '#808080'; h.fillRect(0, 0, 2048, 1536);
 
   /* engraved ornament — into both height and a darkened albedo */
-  h.strokeStyle = '#0C0C0C'; h.fillStyle = '#141414'; h.lineCap = 'round'; h.lineJoin = 'round';
-  foliateBorder(h, 54, 54, 2048 - 108, 1536 - 108, ENG.band, ENG.waves, ENG.lw);
-  rosette(h, 1600, 1010, 360, 12);
-  a.strokeStyle = 'rgba(0,0,0,.52)'; a.fillStyle = 'rgba(0,0,0,.34)'; a.lineCap = 'round'; a.lineJoin = 'round';
-  foliateBorder(a, 54, 54, 2048 - 108, 1536 - 108, ENG.band, ENG.waves, ENG.lw * .85);
-  a.strokeStyle = 'rgba(0,0,0,.5)';
-  rosette(a, 1600, 1010, 360, 12);
+  /* Both maps take the same marks; only the ink differs. */
+  const plate = (g, base, ink, mass, ground, k) => {
+    g.strokeStyle = ink; g.fillStyle = mass; g.lineCap = 'round'; g.lineJoin = 'round';
+    /* The ground is cut into the metal, not printed onto it: strong in height, faint in colour. */
+    g.strokeStyle = ground;
+    hatch(g, ENG.hatch, -0.42, ENG.lw * .30);
+    hatch(g, ENG.hatch * 2.6, 1.15, ENG.lw * .24);
+    diaper(g, 54, 54, 2048 - 108, 1536 - 108, ENG.band * .58, ENG.lw * .38);
+    g.strokeStyle = ink; g.fillStyle = mass;
+    foliateBorder(g, 54, 54, 2048 - 108, 1536 - 108, ENG.band, ENG.waves, ENG.lw * k);
+    foliateBorder(g, 54 + ENG.band * 1.15, 54 + ENG.band * 1.15,
+      2048 - 108 - ENG.band * 2.3, 1536 - 108 - ENG.band * 2.3, ENG.band * .62,
+      Math.round(ENG.waves * 1.4), ENG.lw * .7 * k);
+    midOrnaments(g, 54, 54, 2048 - 108, 1536 - 108, ENG.band, ENG.lw * k);
+    rosette(g, PX(1.42), PY(-.15), 620, 16);
+    cutReserves(g, base, ENG.lw * k);
+  };
+  plate(h, '#808080', '#0C0C0C', '#141414', '#4A4A4A', 1);
+  plate(a, '#26282B', 'rgba(0,0,0,.52)', 'rgba(0,0,0,.34)', 'rgba(0,0,0,.10)', .85);
 
   /* printed silkscreen — phosphorescent, so it survives the Vigil */
   ink(c => {
@@ -578,11 +682,12 @@ const dial = (id, read, fmt) => {
   el.addEventListener('input', () => {
     const v = read(+el.value);
     out.textContent = fmt(v);
-    ENG = { ...ENG, [id === 'lw' ? 'lw' : id === 'band' ? 'band' : 'waves']: v };
+    ENG = { ...ENG, [id]: v };
     regenFace();
   });
 };
 dial('band', v => v, v => String(v));
+dial('hatch', v => v, v => String(v));
 dial('waves', v => v, v => String(v));
 dial('lw', v => v / 10, v => v.toFixed(1));
 

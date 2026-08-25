@@ -18,12 +18,14 @@ headless stills, which cannot click.
 
 ## Engraving workbench
 
-The Plate's engraving is parametric: `BAND`, `DENSITY` and `WEIGHT` dials in the HUD redraw it
-live, and `window.__unit.setEng({band, waves, lw})` does the same from the console. `?title=` swaps
+The Plate's engraving is parametric: `BAND`, `DENSITY`, `WEIGHT` and `GROUND` dials in the HUD
+redraw it live, and `window.__unit.setEng({band, waves, lw, hatch})` does the same from the console. `?title=` swaps
 the display face (`unifraktur` is the chosen one; `pirata`, `grenze`, `archivo` also available).
 
-Known: a wide band runs ornament under the Screen and the controls. The frame has to stay outside
-the cleared field — every reference plate respects that.
+The field is worked edge to edge; the Parts and the Print are then cut back out of it as reserves
+(`RESERVES` and `PRINT_RESERVES` in `scene.js`, in texture coordinates derived from world space).
+The ground lives mostly in the height map rather than in colour, so it catches raking light without
+turning the Plate into noise or fighting the labels.
 
 ## Still contradicts the ADRs
 
