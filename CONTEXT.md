@@ -91,6 +91,20 @@ is out and the Screen's phosphor is the only source in the room. Named for the n
 rite the model name comes from. It is a state, not a control: no single Part owns it.
 _Avoid_: bend, dim, brightness, corruption, knob
 
+**Face**:
+One of the Screen's complete visual treatments — the same six Modules, a different visual language
+throughout. Grimoire, Cracktro and Instrument are the three drawn. A Face is authored per Module,
+not applied as a palette. The visitor changes it; it never changes which Module is live.
+_Avoid_: theme, skin, mode, style
+
+**Familiar**:
+The creature that lives on the Screen and is present in every Module, walking the bottom rule the
+way an animal walks the margin of a manuscript. It notices when the Module changes and goes to look.
+It has moods, not needs — nothing it does can be neglected and nothing it does asks the visitor for
+anything, because a creature that needed feeding would compete with the Module for attention.
+**Which creature it is has not been decided** — hare, moth and raven are drawn.
+_Avoid_: pet, tamagotchi, mascot, companion
+
 **Nightwork**:
 The engraving cut into the Plate that is invisible under full light and only becomes legible as the
 Vigil rises and the light rakes across it. Ornament that has to be earned by darkness.

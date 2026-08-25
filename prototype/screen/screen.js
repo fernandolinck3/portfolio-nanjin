@@ -10,6 +10,7 @@
    Every Module has its own layout. Nothing on screen is allowed to sit still. */
 import { MODULES } from '../../src/content/modules.ts'
 import { EMBLEMS, disc, ring } from './sprites.js'
+import { updatePet, drawPet, startle } from './pet.js'
 
 const W = 320, H = 180
 const buf = document.createElement('canvas'); buf.width = W; buf.height = H
@@ -18,7 +19,9 @@ const big = document.getElementById('big').getContext('2d')
 const real = document.getElementById('real').getContext('2d')
 big.imageSmoothingEnabled = real.imageSmoothingEnabled = false
 
-let dir = 'grimoire', mod = 0, xf = 0.18, switchedAt = performance.now()
+let dir = 'grimoire', mod = 0, xf = 0.18, pet = 'hare', switchedAt = performance.now()
+/* The familiar walks the bottom rule; it must not tread on the readout at the right. */
+const PET_BOUNDS = { lo: 24, hi: W - 84 }
 
 /* ---------- helpers ---------- */
 
@@ -85,9 +88,8 @@ function grimoireChrome(m, t) {
   g.fillText(slot, W - 20 - g.measureText(slot).width, 30)
   tone(18, 44, W - 36, 1, .4, INK)
 
-  /* status line */
+  /* status line — right only; the bottom-left band belongs to the familiar */
   g.font = '8px Silkscreen, monospace'; g.fillStyle = DIM
-  g.fillText('TENEBRAE', 20, H - 14)
   const cols = charsAcross(W - 40) + ' COLS'
   g.fillText(cols, W - 20 - g.measureText(cols).width, H - 14)
 }
@@ -190,6 +192,8 @@ function grimoire(m, t) {
     for (const l of (m.dim || [])) for (const w of wrap(l, bodyW)) { g.fillText(w, x0, y); y += 12 }
     if (Math.floor(t * 2) % 2) { g.fillStyle = INK; g.fillRect(x0, y - 9, 5, 8) }
   }
+
+  if (pet !== 'none') drawPet(g, pet, H - 11, t, INK, DIM)
 }
 
 /* ================= B. INSTRUMENT (kept for comparison, not developed) ================= */
@@ -345,6 +349,8 @@ function cracktro(m, t) {
     g.fillText(msg[i], cx, H - 6 + Math.sin(t * 3 + cx / 18) * 2.5)
   }
   g.restore()
+
+  if (pet !== 'none') drawPet(g, pet, H - 19, t, BONE, DEEP)
 }
 
 /* ---------- drive ---------- */
@@ -359,8 +365,11 @@ function curtain() {
   tone(0, 0, W, H, level * .5, dir === 'cracktro' ? RED : INK)
 }
 
+let last = 0
 function frame(now) {
   const t = now / 1000
+  const dt = Math.min(.05, last ? t - last : 0); last = t
+  if (pet !== 'none') updatePet(dt, t, PET_BOUNDS)
   DIRS[dir](MODULES[mod], t)
   curtain()
   big.clearRect(0, 0, 960, 540); big.drawImage(buf, 0, 0, 960, 540)
@@ -378,8 +387,9 @@ function press(attr, apply) {
   })
 }
 press('dir', v => { dir = v })
-press('mod', v => { mod = +v })
+press('mod', v => { mod = +v; if (pet !== 'none') startle(PET_BOUNDS) })
 press('xf', v => { xf = +v })
+press('pet', v => { pet = v; if (v !== 'none') startle(PET_BOUNDS) })
 
 /* An unused family silently falls back, and document.fonts.ready will not load a
    face nothing has asked for. Ask for each one by name. */
