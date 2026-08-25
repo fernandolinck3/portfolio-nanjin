@@ -363,6 +363,8 @@ function growField(g, band, lw, depth, seed) {
 
 /** Ornament artwork, once it exists. Null until a file is dropped in ornament/. */
 let ORN = null;
+/** Full-bleed Plate art — the OBNE move: a painting under a printed control panel. */
+let ART = null;
 
 /** Paint the ornament mask: white where the metal is cut away, black where it stands. */
 function ornamentMask(w, h) {
@@ -372,7 +374,15 @@ function ornamentMask(w, h) {
   const sx = w / TW, sy = h / TH;
   g.save(); g.scale(sx, sy);
   g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineCap = 'round'; g.lineJoin = 'round';
-  if (ORN) {
+  if (ART) {
+    /* The painting itself takes a shallow relief, so it reads as printed on metal
+       that has texture rather than as a flat sticker. */
+    const k = Math.max(TW / ART.width, TH / ART.height);
+    const dw = ART.width * k, dh = ART.height * k;
+    g.save(); g.filter = 'grayscale(1) contrast(1.6)';
+    g.drawImage(ART, (TW - dw) / 2, (TH - dh) / 2, dw, dh);
+    g.restore();
+  } else if (ORN) {
     /* tiled artwork */
     const tw = ORN.width * ENG.tile, th = ORN.height * ENG.tile;
     for (let y = 54; y < TH - 54; y += th)
@@ -441,7 +451,7 @@ const TITLES = {
 };
 /* Engraving parameters — the knobs we tune against references. */
 let ENG = { band: 118, waves: 0, lw: 5.0, hatch: 5, grow: 0, seed: 20260825, ink: .30,
-            tile: 1, bevel: 10, depth: 11 };
+            tile: 1, bevel: 10, depth: 11, scrim: .34 };
 let TITLE = TITLES[new URLSearchParams(location.search).get('title')] || TITLES.archivo;
 function faceMaps() {
   const A = document.createElement('canvas'); A.width = TW; A.height = TH;
@@ -455,6 +465,14 @@ function faceMaps() {
   /** Every stroke of the Print goes down twice: once as ink, once as glow. */
   const ink = (fn) => { fn(a); fn(e); };
   a.fillStyle = '#26282B'; a.fillRect(0, 0, TW, TH);
+  if (ART) {
+    /* cover-fit, so the art is never squashed to the Plate's ratio */
+    const k = Math.max(TW / ART.width, TH / ART.height);
+    const dw = ART.width * k, dh = ART.height * k;
+    a.drawImage(ART, (TW - dw) / 2, (TH - dh) / 2, dw, dh);
+    /* a scrim keeps the Print readable over whatever the art is doing underneath */
+    a.fillStyle = `rgba(10,11,13,${ENG.scrim})`; a.fillRect(0, 0, TW, TH);
+  }
   
   h.fillStyle = '#808080'; h.fillRect(0, 0, TW, TH);
 
@@ -465,13 +483,15 @@ function faceMaps() {
     /* The ground is cut into the metal, not printed onto it: strong in height, faint in colour. */
     if (ENG.hatch > 6) { g.strokeStyle = ground; hatch(g, ENG.hatch, -0.42, ENG.lw * .26); }
     g.strokeStyle = ink; g.fillStyle = mass;
-    /* the motif is not a backdrop — the same vine grows across the whole field */
-    growField(g, ENG.band, ENG.lw * .92, ENG.grow, ENG.seed);
+    /* with Plate art present the frame steps back — OBNE panels carry no ornamental border */
+    if (!ART) growField(g, ENG.band, ENG.lw * .92, ENG.grow, ENG.seed);
+    if (!ART) {
     foliateBorder(g, 54, 54, TW - 108, TH - 108, ENG.band, ENG.waves, ENG.lw * k);
     foliateBorder(g, 54 + ENG.band * 1.15, 54 + ENG.band * 1.15,
       TW - 108 - ENG.band * 2.3, TH - 108 - ENG.band * 2.3, ENG.band * .62,
       Math.round(ENG.waves * 1.4), ENG.lw * .7 * k);
-    if (ENG.waves >= 1) midOrnaments(g, 54, 54, TW - 108, TH - 108, ENG.band, ENG.lw * k);
+    }
+    if (!ART && ENG.waves >= 1) midOrnaments(g, 54, 54, TW - 108, TH - 108, ENG.band, ENG.lw * k);
     cutReserves(g, base, ENG.lw * k);
   };
   plate(h, '#808080', '#0C0C0C', '#141414', '#4A4A4A', 1);
@@ -931,6 +951,7 @@ dial('ink', v => v / 100, v => v.toFixed(2));
 dial('bevel', v => v, v => String(v));
 dial('depth', v => v, v => String(v));
 dial('tile', v => v / 100, v => v.toFixed(2));
+dial('scrim', v => v / 100, v => v.toFixed(2));
 dial('seed', v => 20260800 + v, v => String(v - 20260800));
 
 addEventListener('resize', () => {
@@ -938,6 +959,17 @@ addEventListener('resize', () => {
 });
 /* Ornament artwork, if it has been dropped in. Falls back to the procedural vine when absent. */
 (async () => {
+  for (const f of ['ornament/plate.png', 'ornament/plate.jpg', 'ornament/plate.svg']) {
+    try {
+      const res = await fetch(f, { method: 'HEAD' });
+      if (!res.ok) continue;
+      const img = new Image();
+      await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = f; });
+      ART = img; regenFace();
+      console.log('[tenebrae] plate art loaded:', f, img.width + 'x' + img.height);
+      return;
+    } catch { /* not there yet */ }
+  }
   for (const f of ['ornament/pattern.svg', 'ornament/pattern.png']) {
     try {
       const res = await fetch(f, { method: 'HEAD' });
