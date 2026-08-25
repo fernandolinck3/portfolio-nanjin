@@ -9,7 +9,7 @@
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -b --pretty false",
     "prototype": "vite prototype --port 5174",
-    "screens": "node prototype/screen/build.mjs && open Screens.html"
+    "screens": "node prototype/screen/build.mjs && open \"file://$PWD/Screens.html?v=$(date +%s)\""
   },
   "dependencies": {
     "react": "^19.1.1",
