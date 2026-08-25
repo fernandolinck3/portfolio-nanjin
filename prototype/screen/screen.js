@@ -1,11 +1,15 @@
 /* Screen design workbench.
-   Three directions for the Unit's Screen, drawn from the `display` are.na board,
-   rendered at the internal resolution the real Screen would use (320x180) and
-   shown twice: at 3x so the design can be judged, and at 1x so it can be judged
-   the way a visitor actually meets it — a ~300px inset on the Plate.
+   Directions for the Unit's Screen, drawn from the `display` are.na board and
+   rendered at the internal resolution the real Screen would use (320x180), shown
+   at 3x so the design can be judged and at 1x so it can be judged the way a
+   visitor meets it — a ~300px inset on the Plate.
 
-   Everything reads the real content source. No lorem. */
+   Grimoire and Cracktro are the chosen register (2026-08-25). Instrument is kept
+   only so the comparison can still be made; it is not being developed.
+
+   Every Module has its own layout. Nothing on screen is allowed to sit still. */
 import { MODULES } from '../../src/content/modules.ts'
+import { EMBLEMS, disc, ring } from './sprites.js'
 
 const W = 320, H = 180
 const buf = document.createElement('canvas'); buf.width = W; buf.height = H
@@ -18,22 +22,20 @@ let dir = 'grimoire', mod = 0, xf = 0.18, switchedAt = performance.now()
 
 /* ---------- helpers ---------- */
 
-/** Bayer 4x4. Ordered dither is what makes 1-bit art read as shading. */
 const BAYER = [[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]]
-function dither(x, y, level) { return level * 16 > BAYER[y & 3][x & 3] }
+const dither = (x, y, level) => level * 16 > BAYER[y & 3][x & 3]
 
-/** Fill a rect with an ordered-dither tone. level 0..1. */
+/** Fill a rect with an ordered-dither tone. Ordered dither is what makes 1-bit read as shading. */
 function tone(x, y, w, h, level, colour) {
   g.fillStyle = colour
   for (let j = 0; j < h; j++) for (let i = 0; i < w; i++)
     if (dither(x + i, y + j, level)) g.fillRect(x + i, y + j, 1, 1)
 }
 
-/** Break a line that was written for a 52-char Screen into lines that fit `max` px. */
+/** Break a line written for a 52-char Screen into lines that fit `max` px. */
 function wrap(text, max) {
-  const out = [], words = text.split(' ')
-  let line = ''
-  for (const w of words) {
+  const out = []; let line = ''
+  for (const w of text.split(' ')) {
     const t = line ? line + ' ' + w : w
     if (g.measureText(t).width > max && line) { out.push(line); line = w } else line = t
   }
@@ -41,190 +43,216 @@ function wrap(text, max) {
   return out
 }
 
-function lines(m) {
-  if (m.kind === 'prose') return m.lines
-  if (m.kind === 'thesis') return (xf > .5 ? m.b : m.a).lines
-  return []
+const charsAcross = w => Math.floor(w / g.measureText('n').width)
+const since = () => (performance.now() - switchedAt) / 1000
+const clamp01 = v => Math.max(0, Math.min(1, v))
+
+/** A dotted leader, the way a contents page runs a name out to its number. */
+function leader(x, y, w, colour) {
+  g.fillStyle = colour
+  for (let i = 0; i < w; i += 3) g.fillRect(x + i, y, 1, 1)
 }
 
-/** How many characters of the current face fit across the body. The budget question. */
-function charsAcross(width) { return Math.floor(width / g.measureText('n').width) }
+/* ================= A. GRIMOIRE ================= */
 
-const since = () => (performance.now() - switchedAt) / 1000
-
-/* ================= A. GRIMOIRE =================
-   1-bit, dithered, ornamental frame drawn in pixels. Refs 00, 25, 26, 15, 21, 04.
-   Alive: torchlight breathes across the field, the text types itself on when the
-   Module changes, and a block cursor blinks at the end of it. */
-
-const INK = '#E9E3D2', BG = '#0A0B09'
+const INK = '#E9E3D2', MID = '#8A8470', DIM = '#5E5A4C', BG = '#0A0B09', GOLD = '#C9BE96'
 
 /** A pixel ornament in the corner — the Plate's foliate engraving at 1-bit. */
 function corner(cx, cy, sx, sy) {
-  const px = (x, y) => g.fillRect(cx + x * sx, cy + y * sy, 1, 1)
   g.fillStyle = INK
-  const pts = [[0,0],[1,0],[2,0],[3,0],[0,1],[0,2],[0,3],[2,2],[3,2],[2,3],
-               [5,0],[6,0],[0,5],[0,6],[4,4],[5,4],[4,5],[7,1],[1,7],[6,3],[3,6]]
-  for (const [x, y] of pts) px(x, y)
+  for (const [x, y] of [[0,0],[1,0],[2,0],[3,0],[0,1],[0,2],[0,3],[2,2],[3,2],[2,3],
+                        [5,0],[6,0],[0,5],[0,6],[4,4],[5,4],[4,5],[7,1],[1,7],[6,3],[3,6]])
+    g.fillRect(cx + x * sx, cy + y * sy, 1, 1)
 }
 
-function grimoire(m, t) {
+function grimoireChrome(m, t) {
   g.fillStyle = BG; g.fillRect(0, 0, W, H)
-
-  /* torchlight: the whole field breathes, unevenly, like two candles */
   const flick = .5 + .5 * Math.sin(t * 1.7) * Math.sin(t * .9 + 1.3)
   tone(6, 6, W - 12, H - 12, .06 + flick * .05, '#1C2018')
 
-  /* frame: double rule with pixel corners */
   g.fillStyle = INK
   g.fillRect(5, 5, W - 10, 1); g.fillRect(5, H - 6, W - 10, 1)
   g.fillRect(5, 5, 1, H - 10); g.fillRect(W - 6, 5, 1, H - 10)
   tone(8, 8, W - 16, 1, .5, INK); tone(8, H - 9, W - 16, 1, .5, INK)
   corner(8, 8, 1, 1); corner(W - 9, 8, -1, 1); corner(8, H - 9, 1, -1); corner(W - 9, H - 9, -1, -1)
 
-  /* header: blackletter title, slot number opposite */
-  g.font = '16px UnifrakturMaguntia, serif'; g.fillStyle = INK
-  g.fillText(m.title, 20, 28)
-  g.font = '8px Silkscreen, monospace'
-  tone(0, 0, 0, 0, 0, INK)
-  g.fillStyle = '#8A8470'
-  g.fillText('MOD 0' + m.slot + '/06', W - 20 - g.measureText('MOD 0' + m.slot + '/06').width, 26)
-  tone(18, 34, W - 36, 1, .35, INK)
+  /* header band: emblem, blackletter title, slot */
+  EMBLEMS[mod](g, 12, 10, t, INK, DIM)
+  g.font = '17px UnifrakturMaguntia, serif'; g.fillStyle = INK
+  g.fillText(m.title, 52, 32)
+  g.font = '8px Silkscreen, monospace'; g.fillStyle = MID
+  const slot = 'MOD 0' + m.slot + '/06'
+  g.fillText(slot, W - 20 - g.measureText(slot).width, 30)
+  tone(18, 44, W - 36, 1, .4, INK)
 
-  /* body */
-  g.font = '13px VT323, monospace'
-  const bodyW = W - 40, x0 = 20
-  let y = 50
-  const typed = Math.min(1, since() / .9)
-
-  if (m.kind === 'table') {
-    g.font = '8px Silkscreen, monospace'; g.fillStyle = '#8A8470'
-    g.fillText(m.head[0], x0, y); g.fillText(m.head[2], W - 40, y)
-    y += 10
-    m.rows.forEach((r, i) => {
-      if (i / m.rows.length > typed) return
-      g.font = '13px VT323, monospace'; g.fillStyle = INK
-      g.fillText(r[0], x0, y + 9)
-      g.font = '8px Silkscreen, monospace'; g.fillStyle = '#6E6A5A'
-      g.fillText(r[2], W - 40, y + 9)
-      tone(x0, y + 13, bodyW, 1, .25, INK)
-      y += 17
-    })
-  } else if (m.kind === 'steps') {
-    m.steps.forEach((s, i) => {
-      if (i / m.steps.length > typed) return
-      g.font = '8px Silkscreen, monospace'; g.fillStyle = '#8A8470'
-      g.fillText('0' + (i + 1), x0, y + 8)
-      g.font = '13px VT323, monospace'; g.fillStyle = INK
-      g.fillText(s, x0 + 22, y + 9)
-      y += 16
-    })
-  } else {
-    if (m.kind === 'thesis') {
-      const s = xf > .5 ? m.b : m.a
-      g.font = '13px VT323, monospace'; g.fillStyle = INK
-      g.fillText(s.heading, x0, y); y += 16
-    }
-    const all = wrap(lines(m).join(' '), bodyW)
-    const shown = Math.floor(all.length * typed + .0001)
-    g.fillStyle = INK
-    all.slice(0, Math.max(1, shown)).forEach(l => { g.fillText(l, x0, y); y += 13 })
-    if (m.kind === 'prose' && m.mail) {
-      g.fillStyle = '#C9BE96'; y += 4; g.fillText(m.mail, x0, y); y += 14
-    }
-    g.fillStyle = '#6E6A5A'
-    for (const l of (m.dim || [])) for (const w of wrap(l, bodyW)) { g.fillText(w, x0, y); y += 12 }
-    /* the cursor the whole direction hangs on */
-    if (Math.floor(t * 2) % 2) { g.fillStyle = INK; g.fillRect(x0, y - 9, 5, 8) }
-  }
-
-  /* status line — the text adventure's footer (ref 26) */
-  g.font = '8px Silkscreen, monospace'; g.fillStyle = '#6E6A5A'
+  /* status line */
+  g.font = '8px Silkscreen, monospace'; g.fillStyle = DIM
   g.fillText('TENEBRAE', 20, H - 14)
-  const rt = charsAcross(bodyW) + ' COLS'
-  g.fillText(rt, W - 20 - g.measureText(rt).width, H - 14)
+  const cols = charsAcross(W - 40) + ' COLS'
+  g.fillText(cols, W - 20 - g.measureText(cols).width, H - 14)
 }
 
-/* ================= B. INSTRUMENT =================
-   VFD phosphor: cyan on near-black with an amber accent. Refs 31, 22, 11, 12, 13.
-   Alive: the spectrum never stops, a needle sweeps, the counter ticks. */
+function grimoire(m, t) {
+  grimoireChrome(m, t)
+  const x0 = 20, bodyW = W - 40
+  let y = 60
+  const typed = clamp01(since() / .9)
+  g.font = '13px VT323, monospace'
+
+  if (m.kind === 'thesis') {
+    /* Two facing columns. The fader does not hide a side, it weights it — the
+       honest position is engraved on the Plate and cannot move (ADR-0005).
+       Both sides never fit in full at this size, so the recessive one keeps its
+       heading and gives up its body: the crossfade trades detail between them
+       rather than swapping one block of text for another. */
+    const colW = (bodyW - 14) / 2
+    const FLOOR = H - 34
+    ;[[m.a, x0, 1 - xf], [m.b, x0 + colW + 14, xf]].forEach(([side, cx, weight]) => {
+      const lead = weight >= .5
+      g.font = '8px Silkscreen, monospace'
+      g.fillStyle = lead ? GOLD : DIM
+      g.fillText(side.heading.slice(0, 1), cx, y)
+      g.font = '11px VT323, monospace'
+      let yy = y + 11
+      g.fillStyle = lead ? INK : DIM
+      wrap(side.heading.slice(4), colW).forEach(l => { g.fillText(l, cx, yy); yy += 10 })
+      if (lead) {
+        yy += 4
+        g.fillStyle = MID
+        for (const l of wrap(side.lines.join(' '), colW)) {
+          if (yy > FLOOR) break
+          g.fillText(l, cx, yy); yy += 10
+        }
+      } else {
+        /* the side you are not on: a rule and a count of what it is holding back */
+        yy += 5
+        tone(cx, yy, colW, 1, .3, INK)
+        g.font = '8px Silkscreen, monospace'; g.fillStyle = DIM
+        g.fillText(side.lines.join(' ').length + ' CHARS', cx, yy + 11)
+      }
+      /* a weight bar under each column, so the blend is visible not implied */
+      tone(cx, H - 26, colW, 2, .25, INK)
+      g.fillStyle = lead ? GOLD : MID
+      g.fillRect(cx, H - 26, Math.round(colW * (.2 + weight * .8)), 2)
+    })
+    g.fillStyle = DIM
+    for (let i = y - 6; i < H - 22; i += 3) g.fillRect(x0 + colW + 6, i, 1, 1)
+
+  } else if (m.kind === 'table') {
+    m.rows.forEach((r, i) => {
+      if (i / m.rows.length > typed) return
+      /* a tiny ring per row, filled for the one that is this Unit */
+      g.fillStyle = i === 0 ? GOLD : DIM
+      if (i === 0) disc(g, x0 + 3, y + 4, 3); else ring(g, x0 + 3, y + 4, 3, 1)
+      g.font = '13px VT323, monospace'; g.fillStyle = i === 0 ? INK : MID
+      g.fillText(r[0], x0 + 12, y + 8)
+      const tw = g.measureText(r[0]).width
+      g.font = '8px Silkscreen, monospace'
+      const yr = r[2], yw = g.measureText(yr).width
+      leader(x0 + 16 + tw, y + 7, bodyW - 20 - tw - yw, DIM)
+      g.fillStyle = i === 0 ? GOLD : DIM
+      g.fillText(yr, x0 + bodyW - yw, y + 8)
+      y += 18
+    })
+
+  } else if (m.kind === 'steps') {
+    /* a rule down the left that fills as the steps arrive */
+    const top = y - 2, span = m.steps.length * 16
+    tone(x0 + 4, top, 1, span, .3, INK)
+    g.fillStyle = MID; g.fillRect(x0 + 4, top, 1, Math.round(span * typed))
+    m.steps.forEach((s, i) => {
+      if (i / m.steps.length > typed) return
+      g.fillStyle = INK; disc(g, x0 + 4, y + 4, 2)
+      g.font = '8px Silkscreen, monospace'; g.fillStyle = DIM
+      g.fillText('0' + (i + 1), x0 + 11, y + 7)
+      g.font = '13px VT323, monospace'; g.fillStyle = MID
+      g.fillText(s, x0 + 30, y + 8)
+      y += 16
+    })
+
+  } else {
+    const all = wrap(m.lines.join(' '), bodyW)
+    const shown = Math.max(1, Math.floor(all.length * typed + .0001))
+    g.fillStyle = INK
+    all.slice(0, shown).forEach(l => { g.fillText(l, x0, y); y += 13 })
+    if (m.mail) {
+      /* the one address gets a plate of its own — it is the CTA */
+      y += 6
+      g.fillStyle = GOLD
+      g.fillRect(x0, y - 10, bodyW, 1); g.fillRect(x0, y + 6, bodyW, 1)
+      g.fillRect(x0, y - 10, 1, 17); g.fillRect(x0 + bodyW - 1, y - 10, 1, 17)
+      g.font = '8px Silkscreen, monospace'
+      g.fillText(m.mail, x0 + 8, y + 1)
+      g.font = '13px VT323, monospace'
+      y += 18
+    }
+    g.fillStyle = DIM
+    for (const l of (m.dim || [])) for (const w of wrap(l, bodyW)) { g.fillText(w, x0, y); y += 12 }
+    if (Math.floor(t * 2) % 2) { g.fillStyle = INK; g.fillRect(x0, y - 9, 5, 8) }
+  }
+}
+
+/* ================= B. INSTRUMENT (kept for comparison, not developed) ================= */
 
 const VFD = '#7BE8FF', VFD_DIM = '#2A6E80', AMBER = '#FFAE3D', VBG = '#04080B'
 
 function instrument(m, t) {
   g.fillStyle = VBG; g.fillRect(0, 0, W, H)
-  /* the glass: a faint horizontal grille, as every VFD has */
   g.fillStyle = '#081218'
   for (let y = 0; y < H; y += 3) g.fillRect(0, y, W, 1)
-
-  /* tab strip — OP-I | MIDI | DISK | OPT, but the six Modules (ref 13) */
   const tabW = (W - 16) / 6
   MODULES.forEach((mm, i) => {
     const x = 8 + i * tabW, on = i === mod
-    g.fillStyle = on ? VFD : '#0E2028'
-    g.fillRect(x, 8, tabW - 2, 11)
-    g.font = '8px Silkscreen, monospace'
-    g.fillStyle = on ? VBG : VFD_DIM
+    g.fillStyle = on ? VFD : '#0E2028'; g.fillRect(x, 8, tabW - 2, 11)
+    g.font = '8px Silkscreen, monospace'; g.fillStyle = on ? VBG : VFD_DIM
     const lab = String(mm.slot).padStart(2, '0')
     g.fillText(lab, x + tabW / 2 - g.measureText(lab).width / 2 - 1, 17)
   })
-
-  /* title + a counter that ticks, because instruments always have one */
-  g.font = '9px Silkscreen, monospace'; g.fillStyle = VFD
-  g.fillText(m.title, 8, 34)
+  g.font = '9px Silkscreen, monospace'; g.fillStyle = VFD; g.fillText(m.title, 8, 34)
   g.font = '8px Silkscreen, monospace'; g.fillStyle = AMBER
   const clock = (t % 60).toFixed(2).padStart(5, '0')
   g.fillText(clock, W - 8 - g.measureText(clock).width, 34)
   g.fillStyle = VFD_DIM; g.fillRect(8, 40, W - 16, 1)
-
-  /* body */
   const x0 = 8, bodyW = W - 16
   let y = 54
   g.font = '13px VT323, monospace'
-
   if (m.kind === 'table') {
     m.rows.forEach(r => {
       g.fillStyle = VFD; g.fillText(r[0], x0, y)
       g.font = '8px Silkscreen, monospace'; g.fillStyle = AMBER
       g.fillText(r[2], W - 8 - g.measureText(r[2]).width, y)
       g.font = '13px VT323, monospace'
-      g.fillStyle = '#0E2028'; g.fillRect(x0, y + 3, bodyW, 1)
-      y += 15
+      g.fillStyle = '#0E2028'; g.fillRect(x0, y + 3, bodyW, 1); y += 15
     })
   } else if (m.kind === 'steps') {
     m.steps.forEach((s, i) => {
       g.font = '8px Silkscreen, monospace'; g.fillStyle = AMBER
       g.fillText(String(i + 1).padStart(2, '0'), x0, y)
       g.font = '13px VT323, monospace'; g.fillStyle = VFD
-      g.fillText(s, x0 + 20, y)
-      y += 14
+      g.fillText(s, x0 + 20, y); y += 14
     })
   } else {
+    const src = m.kind === 'thesis' ? (xf > .5 ? m.b : m.a) : m
     if (m.kind === 'thesis') {
-      const s = xf > .5 ? m.b : m.a
-      /* the fader's own readout — a real meter, since this is an instrument */
       g.font = '8px Silkscreen, monospace'; g.fillStyle = AMBER
       g.fillText((xf > .5 ? 'B' : 'A') + '  ' + String(Math.round(xf * 100)).padStart(3, '0'), x0, y)
       g.fillStyle = '#0E2028'; g.fillRect(x0 + 44, y - 5, bodyW - 44, 5)
       g.fillStyle = AMBER; g.fillRect(x0 + 44 + xf * (bodyW - 48), y - 6, 3, 7)
       y += 12
       g.font = '13px VT323, monospace'; g.fillStyle = VFD
-      wrap(s.heading, bodyW).forEach(l => { g.fillText(l, x0, y); y += 13 })
+      wrap(src.heading, bodyW).forEach(l => { g.fillText(l, x0, y); y += 13 })
       y += 2
     }
     g.fillStyle = VFD
-    wrap(lines(m).join(' '), bodyW).forEach(l => { g.fillText(l, x0, y); y += 13 })
-    if (m.kind === 'prose' && m.mail) { g.fillStyle = AMBER; y += 3; g.fillText(m.mail, x0, y); y += 14 }
+    wrap(src.lines.join(' '), bodyW).forEach(l => { g.fillText(l, x0, y); y += 13 })
+    if (m.mail) { g.fillStyle = AMBER; y += 3; g.fillText(m.mail, x0, y); y += 14 }
     g.fillStyle = VFD_DIM
     for (const l of (m.dim || [])) for (const w of wrap(l, bodyW)) { g.fillText(w, x0, y); y += 12 }
   }
-
-  /* spectrum analyser — the thing that makes it alive (ref 31) */
   const bars = 48, bw = (W - 16) / bars
   for (let i = 0; i < bars; i++) {
     const p = i / bars
-    const env = Math.abs(Math.sin(p * 9 + t * 2.1) * Math.cos(p * 4 - t * 1.3))
-    const h = 2 + env * 14
+    const h = 2 + Math.abs(Math.sin(p * 9 + t * 2.1) * Math.cos(p * 4 - t * 1.3)) * 14
     for (let s = 0; s < h; s += 2) {
       g.fillStyle = s > 11 ? AMBER : s > 7 ? VFD : VFD_DIM
       g.fillRect(8 + i * bw, H - 10 - s, Math.max(1, bw - 1), 1)
@@ -232,59 +260,78 @@ function instrument(m, t) {
   }
 }
 
-/* ================= C. CRACKTRO =================
-   Blackletter over raster bars, a centred credit column, an endless scroller.
-   Refs 02, 05, 06. Alive by construction: nothing on screen ever stops moving. */
+/* ================= C. CRACKTRO ================= */
 
-const RED = '#F03A22', BONE = '#DCD6C6'
+const RED = '#F03A22', BONE = '#DCD6C6', EMBER = '#F87A5E', DEEP = '#6E1810'
 
 function cracktro(m, t) {
   g.fillStyle = '#08070A'; g.fillRect(0, 0, W, H)
 
-  /* copper bars behind the logo */
-  for (let y = 10; y < 42; y++) {
-    const v = Math.sin((y - 10) / 32 * Math.PI + t * 1.6)
+  /* copper bars */
+  for (let y = 8; y < 40; y++) {
+    const v = Math.sin((y - 8) / 32 * Math.PI + t * 1.6)
     if (v <= 0) continue
-    g.fillStyle = v > .82 ? '#F87A5E' : v > .5 ? RED : '#6E1810'
+    g.fillStyle = v > .82 ? EMBER : v > .5 ? RED : DEEP
     g.fillRect(0, y, W, 1)
   }
 
-  /* the logo */
+  /* logo, with the Module's emblem riding beside it on a sine */
   g.font = '22px UnifrakturMaguntia, serif'
   const tw = g.measureText('Tenebrae').width
-  g.fillStyle = '#08070A'; g.fillText('Tenebrae', W / 2 - tw / 2 + 1, 35)
-  g.fillStyle = BONE; g.fillText('Tenebrae', W / 2 - tw / 2, 34)
+  g.fillStyle = '#08070A'; g.fillText('Tenebrae', W / 2 - tw / 2 + 1, 33)
+  g.fillStyle = BONE; g.fillText('Tenebrae', W / 2 - tw / 2, 32)
+  const bob = Math.round(Math.sin(t * 2.3) * 3)
+  EMBLEMS[mod](g, W / 2 - tw / 2 - 40, 6 + bob, t, BONE, DEEP)
+  EMBLEMS[mod](g, W / 2 + tw / 2 + 8, 6 - bob, t, BONE, DEEP)
 
-  /* ASCII rule, the cracktro's signature */
   g.font = '8px Silkscreen, monospace'; g.fillStyle = RED
   const rule = '-=+=-'.repeat(12)
-  g.fillText(rule, W / 2 - g.measureText(rule).width / 2, 48)
-
-  /* centred credit column */
-  g.font = '8px Silkscreen, monospace'; g.fillStyle = RED
+  g.fillText(rule, W / 2 - g.measureText(rule).width / 2, 46)
   const head = 'PROUDLY PRESENTS: ' + m.title
-  g.fillText(head, W / 2 - g.measureText(head).width / 2, 62)
+  g.fillStyle = EMBER
+  g.fillText(head, W / 2 - g.measureText(head).width / 2, 60)
 
-  let y = 78
-  const centre = (txt, colour, font) => {
+  let y = 76
+  const centre = (txt, colour, font, step) => {
     g.font = font; g.fillStyle = colour
-    g.fillText(txt, W / 2 - g.measureText(txt).width / 2, y); y += font.startsWith('8') ? 11 : 13
+    g.fillText(txt, W / 2 - g.measureText(txt).width / 2, y); y += step
   }
 
   if (m.kind === 'table') {
-    m.rows.forEach(r => centre(r[0] + '  ' + r[2], BONE, '13px VT323, monospace'))
+    /* credits-roll layout: name left, year right, leader between (ref 02) */
+    const boxW = 210, x0 = (W - boxW) / 2
+    m.rows.forEach((r, i) => {
+      g.font = '13px VT323, monospace'; g.fillStyle = i === 0 ? EMBER : BONE
+      g.fillText(r[0], x0, y)
+      const tw2 = g.measureText(r[0]).width
+      g.font = '8px Silkscreen, monospace'
+      const yw = g.measureText(r[2]).width
+      leader(x0 + tw2 + 4, y - 3, boxW - tw2 - yw - 8, DEEP)
+      g.fillStyle = RED; g.fillText(r[2], x0 + boxW - yw, y)
+      y += 15
+    })
   } else if (m.kind === 'steps') {
-    m.steps.forEach((s, i) => centre(String(i + 1).padStart(2, '0') + '. ' + s, BONE, '13px VT323, monospace'))
+    m.steps.forEach((s, i) =>
+      centre(String(i + 1).padStart(2, '0') + '. ' + s, i % 2 ? BONE : EMBER, '13px VT323, monospace', 14))
   } else {
-    if (m.kind === 'thesis') centre((xf > .5 ? m.b : m.a).heading, RED, '8px Silkscreen, monospace')
+    const src = m.kind === 'thesis' ? (xf > .5 ? m.b : m.a) : m
+    if (m.kind === 'thesis') {
+      centre(src.heading, RED, '8px Silkscreen, monospace', 14)
+      /* the fader as a bar of blocks, cracktro-style */
+      const bw = 160, bx = (W - bw) / 2
+      for (let i = 0; i < 32; i++) {
+        g.fillStyle = i / 32 < xf ? EMBER : DEEP
+        g.fillRect(bx + i * 5, y - 6, 4, 4)
+      }
+      y += 10
+    }
     g.font = '13px VT323, monospace'
-    wrap(lines(m).join(' '), W - 60).forEach(l => centre(l, BONE, '13px VT323, monospace'))
-    if (m.kind === 'prose' && m.mail) centre(m.mail, '#5FE08A', '8px Silkscreen, monospace')
+    wrap(src.lines.join(' '), W - 60).forEach(l => centre(l, BONE, '13px VT323, monospace', 13))
+    if (m.mail) { y += 4; centre(m.mail, '#5FE08A', '8px Silkscreen, monospace', 12) }
   }
 
   /* the scroller. A cracktro without one is just a picture. */
-  const dimText = (MODULES[mod].dim || ['']).join('   ')
-  const msg = ('   ' + (dimText || m.title) + '   ***   ').toUpperCase().repeat(4)
+  const msg = ('   ' + ((m.dim || []).join('   ') || m.title) + '   ***   ').toUpperCase().repeat(4)
   g.font = '8px Silkscreen, monospace'
   const mw = g.measureText(msg).width / 4
   const off = (t * 34) % mw
@@ -292,7 +339,6 @@ function cracktro(m, t) {
   g.fillStyle = RED; g.fillRect(0, H - 17, W, 1); g.fillRect(0, H - 2, W, 1)
   g.save(); g.beginPath(); g.rect(0, H - 16, W, 14); g.clip()
   g.fillStyle = BONE
-  /* each glyph rides its own sine — the classic sine-scroller */
   for (let i = 0; i < msg.length; i++) {
     const cx = -off + g.measureText(msg.slice(0, i)).width
     if (cx < -8 || cx > W) continue
@@ -304,9 +350,19 @@ function cracktro(m, t) {
 /* ---------- drive ---------- */
 const DIRS = { grimoire, instrument, cracktro }
 
+/** Module changes are a cut with a dithered curtain across it, not a fade. */
+function curtain() {
+  const p = since() / .34
+  if (p >= 1) return
+  const level = p < .5 ? p * 2 : (1 - p) * 2
+  tone(0, 0, W, H, level, dir === 'cracktro' ? '#08070A' : '#0A0B09')
+  tone(0, 0, W, H, level * .5, dir === 'cracktro' ? RED : INK)
+}
+
 function frame(now) {
   const t = now / 1000
   DIRS[dir](MODULES[mod], t)
+  curtain()
   big.clearRect(0, 0, 960, 540); big.drawImage(buf, 0, 0, 960, 540)
   real.clearRect(0, 0, W, H); real.drawImage(buf, 0, 0)
   requestAnimationFrame(frame)
@@ -325,9 +381,9 @@ press('dir', v => { dir = v })
 press('mod', v => { mod = +v })
 press('xf', v => { xf = +v })
 
-/* Silkscreen and VT323 are unused until first paint, and document.fonts.ready does
-   not load a face nothing has asked for. Ask for each one by name. */
+/* An unused family silently falls back, and document.fonts.ready will not load a
+   face nothing has asked for. Ask for each one by name. */
 Promise.all([
   document.fonts.load('8px Silkscreen'), document.fonts.load('13px VT323'),
-  document.fonts.load('22px UnifrakturMaguntia'), document.fonts.load('9px Silkscreen'),
+  document.fonts.load('22px UnifrakturMaguntia'), document.fonts.load('17px UnifrakturMaguntia'),
 ]).then(() => requestAnimationFrame(frame))

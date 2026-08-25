@@ -1,16 +1,16 @@
 <title>Screen — design workbench</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=VT323&family=Azeret+Mono:wght@400;500;700&family=UnifrakturMaguntia&display=swap">
 <style>
-  *{box-sizing:border-box} html,body{height:100%;margin:0;background:#0A0A0B;overflow:hidden;
+  *{box-sizing:border-box} html,body{height:100%;margin:0;background:#0A0A0B;overflow:hidden;display:flex;flex-direction:column;
     font:11px/1.6 "Azeret Mono",ui-monospace,monospace;letter-spacing:.12em;color:#8A8880}
-  #wrap{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:20px}
+  #wrap{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:20px;overflow:auto}
   .row{display:flex;gap:26px;align-items:flex-end}
   canvas{display:block;image-rendering:pixelated}
   #big{box-shadow:0 0 0 1px #2A2A28, 0 24px 60px rgba(0,0,0,.8)}
   #real{box-shadow:0 0 0 1px #2A2A28}
   .cap{margin-top:8px;color:#5A5854;text-transform:uppercase}
   b{color:#C4281C;font-weight:500}
-  nav{position:fixed;top:0;left:0;right:0;display:flex;gap:20px;padding:12px 18px;flex-wrap:wrap;align-items:center}
+  nav{flex:none;display:flex;gap:20px;padding:12px 18px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #1E1E1C;background:#0A0A0B}
   button{font:inherit;letter-spacing:.12em;text-transform:uppercase;background:transparent;color:#8A8880;
     border:1px solid #2E2E2C;padding:5px 10px;cursor:pointer}
   button[aria-pressed=true]{background:#DEDCD3;color:#17181B;border-color:#DEDCD3}
