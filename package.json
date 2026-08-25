@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -b --pretty false",
-    "prototype": "vite prototype --port 5174"
+    "prototype": "vite prototype --port 5174",
+    "screens": "node prototype/screen/build.mjs && open Screens.html"
   },
   "dependencies": {
     "react": "^19.1.1",
