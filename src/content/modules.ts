@@ -37,6 +37,33 @@ export const SCREEN_BUDGET = {
   steps: { steps: 6, stepChars: 48 },
 } as const
 
+/**
+ * What Lyra says, one line per Module, in slot order.
+ *
+ * She is the Screen's inhabitant, not its salesman. These lines describe what she
+ * is doing and what the visitor is looking at; they never make a claim about
+ * Fernando's experience, because every such claim has to be checkable against the
+ * object (PRODUCT.md) and a line in a speech bubble cannot be.
+ *
+ * Kept short on purpose — the bubble draws inside a 320x180 Screen beside her.
+ */
+export const LYRA_NAME = 'LYRA'
+export const LYRA_BUBBLE_CHARS = 26
+
+export const LYRA_LINES: readonly (readonly string[])[] = [
+  /* 1 IDENT      */ ['The unit is awake.', 'Turn a deck and see.'],
+  /* 2 NOW / NEXT */ ['I hold both ends.', 'The mark does not move.'],
+  /* 3 PROJECT 001*/ ['He built this one first.', 'You are standing in it.'],
+  /* 4 RACK       */ ['Everything here is', 'patched into something.'],
+  /* 5 METHOD     */ ['Six steps. No secrets.', 'The notes are kept.'],
+  /* 6 OUT        */ ['Send the raven.', 'It knows the way.'],
+]
+
+/** Her line for a 0-based Module index. */
+export function lyraAt(index: number): readonly string[] {
+  return LYRA_LINES[((index % LYRA_LINES.length) + LYRA_LINES.length) % LYRA_LINES.length]
+}
+
 export const MODULES: readonly Module[] = [
   {
     slot: 1,

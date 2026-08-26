@@ -8,11 +8,13 @@
    only so the comparison can still be made; it is not being developed.
 
    Every Module has its own layout. Nothing on screen is allowed to sit still. */
-import { MODULES } from '../../src/content/modules.ts'
+import { MODULES, LYRA_NAME, lyraAt } from '../../src/content/modules.ts'
 import { EMBLEMS, disc, ring } from './sprites.js'
 import { drawWizard, drawRaven, updateRaven, flush, drawSpell, castHand,
          heldOrbs, heldBook, heldUnit, drawRobe } from './figure.js'
-import { BUST, RAVEN, STAFF, ANCHOR, drawSprite, SPRITE_W, SPRITE_H } from './drawn.js'
+import { BUST, BUST_PREV, RAVEN, STAFF, ANCHOR, drawSprite, SPRITE_W, SPRITE_H } from './drawn.js'
+import { REACTION_FRAMES, REACTION_W, REACTION_H } from './reaction-frames.js'
+import { createKnobReaction } from './reaction.js'
 
 const W = 320, H = 180
 const buf = document.createElement('canvas'); buf.width = W; buf.height = H
@@ -21,7 +23,13 @@ const big = document.getElementById('big').getContext('2d')
 const real = document.getElementById('real').getContext('2d')
 big.imageSmoothingEnabled = real.imageSmoothingEnabled = false
 
-let dir = 'grimoire', mod = 0, xf = 0.18, figure = 'drawn', switchedAt = performance.now()
+let mod = 0, xf = 0.18, figure = 'reaction', switchedAt = performance.now()
+
+/* The Vigil (0..1) is what the two Decks hold between them. The 3D Unit funnels
+   every change through `setVigil` in scene.js; this workbench has no Decks, so a
+   slider stands in for them — same continuous, many-small-deltas signal. */
+let vigil = 0
+const reaction = createKnobReaction({ idle: true })
 
 /* ---------- helpers ---------- */
 
@@ -131,6 +139,9 @@ const STAGE = [
 ]
 const stage = () => STAGE[mod]
 
+/** Which drawing of her bust is live. The workbench flips it; the Unit ships BUST. */
+let bustRows = BUST
+
 /**
  * The outer edge of her hat brim — where the raven sits.
  *
@@ -138,6 +149,11 @@ const stage = () => STAGE[mod]
  * shape. On the brim it has the dark ground behind it and reads at 1x.
  */
 function perchOf(st) {
+  if (figure === 'reaction') {
+    /* her hat brim sits about a fifth of the way down the sprite, on the left */
+    const b = reactionBox(st)
+    return [b.x + 5 * b.scale, b.y + 8 * b.scale]
+  }
   if (figure === 'drawn') {
     const b = spriteBox(st)
     /* the far brim tip from the frame edge she is standing against */
@@ -162,6 +178,61 @@ function spriteBox(st) {
     neckY: Math.round(st.fy - st.fh + ANCHOR.neck[1] * scale),
   }
 }
+/**
+ * Lyra's speech bubble, and her name on it.
+ *
+ * It sits above her and is anchored to her sprite rather than to the Module's
+ * layout, so it travels with her when a Module puts her on the other side of the
+ * Screen. The tail points down at her hat.
+ *
+ * Drawn with the same fills as everything else — no rounded corners, because a
+ * radius costs pixels the 320x180 buffer does not have and reads as mush at 1x.
+ */
+function drawBubble(g, box, lines, ink, mid, bg) {
+  const PAD = 4, LH = 9, NAME_H = 8
+  g.font = '11px VT323, monospace'
+  let wide = g.measureText(LYRA_NAME).width
+  for (const l of lines) wide = Math.max(wide, g.measureText(l).width)
+  const w = Math.ceil(wide) + PAD * 2
+  const h = NAME_H + lines.length * LH + PAD * 2
+
+  /* Prefer sitting above her; if the Module has pushed her high, sit beside her. */
+  let x = Math.round(box.x + (28 * box.scale) / 2 - w / 2)
+  let y = box.y - h - 6
+  if (y < 4) y = 4
+  x = Math.max(4, Math.min(W - w - 4, x))
+
+  g.fillStyle = bg; g.fillRect(x, y, w, h)
+  g.fillStyle = ink
+  g.fillRect(x, y, w, 1); g.fillRect(x, y + h - 1, w, 1)
+  g.fillRect(x, y, 1, h); g.fillRect(x + w - 1, y, 1, h)
+
+  /* the tail — three stepped pixels, pointing at her hat */
+  const tx = Math.max(x + 4, Math.min(x + w - 8, Math.round(box.x + 8 * box.scale)))
+  for (let i = 0; i < 3; i++) {
+    g.fillStyle = bg; g.fillRect(tx - 2 + i, y + h - 1 + i, 5 - i * 2, 1)
+    g.fillStyle = ink
+    g.fillRect(tx - 3 + i, y + h - 1 + i, 1, 1)
+    g.fillRect(tx + 3 - i, y + h - 1 + i, 1, 1)
+  }
+
+  g.fillStyle = mid
+  g.fillText(LYRA_NAME, x + PAD, y + PAD + 6)
+  g.fillStyle = ink
+  lines.forEach((l, i) => g.fillText(l, x + PAD, y + PAD + NAME_H + 6 + i * LH))
+}
+
+/* The reaction sprite is her whole height, not the top 58% — so it divides by her
+   stage height directly rather than through the bust's .58. */
+function reactionBox(st) {
+  const scale = Math.max(1, Math.round(st.fh / REACTION_H))
+  return {
+    scale,
+    x: Math.round(st.fx - (REACTION_W * scale) / 2),
+    y: Math.round(st.fy - REACTION_H * scale),
+  }
+}
+
 const at = (box, key) =>
   [box.x + ANCHOR[key][0] * box.scale, box.y + ANCHOR[key][1] * box.scale]
 const BODY_W = () => (figure === 'none' ? W - 40 : stage().bw)
@@ -204,7 +275,7 @@ function grimoire(m, t) {
     /* the generated body first, then the drawn bust sits on its shoulders */
     hands = drawRobe(g, st.fx, box.neckY - hop, st.fy - hop, sc,
                      casting ? 'cast' : st.pose, t, INK, MID, DIM, BG)
-    drawSprite(g, BUST, box.x, by, sc, INK, MID, DIM, BG)
+    drawSprite(g, bustRows, box.x, by, sc, INK, MID, DIM, BG)
     if (!casting) {
       const c = [Math.round((hands.leftHand[0] + hands.rightHand[0]) / 2),
                  Math.round((hands.leftHand[1] + hands.rightHand[1]) / 2)]
@@ -212,6 +283,13 @@ function grimoire(m, t) {
       else if (st.pose === 'read') heldBook(g, c, c, INK, DIM, BG, t)
       else if (st.pose === 'craft') heldUnit(g, c, c, INK, DIM, BG, t)
     }
+  } else if (figure === 'reaction') {
+    /* One bitmap for the whole of her, so there is no pose and nothing held —
+       the animation is the performance. Frame 0 is the idle she rests on. */
+    const box = reactionBox(st)
+    drawSprite(g, REACTION_FRAMES[reaction.frameAt()], box.x, box.y, box.scale, INK, MID, DIM, BG)
+    /* she speaks once the Cast has handed the Module over */
+    if (!casting) drawBubble(g, box, lyraAt(mod), INK, MID, BG)
   } else if (figure !== 'none') {
     const fig = { x: st.fx, y: st.fy, h: st.fh }
     hands = drawWizard(g, fig, st.pose, t, INK, DIM, BG, casting && cast < .55 ? 1 : 0)
@@ -326,71 +404,6 @@ function grimoire(m, t) {
 
 /* ================= B. INSTRUMENT (kept for comparison, not developed) ================= */
 
-const VFD = '#7BE8FF', VFD_DIM = '#2A6E80', AMBER = '#FFAE3D', VBG = '#04080B'
-
-function instrument(m, t) {
-  g.fillStyle = VBG; g.fillRect(0, 0, W, H)
-  g.fillStyle = '#081218'
-  for (let y = 0; y < H; y += 3) g.fillRect(0, y, W, 1)
-  const tabW = (W - 16) / 6
-  MODULES.forEach((mm, i) => {
-    const x = 8 + i * tabW, on = i === mod
-    g.fillStyle = on ? VFD : '#0E2028'; g.fillRect(x, 8, tabW - 2, 11)
-    g.font = '8px Silkscreen, monospace'; g.fillStyle = on ? VBG : VFD_DIM
-    const lab = String(mm.slot).padStart(2, '0')
-    g.fillText(lab, x + tabW / 2 - g.measureText(lab).width / 2 - 1, 17)
-  })
-  g.font = '9px Silkscreen, monospace'; g.fillStyle = VFD; g.fillText(m.title, 8, 34)
-  g.font = '8px Silkscreen, monospace'; g.fillStyle = AMBER
-  const clock = (t % 60).toFixed(2).padStart(5, '0')
-  g.fillText(clock, W - 8 - g.measureText(clock).width, 34)
-  g.fillStyle = VFD_DIM; g.fillRect(8, 40, W - 16, 1)
-  const x0 = 8, bodyW = W - 16
-  let y = 54
-  g.font = '13px VT323, monospace'
-  if (m.kind === 'table') {
-    m.rows.forEach(r => {
-      g.fillStyle = VFD; g.fillText(r[0], x0, y)
-      g.font = '8px Silkscreen, monospace'; g.fillStyle = AMBER
-      g.fillText(r[2], W - 8 - g.measureText(r[2]).width, y)
-      g.font = '13px VT323, monospace'
-      g.fillStyle = '#0E2028'; g.fillRect(x0, y + 3, bodyW, 1); y += 15
-    })
-  } else if (m.kind === 'steps') {
-    m.steps.forEach((s, i) => {
-      g.font = '8px Silkscreen, monospace'; g.fillStyle = AMBER
-      g.fillText(String(i + 1).padStart(2, '0'), x0, y)
-      g.font = '13px VT323, monospace'; g.fillStyle = VFD
-      g.fillText(s, x0 + 20, y); y += 14
-    })
-  } else {
-    const src = m.kind === 'thesis' ? (xf > .5 ? m.b : m.a) : m
-    if (m.kind === 'thesis') {
-      g.font = '8px Silkscreen, monospace'; g.fillStyle = AMBER
-      g.fillText((xf > .5 ? 'B' : 'A') + '  ' + String(Math.round(xf * 100)).padStart(3, '0'), x0, y)
-      g.fillStyle = '#0E2028'; g.fillRect(x0 + 44, y - 5, bodyW - 44, 5)
-      g.fillStyle = AMBER; g.fillRect(x0 + 44 + xf * (bodyW - 48), y - 6, 3, 7)
-      y += 12
-      g.font = '13px VT323, monospace'; g.fillStyle = VFD
-      wrap(src.heading, bodyW).forEach(l => { g.fillText(l, x0, y); y += 13 })
-      y += 2
-    }
-    g.fillStyle = VFD
-    wrap(src.lines.join(' '), bodyW).forEach(l => { g.fillText(l, x0, y); y += 13 })
-    if (m.mail) { g.fillStyle = AMBER; y += 3; g.fillText(m.mail, x0, y); y += 14 }
-    g.fillStyle = VFD_DIM
-    for (const l of (m.dim || [])) for (const w of wrap(l, bodyW)) { g.fillText(w, x0, y); y += 12 }
-  }
-  const bars = 48, bw = (W - 16) / bars
-  for (let i = 0; i < bars; i++) {
-    const p = i / bars
-    const h = 2 + Math.abs(Math.sin(p * 9 + t * 2.1) * Math.cos(p * 4 - t * 1.3)) * 14
-    for (let s = 0; s < h; s += 2) {
-      g.fillStyle = s > 11 ? AMBER : s > 7 ? VFD : VFD_DIM
-      g.fillRect(8 + i * bw, H - 10 - s, Math.max(1, bw - 1), 1)
-    }
-  }
-}
 
 /* ================= C. CRACKTRO ================= */
 
@@ -481,22 +494,42 @@ function cracktro(m, t) {
   if (figure !== 'none') {
     const st = { fx: W - 46, fy: H - 20, fh: 74, pose: stage().pose }
     const cast = castP(), casting = cast > 0 && cast < 1
-    drawWizard(g, st, st.pose, t, BONE, DEEP, '#08070A', casting && cast < .55 ? 1 : 0)
+    if (figure === 'reaction') {
+      const box = reactionBox(st)
+      drawSprite(g, REACTION_FRAMES[reaction.frameAt()], box.x, box.y, box.scale,
+                 BONE, DEEP, DEEP, '#08070A')
+      if (!casting) drawBubble(g, box, lyraAt(mod), BONE, DEEP, '#08070A')
+    } else {
+      drawWizard(g, st, st.pose, t, BONE, DEEP, '#08070A', casting && cast < .55 ? 1 : 0)
+    }
     drawRaven(g, perchOf(st), t, BONE, DEEP)
     if (casting) drawSpell(g, castHand(st), cast, W, H, BONE, EMBER)
   }
 }
 
 /* ---------- drive ---------- */
-const DIRS = { grimoire, instrument, cracktro }
+const DIRS = { grimoire, cracktro }
+
+/**
+ * The Vigil chooses the Face. Grimoire is the day face and burns while any candle
+ * is still alight; Cracktro is the night face and takes over once the last one
+ * dies and the Screen's phosphor is the only source left in the room.
+ *
+ * 0.94 is not a taste threshold — it is where the third candle's ramp reaches zero
+ * in `scene.js` (`RAMPS[2] = [.56, .94]`). If that ramp moves, this moves with it.
+ * Reverses ADR-0012, which had the visitor switching Faces by hand; see ADR-0015.
+ */
+export const LAST_CANDLE_OUT = 0.94
+const faceFor = v => (v >= LAST_CANDLE_OUT ? 'cracktro' : 'grimoire')
 
 /** Module changes are a cut with a dithered curtain across it, not a fade. */
 function curtain() {
   const p = since() / .34
   if (p >= 1) return
   const level = p < .5 ? p * 2 : (1 - p) * 2
-  tone(0, 0, W, H, level, dir === 'cracktro' ? '#08070A' : '#0A0B09')
-  tone(0, 0, W, H, level * .5, dir === 'cracktro' ? RED : INK)
+  const night = faceFor(vigil) === 'cracktro'
+  tone(0, 0, W, H, level, night ? '#08070A' : '#0A0B09')
+  tone(0, 0, W, H, level * .5, night ? RED : INK)
 }
 
 let last = 0
@@ -504,7 +537,7 @@ function frame(now) {
   const t = now / 1000
   const dt = Math.min(.05, last ? t - last : 0); last = t
   if (figure !== 'none') updateRaven(dt, t, perchOf(stage()), roamOf(stage()))
-  DIRS[dir](MODULES[mod], t)
+  DIRS[faceFor(vigil)](MODULES[mod], t)
   curtain()
   big.clearRect(0, 0, 960, 540); big.drawImage(buf, 0, 0, 960, 540)
   real.clearRect(0, 0, W, H); real.drawImage(buf, 0, 0)
@@ -520,7 +553,6 @@ function press(attr, apply) {
     })
   })
 }
-press('dir', v => { dir = v })
 press('mod', v => {
   mod = +v
   /* something arrived — the raven goes to look at it */
@@ -528,6 +560,25 @@ press('mod', v => {
 })
 press('xf', v => { xf = +v })
 press('fig', v => { figure = v })
+press('bust', v => { bustRows = v === 'prev' ? BUST_PREV : BUST })
+
+/* The Vigil slider stands in for a Deck: it fires on every input event, in small
+   steps, which is exactly the signal `notify` is built to ignore until it adds up. */
+const vigilEl = document.getElementById('vigil')
+const faceEl = document.getElementById('face')
+const showFace = () => { if (faceEl) faceEl.textContent = faceFor(vigil).toUpperCase() }
+showFace()
+if (vigilEl) vigilEl.addEventListener('input', () => {
+  vigil = +vigilEl.value / 100
+  reaction.notify(vigil)
+  showFace()
+})
+const trigEl = document.getElementById('trigger')
+if (trigEl) trigEl.addEventListener('click', () => reaction.trigger())
+
+/* The workbench page lives as long as the tab does, but the reaction owns a
+   reduced-motion listener, so it gets released with the page all the same. */
+addEventListener('pagehide', () => reaction.dispose(), { once: true })
 
 /* An unused family silently falls back, and document.fonts.ready will not load a
    face nothing has asked for. Ask for each one by name. */

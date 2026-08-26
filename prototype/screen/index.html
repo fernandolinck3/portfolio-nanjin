@@ -20,10 +20,9 @@
     font:11px/1.5 monospace;white-space:pre-wrap;display:none;max-height:40%;overflow:auto}
 </style>
 <nav>
-  <span class="grp"><span>Direction</span>
-    <button data-dir="grimoire" aria-pressed="true">Grimoire</button>
-    <button data-dir="instrument" aria-pressed="false">Instrument</button>
-    <button data-dir="cracktro" aria-pressed="false">Cracktro</button>
+  <span class="grp"><span>Face</span>
+    <b id="face">GRIMOIRE</b>
+    <span style="color:#3A3833">&mdash; the Vigil chooses</span>
   </span>
   <span class="grp"><span>Module</span>
     <button data-mod="0" aria-pressed="true">Ident</button>
@@ -34,10 +33,19 @@
     <button data-mod="5" aria-pressed="false">Out</button>
   </span>
   <span class="grp"><span>Figure</span>
-    <button data-fig="drawn" aria-pressed="true">Drawn</button>
+    <button data-fig="reaction" aria-pressed="true">Wizard</button>
+    <button data-fig="drawn" aria-pressed="false">Bust</button>
     <button data-fig="witch" aria-pressed="false">Procedural</button>
     <button data-fig="hooded" aria-pressed="false">Cowled</button>
     <button data-fig="none" aria-pressed="false">None</button>
+  </span>
+  <span class="grp"><span>Vigil</span>
+    <input id="vigil" type="range" min="0" max="100" value="0" step="1" aria-label="Vigil">
+    <button id="trigger">Trigger</button>
+  </span>
+  <span class="grp"><span>Bust</span>
+    <button data-bust="live" aria-pressed="true">v2</button>
+    <button data-bust="prev" aria-pressed="false">v1</button>
   </span>
   <span class="grp"><span>Crossfade</span>
     <button data-xf="0.18" aria-pressed="true">Now</button>

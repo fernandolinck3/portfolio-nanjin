@@ -97,6 +97,12 @@ throughout. Grimoire, Cracktro and Instrument are the three drawn. A Face is aut
 not applied as a palette. The visitor changes it; it never changes which Module is live.
 _Avoid_: theme, skin, mode, style
 
+**Lyra**:
+The Wizard's name. A constellation and an instrument at once — the Plate carries a celestial
+chart and the Unit is a thing you play, so she is named for the one object that is both. Use her name
+when she is doing something; use **Wizard** for the role and the sprite.
+_Avoid_: the witch, the girl, the character
+
 **Wizard**:
 The character who inhabits the Screen. Not chibi — the register is *Symphony of the Night* by way of
 the 1-bit portraits on the `character` board: a long face with a pointed chin, tall lashed eyes with
