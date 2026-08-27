@@ -39,7 +39,7 @@ export function createSummoning(scene, works, { floorY }) {
   const group = new THREE.Group(); scene.add(group)
   const PED = { x: 5.6, z: -4.2 }
 
-  const stoneMat = new THREE.MeshPhysicalMaterial({
+  const stoneMat = new THREE.MeshStandardMaterial({
     color: 0x4A443E, roughness: 0.92, metalness: 0,
   })
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.52, 2.5, 16), stoneMat)
@@ -119,7 +119,10 @@ export function createSummoning(scene, works, { floorY }) {
     const on = s > 0.002
     sheet.visible = on
     motes.visible = on
+    /* An empty Plinth kept this at 0 and three still evaluated it for every pixel
+       of every lit surface. `visible` is what actually takes it out of the shader. */
     light.intensity = s * 3.4
+    light.visible = light.intensity > 0.0005
     if (!on) return
 
     /* it arrives turned away and settles face-on, rather than spinning like a
@@ -164,5 +167,7 @@ export function createSummoning(scene, works, { floorY }) {
 
   applyWork(0)
   update(0, 0)
-  return { update, applyWork, refresh, count: works.length, get index() { return index } }
+  /* `group` so `castOnly()` in scene.js can let the Plinth and the summoned Work
+     throw shadows — they stand in the key's cone and are the point of the rite. */
+  return { update, applyWork, refresh, group, count: works.length, get index() { return index } }
 }

@@ -195,14 +195,14 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
   const tex = paintTexture()
   const w = height * (700 / 940)
 
-  const giltMat = new THREE.MeshPhysicalMaterial({
-    color: GILT, metalness: 0.92, roughness: 0.34, clearcoat: 0.4,
+  const giltMat = new THREE.MeshStandardMaterial({
+    color: GILT, metalness: 0.92, roughness: 0.28,
   })
 
   /* the canvas, set back inside its frame so the moulding casts onto it */
   const canvas = new THREE.Mesh(
     new THREE.PlaneGeometry(w, height),
-    new THREE.MeshPhysicalMaterial({ map: tex, roughness: 0.86, metalness: 0 }),
+    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.86, metalness: 0 }),
   )
   canvas.position.set(x, y, wallFace + 0.06)
   group.add(canvas)
@@ -224,7 +224,7 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
   /* the plaque, on the wall below the frame */
   const plaque = new THREE.Mesh(
     new THREE.PlaneGeometry(1.5, 0.375),
-    new THREE.MeshPhysicalMaterial({
+    new THREE.MeshStandardMaterial({
       map: plaqueTexture(name, line), metalness: 0.85, roughness: 0.38,
     }),
   )

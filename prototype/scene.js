@@ -20,7 +20,14 @@ import {
 const W = () => innerWidth, H = () => innerHeight;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+/* On a retina panel `devicePixelRatio` is 2, which is *four times* the fragments of
+   1.0 — every shadow lookup, every PBR evaluation, four times over. It was the single
+   most expensive number in the file and it was not buying much: this scene is dark,
+   soft and largely textureless, which is exactly where supersampling shows least.
+   1.5 is 1.8x cheaper than 2 and still resolves the Plate's engraving.
+   `__unit.setQuality()` moves it. */
+let PIXEL_RATIO = Math.min(devicePixelRatio, 1.5);
+renderer.setPixelRatio(PIXEL_RATIO);
 
 /**
  * Shadows. T-07, and the tickets are right that it is the biggest single win.
@@ -38,10 +45,10 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
  * `__unit.setQuality()` turns them down or off if it costs too much.
  */
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.setSize(W(), H());
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.92;
+renderer.toneMappingExposure = 0.85;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.getElementById('stage').appendChild(renderer.domElement);
 
@@ -129,12 +136,55 @@ function envTexture() {
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromEquirectangular(envTexture()).texture;
 
-/* Tenebrism: one warm source, deep shadow, a cold sliver for separation. The three
-   directionals are the working rig; the candles below carry the visible light. */
-scene.add(new THREE.AmbientLight(0xffe6c4, 0.10));
-const key = new THREE.DirectionalLight(0xffc98a, 2.3); key.position.set(-4.2, 2.6, 3.0); scene.add(key);
-const fill = new THREE.DirectionalLight(0xffd9ae, 0.6); fill.position.set(3.2, 5.4, 3.0); scene.add(fill);
-const rim = new THREE.DirectionalLight(0x7d90a8, 1.5); rim.position.set(3.8, 1.9, -3.6); scene.add(rim);
+/**
+ * Tenebrism, measured (ADR-0018).
+ *
+ * This used to be three directional lights — key, fill and a cold rim — with the
+ * Candles adding colour on top. Measuring it against Fernando's reference is what
+ * killed that rig: sampled at eight points around the room, the *distribution* was
+ * close, but the Candles were contributing **2% of the light falling on the Altar
+ * they stand on**. Environment plus key plus fill carried 94%, and none of those
+ * three falls off with distance. Every surface in the room, from the Unit's face
+ * to the far wall eleven units back, landed within 1.5x of every other. A room lit
+ * to within 50% of itself everywhere is the definition of flat, and no amount of
+ * ornament survives it.
+ *
+ * The reference is the opposite shape: mean luminance 21/255, 82% of its pixels
+ * below 32, and a 30:1 centre-to-corner falloff. It is four pools of light in a
+ * black room.
+ *
+ * So the key is a SpotLight now, standing where the Candles stand. A spot costs
+ * exactly what a directional costs — one 2D shadow map, not the six-face cube a
+ * PointLight needs — so the perf argument that put directionals here is satisfied
+ * either way. What the cone buys is confinement: it lights the Altar and leaves
+ * the floor behind it alone, which a directional cannot do at any intensity.
+ *
+ * `fill` is gone. The room's bounce is the environment, at a third of its old
+ * strength. `rim` became the moon, which is the one source here that *should* be
+ * directional — it is 384,000km away, its rays are parallel, and unlike a lamp it
+ * does not go out with the Vigil.
+ *
+ * The numbers below are fitted, not chosen: `scratchpad/fit2.mjs` solves the rig
+ * against eight luminances measured off the reference, and these are what it
+ * returned. They are a starting point with arithmetic behind them, not a taste
+ * judgement — `__unit.setLight()` is how they get judged.
+ */
+const key = new THREE.SpotLight(0xffc98a, 17, 22, 0.86, 0.85, 2);
+key.position.set(-2.4, 4.6, 1.6);
+key.target.position.set(0, .2, -.2);
+scene.add(key); scene.add(key.target);
+
+/* The moon in the sky — `moon` is already the Moon Deck. Parallel rays, cold,
+   and it survives the Vigil — at the end of the
+   rite it and the Screen's phosphor are the only things left. */
+const moonlight = new THREE.DirectionalLight(0x8FA6C4, 0.42);
+moonlight.position.set(1.1, 2.4, 4.2);
+scene.add(moonlight);
+
+/* Bounce. A uniform environment is a poor stand-in for GI — real bounce falls off
+   into a corner and this does not — but it is the cheap half of the trick, and at
+   0.31 it sits under the practicals instead of drowning them. */
+scene.environmentIntensity = 0.40;
 
 /**
  * Only the key casts, and it is framed tightly on the Unit.
@@ -145,11 +195,16 @@ const rim = new THREE.DirectionalLight(0x7d90a8, 1.5); rim.position.set(3.8, 1.9
  * Candles dying, which is what tenebrism actually is.
  */
 key.castShadow = true;
-key.shadow.mapSize.set(2048, 2048);
+/* 2048 was chosen for a directional whose camera had to cover the whole room. The
+   spot's cone covers the Altar and nothing else, so 1024 texels land denser here
+   than 2048 did there — cheaper *and* crisper. */
+key.shadow.mapSize.set(1024, 1024);
 key.shadow.camera.near = 0.5;
 key.shadow.camera.far = 22;
-key.shadow.camera.left = -7; key.shadow.camera.right = 7;
-key.shadow.camera.top = 7; key.shadow.camera.bottom = -7;
+/* A spot's shadow camera is a perspective one and three derives its fov from the
+   cone angle, so the ortho box the directional needed is gone. The cone is already
+   the tight framing that comment above asks for — every texel it spends lands on
+   the Altar and the Unit rather than on eleven units of empty floor. */
 /* the Plate is a plane a hair above the Chassis: without a bias they z-fight in
    shadow and the whole faceplate crawls with acne */
 key.shadow.bias = -0.0008;
@@ -834,15 +889,68 @@ function faceMaps() {
 let maps = faceMaps();
 
 /** Rebuild the Plate's Print. Webfonts land after first paint, so this runs again once they do. */
+/**
+ * Rebuild the Plate's four maps.
+ *
+ * This is the most expensive call in the file: three canvases at 2048x1124 with the
+ * full ornament drawn into them, a normal map derived at 1024x562, and something like
+ * 30MB of texture uploaded. It costs what a small level load costs, and that is fine
+ * — provided it happens when something actually changed, and not per pointer move.
+ *
+ * Two things here were quietly wrong:
+ *
+ * **It leaked.** Every call built four fresh `CanvasTexture`s and abandoned the four
+ * before them. Nothing disposes a texture on garbage collection — the GPU copy is
+ * freed only by an explicit `dispose()` — so a single drag across one dial leaked
+ * tens of megabytes of VRAM, and the machine got progressively worse the more it was
+ * tuned. That is the opposite of what a debug knob should do.
+ *
+ * **It recompiled the shader.** `material.needsUpdate` tells three the program itself
+ * must be rebuilt. Swapping one texture for another of the same kind does not need
+ * that — only going from *no* map to *a* map does, because that changes the defines.
+ * It is now set on the first build and never again.
+ */
 function regenFace() {
   const m = faceMaps();
   const r = reliefMaps(1024, 562);
+
+  /* free the previous upload before dropping the reference to it */
+  for (const t of [faceMat.map, faceMat.emissiveMap, faceMat.normalMap, faceMat.metalnessMap]) {
+    if (t) t.dispose();
+  }
+
+  const first = !faceMat.map;
   faceMat.map = m.albedo; faceMat.emissiveMap = m.glow; faceMat.normalMap = r.normal;
   faceMat.metalnessMap = m.metal;
   /* a swapped-in CanvasTexture is not uploaded until it is marked dirty itself */
   [m.albedo, m.glow, r.normal, m.metal].forEach(t => { t.needsUpdate = true; });
-  faceMat.needsUpdate = true;
+  /* only the first build changes the shader's defines; the rest just change pixels */
+  if (first) faceMat.needsUpdate = true;
   maps = m;
+}
+
+/**
+ * `regenFace()`, at a rate a hand can drag against.
+ *
+ * A range input fires `input` on every pointer move — sixty to a hundred and twenty
+ * times a second — and each one was triggering the whole rebuild above. That is the
+ * stutter: not the scene, but a full texture regeneration per pixel of slider travel.
+ *
+ * Leading edge, so the first move answers immediately and the dial feels live; then
+ * at most one rebuild per `FACE_THROTTLE`; then a trailing one so the value you let
+ * go on is the value you see. The readout beside each dial is updated by the handler
+ * itself and is never throttled, so the number tracks the thumb exactly even while
+ * the Plate is catching up.
+ */
+const FACE_THROTTLE = 150;
+let faceTimer = 0, faceQueued = false;
+function scheduleFace() {
+  if (faceTimer) { faceQueued = true; return; }
+  regenFace();
+  faceTimer = setTimeout(() => {
+    faceTimer = 0;
+    if (faceQueued) { faceQueued = false; scheduleFace(); }
+  }, FACE_THROTTLE);
 }
 
 /* jog plate texture */
@@ -939,10 +1047,21 @@ function plateGeom(w, d, hole) {
 const unit = new THREE.Group(); scene.add(unit);
 
 /* chassis */
-const chassisMat = new THREE.MeshPhysicalMaterial({
-  color: 0x232528, metalness: .9, roughness: .34,
+/**
+ * Clearcoat is gone from everything except the Plate (ADR-0019).
+ *
+ * It is a *second specular lobe*, evaluated per light per fragment on top of the
+ * base one. Measured on the machine this runs on, switching it off across the
+ * thirty-six meshes that carried it took the frame from 119ms to 40ms — it was
+ * costing two thirds of the render.
+ *
+ * On a metal it was buying nothing to begin with: metals have no dielectric coat
+ * unless they are lacquered, and every one of these already had `metalness` near 1.
+ * A touch less roughness gets the same read for free.
+ */
+const chassisMat = new THREE.MeshStandardMaterial({
+  color: 0x232528, metalness: .9, roughness: .30,
   roughnessMap: wearMap(6604, 180, .34, 2),
-  clearcoat: .35, clearcoatRoughness: .5,
 });
 const chassis = new THREE.Mesh(slab(PLATE.w + .02, PLATE.d + .02, .34, .09, APERTURE), chassisMat);
 unit.add(chassis);
@@ -959,6 +1078,8 @@ const faceMat = new THREE.MeshPhysicalMaterial({
   metalnessMap: maps.metal,
   /* handled metal: the finish is not equally smooth everywhere it has been touched */
   roughnessMap: wearMap(5503, 240, .30, 2),
+  /* the one surviving clearcoat in the scene: the Plate is the object, and its
+     lacquer over engraved metal is the whole reason it reads as a faceplate */
   metalness: .85, roughness: .34, clearcoat: .3, clearcoatRoughness: .45,
 });
 const face = new THREE.Mesh(plateGeom(PLATE.w, PLATE.d, APERTURE), faceMat);
@@ -1018,7 +1139,7 @@ screen.userData.ctl = 'screen';
 const wellH = FACE_Y - WELL_Y;
 const well = new THREE.Mesh(
   new THREE.BoxGeometry(OPENING.w, wellH + .02, OPENING.d),
-  new THREE.MeshPhysicalMaterial({
+  new THREE.MeshStandardMaterial({
     color: 0x0B0C0D, metalness: .55, roughness: .62, side: THREE.BackSide,
   }));
 well.position.set(0, WELL_Y + (wellH + .02) / 2 - .012, SCREEN_Z); unit.add(well);
@@ -1044,11 +1165,11 @@ function frameGeom(w, d, iw, id, h) {
   g.rotateX(-Math.PI / 2); g.computeVertexNormals();
   return g;
 }
-const rimMat = new THREE.MeshPhysicalMaterial({
-  color: 0x16181A, metalness: .88, roughness: .28, clearcoat: .4,
+const rimMat = new THREE.MeshStandardMaterial({
+  color: 0x16181A, metalness: .88, roughness: .24,
 });
-const giltMat = new THREE.MeshPhysicalMaterial({
-  color: 0xB08D4A, metalness: .95, roughness: .3, clearcoat: .5,
+const giltMat = new THREE.MeshStandardMaterial({
+  color: 0xB08D4A, metalness: .95, roughness: .26,
 });
 const bezel = new THREE.Mesh(frameGeom(RIM.w, RIM.d, OPENING.w, OPENING.d, .034), rimMat);
 bezel.position.set(0, FACE_Y - .002, SCREEN_Z); unit.add(bezel);
@@ -1117,9 +1238,10 @@ bezel.position.set(0, FACE_Y - .002, SCREEN_Z); unit.add(bezel);
  * not a veil. `__unit.setScreen({ glass })` tunes it.
  */
 const screenGlass = new THREE.Mesh(new THREE.PlaneGeometry(RIM.w - .02, RIM.d - .02),
-  new THREE.MeshPhysicalMaterial({
+  new THREE.MeshStandardMaterial({
     color: 0x9FB4B0, transparent: true, opacity: .055,
-    metalness: 0, roughness: .06, clearcoat: 1, clearcoatRoughness: .04,
+    /* was clearcoat 1 — a full second lobe for a pane at 5.5% opacity */
+    metalness: 0, roughness: .06,
     depthWrite: false,
   }));
 screenGlass.rotation.x = -Math.PI / 2;
@@ -1134,12 +1256,12 @@ glow.position.set(0, .95, SCREEN_Z); unit.add(glow);
 function deck(x, kind) {
   const g = new THREE.Group(); g.position.set(x, .34, WHEEL.z); unit.add(g);
   const ring = new THREE.Mesh(new THREE.CylinderGeometry(WHEEL.r, WHEEL.r, .1, 96, 1, false),
-    new THREE.MeshPhysicalMaterial({ color: 0x8E8C84, metalness: 1, roughness: .22, clearcoat: .6 }));
+    new THREE.MeshStandardMaterial({ color: 0x8E8C84, metalness: 1, roughness: .18 }));
   ring.position.y = .05; ring.userData.ctl = kind; g.add(ring);
   /* Stone, not metal: the tracery is carved and the light is behind it, so a
      mirror finish would fight the thing that makes it read. The emissive map is
      the piercings alone, and `applyVigil` decides how hard they burn. */
-  const plateMat = new THREE.MeshPhysicalMaterial({
+  const plateMat = new THREE.MeshStandardMaterial({
     map: DECK[kind].albedo, bumpMap: DECK[kind].height, bumpScale: 5,
     emissiveMap: DECK[kind].emissive,
     emissive: kind === 'sun' ? 0xF0A24A : 0x8FBEDC,
@@ -1155,7 +1277,7 @@ function deck(x, kind) {
   const lamp = new THREE.PointLight(kind === 'sun' ? 0xF0A24A : 0x8FBEDC, 0, 2.6, 2);
   lamp.position.set(0, .30, 0); g.add(lamp);
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(WHEEL.r * .125, WHEEL.r * .125, .13, 48),
-    new THREE.MeshPhysicalMaterial({ color: kind === 'sun' ? 0x2A2118 : 0x14161A, metalness: .9, roughness: .25 }));
+    new THREE.MeshStandardMaterial({ color: kind === 'sun' ? 0x2A2118 : 0x14161A, metalness: .9, roughness: .25 }));
   hub.position.y = .075; g.add(hub);
   return { group: g, ring, plate, mat: plateMat, lamp };
 }
@@ -1164,7 +1286,7 @@ const sun = deck(WHEEL.x, 'sun');
 const deckMats = [moon.plate.material, sun.plate.material];
 
 /* pads */
-const padMat = () => new THREE.MeshPhysicalMaterial({ color: 0x101112, metalness: .3, roughness: .55 });
+const padMat = () => new THREE.MeshStandardMaterial({ color: 0x101112, metalness: .3, roughness: .55 });
 const lampMats = [];
 const padMeshes = [];
 for (let i = 0; i < 6; i++) {
@@ -1181,10 +1303,10 @@ for (let i = 0; i < 6; i++) {
 
 /* crossfader */
 const slot = new THREE.Mesh(slab(FADER.len, .14, .04, .015),
-  new THREE.MeshPhysicalMaterial({ color: 0x0C0D0E, metalness: .5, roughness: .6 }));
+  new THREE.MeshStandardMaterial({ color: 0x0C0D0E, metalness: .5, roughness: .6 }));
 slot.position.set(0, .335, FADER.z); unit.add(slot);
 const cap = new THREE.Mesh(slab(.13, .26, .11, .02),
-  new THREE.MeshPhysicalMaterial({ color: 0xB6B4AA, metalness: .7, roughness: .28 }));
+  new THREE.MeshStandardMaterial({ color: 0xB6B4AA, metalness: .7, roughness: .28 }));
 /** Where the cap sits for a given crossfade, 0..1. */
 const capX = v => -FADER.travel / 2 + v * FADER.travel;
 cap.position.set(capX(.18), .35, FADER.z); cap.userData.ctl = 'fader'; unit.add(cap);
@@ -1271,22 +1393,25 @@ function clothTexture() {
 const altar = new THREE.Group(); scene.add(altar);
 
 const mensa = new THREE.Mesh(new THREE.BoxGeometry(14.6, .62, 8.6),
-  new THREE.MeshPhysicalMaterial({
+  new THREE.MeshStandardMaterial({
     map: woodTexture(false), bumpMap: woodTexture(true), bumpScale: .5,
-    color: 0xA08B78, metalness: 0, roughness: .46,
-    clearcoat: .35, clearcoatRoughness: .30,   /* an old waxed top, not a matte board */
+    /* The Altar top is one of the two largest surfaces on screen, so its clearcoat
+       was one of the two most expensive. Roughness alone still reads as waxed. */
+    color: 0xA08B78, metalness: 0, roughness: .38,
   }));
 mensa.position.y = -.31; altar.add(mensa);
 
 const cloth = new THREE.Mesh(new THREE.PlaneGeometry(7.6, 4.75),
-  new THREE.MeshPhysicalMaterial({
+  new THREE.MeshStandardMaterial({
     map: clothTexture(), transparent: true, roughness: .95, metalness: 0, color: 0x9a927f,
   }));
 cloth.rotation.x = -Math.PI / 2; cloth.position.y = .004; altar.add(cloth);
 
 /** A turned baluster candlestick, gilt, with a live flame and its own light. */
-const GILT = new THREE.MeshPhysicalMaterial({
-  color: 0xC9A03C, metalness: 1, roughness: .26, clearcoat: .5,
+const GILT = new THREE.MeshStandardMaterial({
+  /* metalness 1 — a clearcoat on a solid metal is a second specular lobe for a
+     coat that is not physically there. Roughness carries the gilt on its own. */
+  color: 0xC9A03C, metalness: 1, roughness: .22,
 });
 function candlestick(x, z, height) {
   const g = new THREE.Group(); g.position.set(x, 0, z); altar.add(g);
@@ -1298,9 +1423,16 @@ function candlestick(x, z, height) {
   ].map(([r, y]) => new THREE.Vector2(r * 1.0, y * height));
   const stick = new THREE.Mesh(new THREE.LatheGeometry(prof, 48), GILT);
   g.add(stick);
+  /**
+   * The wax was `transmission: .35`, and transmission is not a material property in
+   * three — it is a **whole extra render of the scene** into a transmission buffer,
+   * every frame, so that the surface has something to refract. Three candle stubs a
+   * few pixels wide were charging the scene a second pass: 110ms down to 65ms with
+   * it off, forty per cent of the frame for translucency nobody can see at this size.
+   */
   const wax = new THREE.Mesh(new THREE.CylinderGeometry(.085, .095, .52, 24),
-    new THREE.MeshPhysicalMaterial({
-      color: 0xF3E7CE, roughness: .55, transmission: .35, thickness: .3, metalness: 0,
+    new THREE.MeshStandardMaterial({
+      color: 0xF3E7CE, roughness: .55, metalness: 0,
     }));
   wax.position.y = height * .98 + .26; g.add(wax);
   const flame = new THREE.Mesh(new THREE.SphereGeometry(.075, 16, 16),
@@ -1310,9 +1442,12 @@ function candlestick(x, z, height) {
   const halo = new THREE.Mesh(new THREE.SphereGeometry(.20, 16, 16),
     new THREE.MeshBasicMaterial({ color: 0xFF9A3C, transparent: true, opacity: .3, blending: THREE.AdditiveBlending }));
   halo.position.copy(flame.position); g.add(halo);
-  const light = new THREE.PointLight(0xFFB162, 5.5, 13, 2);
+  /* 5.5 while three falloff-free directionals were doing the work; the fit against
+     the reference puts it here now that this light is actually carrying the Altar.
+     Lower number, far larger share — it went from 2% of the Altar to 54%. */
+  const light = new THREE.PointLight(0xFFB162, 4.4, 15, 2);
   light.position.copy(flame.position); g.add(light);
-  return { group: g, flame, halo, light, base: { flame: 1, light: 5.5, halo: .3 } };
+  return { group: g, flame, halo, light, base: { flame: 1, light: 4.4, halo: .3 } };
 }
 
 /* A triangle, as the rite's hearse is a triangle. Ordered as they go out. */
@@ -1453,11 +1588,11 @@ function rugTexture() {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
 }
 
-const stoneMat = new THREE.MeshPhysicalMaterial({
+const stoneMat = new THREE.MeshStandardMaterial({
   map: stoneTexture(false), bumpMap: stoneTexture(true), bumpScale: .5,
   color: 0x6E6862, roughness: .95, metalness: 0,
 });
-const panelMat = new THREE.MeshPhysicalMaterial({
+const panelMat = new THREE.MeshStandardMaterial({
   map: panelTexture(false), bumpMap: panelTexture(true), bumpScale: .5,
   roughnessMap: wearMap(4402, 200, .26, 4),
   /* near-white tint: the colour lives in the map now, and tinting paint brown was
@@ -1466,15 +1601,16 @@ const panelMat = new THREE.MeshPhysicalMaterial({
 });
 
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(70, 70),
-  new THREE.MeshPhysicalMaterial({
+  new THREE.MeshStandardMaterial({
     map: woodTexture(false), bumpMap: woodTexture(true), bumpScale: .4,
     roughnessMap: wearMap(3301, 300, .42, 6),
-    color: 0x6B584A, roughness: .62, metalness: 0, clearcoat: .25, clearcoatRoughness: .5,
+    /* the other large surface — see the Altar top above */
+    color: 0x6B584A, roughness: .56, metalness: 0,
   }));
 floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR_Y; room.add(floor);
 
 const rug = new THREE.Mesh(new THREE.PlaneGeometry(19, 13),
-  new THREE.MeshPhysicalMaterial({ map: rugTexture(), roughness: .98, metalness: 0, color: 0x9a8f86 }));
+  new THREE.MeshStandardMaterial({ map: rugTexture(), roughness: .98, metalness: 0, color: 0x9a8f86 }));
 rug.rotation.x = -Math.PI / 2; rug.position.set(0, FLOOR_Y + .01, 1.5); room.add(rug);
 
 /* far wall, extruded around a lancet opening */
@@ -1572,7 +1708,7 @@ const glass = new THREE.Mesh(new THREE.ShapeGeometry(glassShape),
 glass.position.z = WALL_Z + .05; room.add(glass);
 
 /* stone tracery: jambs, transom, mullion */
-const stoneTrim = new THREE.MeshPhysicalMaterial({ color: 0x6B655C, roughness: .92 });
+const stoneTrim = new THREE.MeshStandardMaterial({ color: 0x6B655C, roughness: .92 });
 const bar = (w, h, x, y) => {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, .40), stoneTrim);
   m.position.set(x, y, WALL_Z + .06); room.add(m); return m;
@@ -1598,7 +1734,7 @@ function velvetTexture() {
   }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
-const velvet = new THREE.MeshPhysicalMaterial({
+const velvet = new THREE.MeshStandardMaterial({
   map: velvetTexture(), color: 0x8C4A46, roughness: .96, metalness: 0, side: THREE.DoubleSide,
 });
 for (const sx of [-1, 1]) {
@@ -1633,6 +1769,25 @@ const portrait = createPortrait(scene, {
   height: 4.4, name: 'Lyra', line: 'KEEPER OF THE VIGIL',
 });
 
+/**
+ * Her picture light.
+ *
+ * The middle of the far wall is the one region no other source reaches: the
+ * Candles are eight units away across the Altar and the globe lamps are out at the
+ * ends of the room. In the reference that whole stretch is lit by exactly one
+ * thing — a faint teal wash behind the framed painting — and without an equivalent
+ * the monitors and the wall between the panel groups fall to nothing.
+ *
+ * It sits in front of the frame rather than behind it. Behind, at the intensity
+ * this needs, it burns a white hole in the plaster a foot away; in front it washes
+ * her, the wall around her and the near monitor, which is what the reference does.
+ * Teal because it is the Screen's phosphor — the same light, one wall over.
+ */
+const pictureLight = new THREE.PointLight(0x7FD9B0, 11, 9, 2);
+pictureLight.position.set(-4.9, FLOOR_Y + 5.4, WALL_Z + 1.9);
+scene.add(pictureLight);
+const PIC0 = pictureLight.intensity;
+
 /* ---------- the studio ----------
    Acoustic panels, monitors, the credenza of records, the pedal cabinet and the
    two globe lamps. The Altar, the Candles, the window and the Portrait are not
@@ -1648,7 +1803,7 @@ const legProfile = [
   [.22, .48], [.24, .60], [.16, .74], [.13, 1.0], [.20, 1.14],
   [.22, 1.30], [.15, 1.46], [.14, 1.90], [.24, 2.00], [.26, 2.16],
 ];
-const legMat = new THREE.MeshPhysicalMaterial({
+const legMat = new THREE.MeshStandardMaterial({
   map: woodTexture(false), color: 0x8A7563, roughness: .55, metalness: 0,
 });
 for (const lx of [-6.2, 6.2]) for (const lz of [-3.5, 3.5]) {
@@ -1659,16 +1814,21 @@ for (const lx of [-6.2, 6.2]) for (const lz of [-3.5, 3.5]) {
 }
 
 /* ---------- vigil: the lights go out one at a time (ADR-0006) ----------
-   The three-point rig is the three candles. Rim dies first, then fill, then key.
-   At full vigil only the Screen's phosphor is left, and it rakes across the Plate
-   at a grazing angle so the Nightwork engraved there finally reads. */
+   The three Candles *are* the three stages now. They used to be decoration on top
+   of a three-point rig that did the actual dimming — rim on the first ramp, fill on
+   the second, key on the third — which meant the rite was performed by three lights
+   the visitor cannot see, standing in for three he can. Now that the Candles carry
+   the Altar (ADR-0018) the staging is theirs, and the key rides the last ramp with
+   the last of them because that is the Candle it stands for.
+   At full vigil only the Screen's phosphor and the moon are left, and the phosphor
+   rakes across the Plate at a grazing angle so the Nightwork engraved there reads. */
 let vigil = +(new URLSearchParams(location.search).get('vigil') || 0) / 100;
 
 /** Grazing phosphor spill. Absent under room light, it is the only source at full vigil. */
 const rake = new THREE.DirectionalLight(0x7FD9B0, 0);
 rake.position.set(-3.4, .34, -2.2); unit.add(rake);
 
-const KEY0 = key.intensity, FILL0 = fill.intensity, RIM0 = rim.intensity;
+const KEY0 = key.intensity, MOON0 = moonlight.intensity;
 const ENV0 = scene.environmentIntensity ?? 1;
 
 /* The ramps live in `light.js` now — the Screen reads the same three pairs to
@@ -1676,9 +1836,18 @@ const ENV0 = scene.environmentIntensity ?? 1;
    about the same numbers is how they drift. */
 
 function applyVigil() {
-  rim.intensity  = RIM0  * candle(vigil, ...RAMPS[0]);
-  fill.intensity = FILL0 * candle(vigil, ...RAMPS[1]);
-  key.intensity  = KEY0  * candle(vigil, ...RAMPS[2]);
+  dim(key, KEY0 * candle(vigil, ...RAMPS[2]));
+  /* The moon does not go out. It is the only thing in here that is not a flame,
+     and the room ending on it is the point of the rite. */
+  dim(moonlight, MOON0);
+
+  /* Her picture light is a fixture lamp, so it dies early with the other two —
+     Lyra herself does not, she goes on rising on her own emissive. Her surviving
+     the wall around her going black is the whole reason she is a fixture. */
+  {
+    const k = Math.max(0, Math.min(1, 1 - vigil / .55));
+    dim(pictureLight, PIC0 * k * k * (3 - 2 * k));
+  }
 
   CANDLES.forEach((c, i) => {
     const k = candle(vigil, ...RAMPS[i]);
@@ -1687,7 +1856,7 @@ function applyVigil() {
     c.flame.scale.set(.55 + k * .45, .7 + k * 1.4, .55 + k * .45);
     c.flame.material.opacity = Math.min(1, k * 1.6);
     c.halo.material.opacity = c.base.halo * k;
-    c.light.intensity = c.base.light * k;
+    dim(c.light, c.base.light * k);
     c.flame.visible = c.halo.visible = k > .001;
   });
   scene.environmentIntensity = ENV0 * (1 - vigil * .88);
@@ -1700,8 +1869,8 @@ function applyVigil() {
     const glow = deckGlow(vigil);
     sun.mat.emissiveIntensity = glow.sun * 1.5;
     moon.mat.emissiveIntensity = glow.moon * 1.5;
-    sun.lamp.intensity = glow.sun * 1.1;
-    moon.lamp.intensity = glow.moon * 1.1;
+    dim(sun.lamp, glow.sun * 1.1);
+    dim(moon.lamp, glow.moon * 1.1);
   }
 
   /* the studio's own lamps go out first, before the Candles */
@@ -1709,15 +1878,15 @@ function applyVigil() {
 
   /* the decks turn the day. Sun up, and it is afternoon outside; Moon up, and it is night. */
   nightSky.material.opacity = vigil;
-  skyLight.intensity = 3.2 * (1 - vigil) + 1.1 * vigil;
+  dim(skyLight, 3.2 * (1 - vigil) + 1.1 * vigil);
   skyLight.color.setRGB(1 - vigil * .38, .894 - vigil * .18, .737 + vigil * .11);
-  wallWash.intensity = .5 * (1 - vigil) + .3 * vigil;
+  dim(wallWash, .5 * (1 - vigil) + .3 * vigil);
   wallWash.color.setRGB(.784 - vigil * .22, .718 - vigil * .08, .604 + vigil * .16);
 
   /* the screen takes over the room */
   glow.intensity = 2.4 + vigil * 5.2;
   glow.distance = 3.4 + vigil * 2.6;
-  rake.intensity = Math.max(0, (vigil - .42) / .58) * 3.1;
+  dim(rake, Math.max(0, (vigil - .42) / .58) * 3.1);
 
   /* the phosphorescent Print charges under light and burns without it */
   faceMat.emissiveIntensity = Math.pow(vigil, 1.4) * 1.15;
@@ -1866,10 +2035,17 @@ vslider.addEventListener('input', () => setVigil(+vslider.value / 100));
 /* engraving dials — tune the Plate live against references */
 const dial = (id, read, fmt) => {
   const el = document.getElementById(id), out = document.getElementById(id + 'v');
+  /* the readout is instant; the Plate is throttled */
   el.addEventListener('input', () => {
     const v = read(+el.value);
     out.textContent = fmt(v);
     ENG = { ...ENG, [id]: v };
+    scheduleFace();
+  });
+  /* `change` lands on release — the last value always gets a full, unthrottled build */
+  el.addEventListener('change', () => {
+    faceQueued = false;
+    if (faceTimer) { clearTimeout(faceTimer); faceTimer = 0; }
     regenFace();
   });
 };
@@ -1974,7 +2150,38 @@ function groundShadows(root) {
     o.castShadow = !unlit && !overlay && !inverted && m.transparent !== true;
   });
 }
+/**
+ * Receiving is cheap. Casting is a second draw call, every frame.
+ *
+ * `groundShadows` decides *eligibility* — what is solid enough to throw a shadow at
+ * all — and running it over the whole scene set `castShadow` on the 70x70 floor, both
+ * walls, the rug, forty-four records, six acoustic panels and the furniture. A shadow
+ * map is a full render from the light's point of view, so that made **the entire scene
+ * draw twice per frame**, for shadows almost none of which are ever visible: the key
+ * is one spot over the Altar, and the comment on it says in as many words that it is
+ * framed tightly on the Unit.
+ *
+ * So eligibility is not the same as worth it. Only the objects the visitor can watch
+ * a shadow fall from actually cast: the Unit and what stands on the Altar with it,
+ * plus the Plinth and whatever is summoned onto it. The room still *receives* — the
+ * cloth taking the Unit's shadow is the most important shadow in the scene and it is
+ * untouched — it simply stops paying to throw shadows nobody sees.
+ */
+function castOnly(...roots) {
+  scene.traverse(o => { if (o.isMesh || o.isInstancedMesh) o.castShadow = false; });
+  for (const r of roots) {
+    if (!r) continue;
+    r.traverse(o => {
+      if (!(o.isMesh || o.isInstancedMesh) || !o.material) return;
+      const m = o.material;
+      if (m.isMeshBasicMaterial || m.depthWrite === false || m.side === THREE.BackSide) return;
+      if (m.transparent === true) return;
+      o.castShadow = true;
+    });
+  }
+}
 groundShadows(scene);
+castOnly(unit, altar, summoning.group);
 
 window.__unit = {
   /** rAF is throttled in a background tab, so never trust the last frame's matrices. */
@@ -1999,16 +2206,169 @@ window.__unit = {
    *   1  cheap — 1024 map, hard filter
    *   0  off
    */
+  /**
+   * Quality, by what it actually costs.
+   *
+   * Shadows were the only thing here, and they were never the expensive part. The
+   * two numbers that decide whether this runs are the **pixel ratio** — 2.0 is four
+   * times the fragments of 1.0 — and the **Screen's frame rate**, which drags a
+   * software blur and a 2MB texture upload behind it every time it ticks.
+   *
+   *   2  crisp   — ratio 1.5, Screen at 24, soft shadows
+   *   1  cheap   — ratio 1.0, Screen at 15, hard shadows
+   *   0  survive — ratio 0.75, Screen at 10, no shadows
+   */
   setQuality(level) {
+    PIXEL_RATIO = level >= 2 ? Math.min(devicePixelRatio, 1.5) : level >= 1 ? 1 : 0.75;
+    renderer.setPixelRatio(PIXEL_RATIO);
+    renderer.setSize(W(), H());
+    SCREEN_STEP = level >= 2 ? 1 / 24 : level >= 1 ? 1 / 15 : 1 / 10;
     if (level <= 0) { renderer.shadowMap.enabled = false; }
     else {
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = level >= 2 ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
-      key.shadow.mapSize.set(level >= 2 ? 2048 : 1024, level >= 2 ? 2048 : 1024);
+      key.shadow.mapSize.set(level >= 2 ? 1024 : 512, level >= 2 ? 1024 : 512);
       if (key.shadow.map) { key.shadow.map.dispose(); key.shadow.map = null; }
     }
     scene.traverse(o => { if (o.isMesh && o.material) o.material.needsUpdate = true; });
-    return level;
+    return { level, pixelRatio: PIXEL_RATIO, screenFps: Math.round(1 / SCREEN_STEP) };
+  },
+
+  /**
+   * Measure what this scene actually costs, and what each part of it costs.
+   *
+   * `__unit.perf()` — full sweep, about 25s. `__unit.perf(1)` — quick, about 10s.
+   *
+   * Nobody working on this can see the scene, so "it feels heavy" has to become a
+   * number before it can become a fix. This runs the same scene under a series of
+   * configurations, each one with a single suspect removed, and prices the
+   * difference. A row's `saved` column is what switching that thing off gives back.
+   *
+   * Two clocks, because one of them lies:
+   *
+   *   - `interval` is wall time between frames. It is what the visitor feels, but
+   *     with vsync it is quantised to the refresh rate, so a scene with 40% headroom
+   *     and one with 5% both read 16.7ms. Use it to see *whether* frames are being
+   *     dropped.
+   *   - `work` is CPU spent inside the frame callback. It is not quantised and it is
+   *     what tells you *which* thing to cut. GPU time lands here only where the
+   *     driver blocks, so treat it as a floor, not a total.
+   *
+   * The first samples after a config change are discarded — a changed pixel ratio
+   * reallocates buffers and a changed shadow map recompiles, and those one-off
+   * costs are not what is being measured.
+   */
+  async perf(quick = 0) {
+    const FRAMES = quick ? 45 : 110, WARMUP = quick ? 12 : 25;
+    const run = () => new Promise(res => {
+      const iv = [], wk = []; let n = 0;
+      perfSample = (interval, work) => {
+        if (++n <= WARMUP) return;
+        iv.push(interval); wk.push(work);
+        if (iv.length >= FRAMES) { perfSample = null; res({ iv, wk }); }
+      };
+    });
+    const med = a => { const b = [...a].sort((x, y) => x - y); return b[b.length >> 1]; };
+    const p95 = a => { const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length * .95)]; };
+
+    /* saved and restored around the whole sweep */
+    const S0 = {
+      ratio: PIXEL_RATIO, step: SCREEN_STEP, screen: SCREEN_ON,
+      shadows: renderer.shadowMap.enabled, decor: decor.group.visible,
+      room: room.visible, env: scene.environmentIntensity,
+    };
+    const setRatio = r => { PIXEL_RATIO = r; renderer.setPixelRatio(r); renderer.setSize(W(), H()); };
+    const restore = () => {
+      setRatio(S0.ratio); SCREEN_STEP = S0.step; SCREEN_ON = S0.screen;
+      renderer.shadowMap.enabled = S0.shadows; decor.group.visible = S0.decor;
+      room.visible = S0.room; scene.environmentIntensity = S0.env;
+    };
+
+    const cases = [
+      ['baseline (as shipped)',   () => {}],
+      ['Screen off entirely',     () => { SCREEN_ON = false; }],
+      ['Screen back at 60fps',    () => { SCREEN_STEP = 1 / 60; }],
+      ['shadows off',             () => { renderer.shadowMap.enabled = false; }],
+      ['pixel ratio 1.0',         () => setRatio(1)],
+      ['pixel ratio 0.75',        () => setRatio(.75)],
+      ['furnishing hidden',       () => { decor.group.visible = false; }],
+      ['whole room hidden',       () => { room.visible = false; }],
+      ['environment off',         () => { scene.environmentIntensity = 0; }],
+      ['all of the above cheap',  () => { SCREEN_STEP = 1 / 10; renderer.shadowMap.enabled = false; setRatio(.75); }],
+    ];
+
+    const rows = [];
+    for (const [name, apply] of cases) {
+      restore(); apply();
+      const { iv, wk } = await run();
+      /* read the scene's size *now*, under this config — reading it after the sweep
+         would report whatever the last and cheapest case happened to leave behind */
+      rows.push({
+        name, iv: med(iv), ivp95: p95(iv), wk: med(wk),
+        calls: renderer.info.render.calls, tris: renderer.info.render.triangles,
+      });
+    }
+    restore();
+
+    const base = rows[0];
+    const pad = (v, n) => String(v).padStart(n);
+    const out = [
+      '',
+      'TENEBRAE PERF  ' + innerWidth + 'x' + innerHeight + ' @ ratio ' + S0.ratio +
+        '  ·  ' + rows[0].tris.toLocaleString() + ' tris' +
+        '  ·  ' + rows[0].calls + ' draw calls' +
+        '  ·  ' + renderer.info.memory.textures + ' textures' +
+        '  ·  ' + renderer.info.programs.length + ' programs',
+      '',
+      'configuration            interval  p95     work     saved   fps',
+      '------------------------------------------------------------------',
+    ];
+    for (const r of rows) {
+      const saved = r === base ? '' : (base.wk - r.wk >= 0 ? '-' : '+') + Math.abs(base.wk - r.wk).toFixed(1) + 'ms';
+      out.push(
+        r.name.padEnd(24) +
+        pad(r.iv.toFixed(1), 7) + ' ' + pad(r.ivp95.toFixed(1), 6) + ' ' +
+        pad(r.wk.toFixed(1) + 'ms', 8) + ' ' + pad(saved, 8) + ' ' +
+        pad((1000 / r.iv).toFixed(0), 5));
+    }
+    out.push('------------------------------------------------------------------');
+    out.push('interval = wall time between frames (vsync-quantised; 16.7 = a clean 60)');
+    out.push('work     = CPU inside the frame callback; this is the one to cut');
+    out.push('saved    = work given back vs baseline');
+    out.push('');
+    const text = out.join('\n');
+    console.log(text);
+    try { await navigator.clipboard.writeText(text); console.log('(copied to clipboard)'); } catch {}
+    return text;
+  },
+
+  /**
+   * The rig, live.
+   *
+   * Every number in the light rig was fitted against measurements off Fernando's
+   * reference rather than chosen by eye, which makes them defensible and does not
+   * make them right — the fit knows eight sample points and nothing about how the
+   * room reads. This is how they get judged. Values are the current ones:
+   *
+   *   __unit.setLight({ exposure: .85, env: .40, key: 17, moon: .42,
+   *                     candle: 4.4, globe: 1.7, picture: 11 })
+   *
+   * `exposure` first. If the whole room is simply too dark on his display that is
+   * the one dial to move, and moving it does not disturb the balance underneath.
+   */
+  setLight({ exposure, env, key: k, moon: mo, candle, globe, picture }) {
+    if (exposure !== undefined) renderer.toneMappingExposure = exposure;
+    if (env !== undefined) scene.environmentIntensity = env;
+    if (k !== undefined) key.intensity = k;
+    if (mo !== undefined) moonlight.intensity = mo;
+    if (picture !== undefined) pictureLight.intensity = picture;
+    if (candle !== undefined) CANDLES.forEach(c => { c.base.light = candle; c.light.intensity = candle * c.live; });
+    if (globe !== undefined) decor.setGlobe(globe);
+    return {
+      exposure: renderer.toneMappingExposure, env: scene.environmentIntensity,
+      key: key.intensity, moon: moonlight.intensity, picture: pictureLight.intensity,
+      candle: CANDLES[0].base.light,
+    };
   },
 
   /** How hard the Screen emits, and how glossy its glass is. */
@@ -2099,9 +2459,42 @@ function stepRite(dt) {
   setVigil(rite.restore + (1 - rite.restore) * k);
 }
 
+/**
+ * A light at intensity 0 is not a light that is off. It is a light that costs
+ * exactly as much as one that is on.
+ *
+ * three.js gathers every *visible* light in the scene, packs it into the uniform
+ * arrays, and compiles the shader with `NUM_POINT_LIGHTS` set accordingly. The
+ * fragment shader then loops over all of them for every pixel of every lit
+ * surface. Nothing checks whether the intensity happens to be zero, and nothing
+ * checks whether the light is anywhere near the fragment.
+ *
+ * This scene keeps three lights parked at 0 most of the time — the Moon Deck's
+ * lamp before the Vigil turns, the phosphor rake until the last Candle dies, and
+ * the summoning light while the Plinth is empty. Measured here, those three alone
+ * were **a third of the entire frame**: 108ms with them, 72ms with them hidden,
+ * and not one pixel different on screen.
+ *
+ * `dim()` is how intensity gets set from now on. It flips `visible` with the value,
+ * which takes the light out of the shader entirely rather than multiplying by zero
+ * fifteen times per pixel.
+ */
+function dim(light, intensity) {
+  light.intensity = intensity;
+  light.visible = intensity > 0.0005;
+}
+
+/* The Screen's own frame rate, independent of the room's. */
+let SCREEN_STEP = 1 / 24, screenClock = 0;
+/* `__unit.perf()` switches the Screen off entirely to price it. Nothing else does. */
+let SCREEN_ON = true;
+/* When a measurement is running, the loop hands it every frame's timings. */
+let perfSample = null;
+
 let t0 = 0;
 function frame(t) {
   const dt = Math.min(.05, (t - t0) / 1000); t0 = t;
+  const w0 = perfSample ? performance.now() : 0;
   /* the decks keep turning very slowly, opposite ways, so the Unit never looks frozen */
   sun.group.rotation.y -= dt * .04 * (1 - vigil);
   moon.group.rotation.y += dt * .04 * vigil;
@@ -2109,18 +2502,38 @@ function frame(t) {
   CANDLES.forEach((c, i) => {
     if (!c.live) return;
     const f = .86 + .14 * Math.sin(t * .0043 + i * 2.1) * Math.sin(t * .0111 + i * 5.7);
-    c.light.intensity = c.base.light * c.live * f;
+    dim(c.light, c.base.light * c.live * f);
     c.flame.scale.x = c.flame.scale.z = (.55 + c.live * .45) * (.94 + f * .08);
   });
   stepRite(dt);
-  /* The Screen is never static — the raven flies, the Cast types, she breathes —
-     so it is repainted every frame rather than only when something is set. */
-  renderScreen(t / 1000, dt);
-  display.paint();
-  screenTex.needsUpdate = true;
+  /**
+   * The Screen is never static — the raven flies, the Cast types, she breathes —
+   * but it does not have to move at 60fps, and it was the most expensive thing in
+   * the file by a wide margin.
+   *
+   * Each repaint redraws the 320x180 buffer, upscales it to 960x540, runs a
+   * `blur(4.8px)` over the whole of that for the phosphor bloom, composites three
+   * more full-canvas layers and then re-uploads a 2MB texture. At 60fps that is a
+   * software gaussian and ~120MB/s of upload every second, on top of the scene.
+   *
+   * It is a CRT. Running it at 24 gains nothing visually and gives back better than
+   * half the frame budget — and 24 is a rate the eye already reads as motion.
+   */
+  screenClock += dt;
+  if (SCREEN_ON && screenClock >= SCREEN_STEP) {
+    renderScreen(t / 1000, screenClock);
+    display.paint();
+    screenTex.needsUpdate = true;
+    screenClock = 0;
+  }
   summoning.update(smooth(rite.k), t / 1000);
   portrait.update(vigil);
   renderer.render(scene, camera);
+  /* `interval` is what the visitor feels — wall time between frames, and with vsync
+     on it is quantised to multiples of the refresh, so it shows dropped frames and
+     nothing else. `work` is the CPU actually spent in here, which is what tells you
+     *which* thing to cut. Both, or the numbers mislead. */
+  if (perfSample) perfSample(dt * 1000, performance.now() - w0);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

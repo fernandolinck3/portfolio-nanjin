@@ -49,8 +49,17 @@ _Avoid_: table, desk, plinth, scene
 **Candle**:
 One of three gilt candlesticks standing on the Altar. They are the Vigil's visible body: each holds
 a live flame and its own light, and they go out one at a time as the Vigil rises, until only the
-Screen is burning. Ordered — there is a first to die and a last.
+Screen and the moon are left. Ordered — there is a first to die and a last. They **light the Altar**
+— since ADR-0018 they carry a little over half of it, where before they carried 2% and a rig of
+directional lights did the work. When a Candle dies the room actually loses that light.
 _Avoid_: light, lamp, torch
+
+**Pool**:
+What one source lights and no more. The room is lit in pools — the Candles on the Altar, a globe
+lamp at each end, Lyra's picture light on the far wall, the moon through the window — with darkness
+between them, not a floor of ambient light everywhere (ADR-0018). Anything added to the room has to
+bring its own light or stand near something that has one.
+_Avoid_: ambient, fill, global illumination
 
 ## Content
 

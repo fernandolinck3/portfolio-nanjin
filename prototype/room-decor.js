@@ -142,12 +142,12 @@ function archGeom(w, h, depth) {
 function globeLamp(parent, x, y, z) {
   const stem = new THREE.Mesh(
     new THREE.CylinderGeometry(.05, .10, .34, 12),
-    new THREE.MeshPhysicalMaterial({ color: GILT, metalness: .9, roughness: .32 }))
+    new THREE.MeshStandardMaterial({ color: GILT, metalness: .9, roughness: .32 }))
   stem.position.set(x, y + .17, z); parent.add(stem)
 
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(.29, .022, 8, 32),
-    new THREE.MeshPhysicalMaterial({ color: GILT, metalness: .95, roughness: .28 }))
+    new THREE.MeshStandardMaterial({ color: GILT, metalness: .95, roughness: .28 }))
   ring.position.set(x, y + .60, z); ring.rotation.x = Math.PI / 2; parent.add(ring)
 
   const globe = new THREE.Mesh(
@@ -158,25 +158,25 @@ function globeLamp(parent, x, y, z) {
     }))
   globe.position.set(x, y + .60, z); parent.add(globe)
 
-  const light = new THREE.PointLight(0xF3C070, 2.4, 9, 2)
+  const light = new THREE.PointLight(0xF3C070, 1.7, 10, 2)
   light.position.set(x, y + .62, z); parent.add(light)
   return { globe, light }
 }
 
 /** A nearfield monitor on a stand: cabinet, woofer, tweeter, port. */
 function monitor(parent, x, z, floorY, faceZ) {
-  const dark = new THREE.MeshPhysicalMaterial({ color: 0x141516, roughness: .68, metalness: .1 })
+  const dark = new THREE.MeshStandardMaterial({ color: 0x141516, roughness: .68, metalness: .1 })
   const stand = new THREE.Mesh(new THREE.BoxGeometry(.62, 2.30, .62), dark)
   stand.position.set(x, floorY + 1.15, z); parent.add(stand)
   const foot = new THREE.Mesh(new THREE.BoxGeometry(.95, .09, .95), dark)
   foot.position.set(x, floorY + .045, z); parent.add(foot)
 
   const box = new THREE.Mesh(new THREE.BoxGeometry(1.05, 1.48, .92),
-    new THREE.MeshPhysicalMaterial({ color: 0x1A1B1D, roughness: .55, metalness: .16 }))
+    new THREE.MeshStandardMaterial({ color: 0x1A1B1D, roughness: .55, metalness: .16 }))
   box.position.set(x, floorY + 3.04, z); parent.add(box)
 
-  const cone = new THREE.MeshPhysicalMaterial({ color: 0x0A0A0B, roughness: .85 })
-  const surround = new THREE.MeshPhysicalMaterial({ color: 0x2A2724, roughness: .7, metalness: .3 })
+  const cone = new THREE.MeshStandardMaterial({ color: 0x0A0A0B, roughness: .85 })
+  const surround = new THREE.MeshStandardMaterial({ color: 0x2A2724, roughness: .7, metalness: .3 })
   const front = z + .47
   const woofer = new THREE.Mesh(new THREE.CylinderGeometry(.30, .30, .05, 28), cone)
   woofer.rotation.x = Math.PI / 2
@@ -195,7 +195,7 @@ function monitor(parent, x, z, floorY, faceZ) {
 
 /** A long low cabinet. `shelf` fills its front with whatever is passed back. */
 function credenza(parent, { x, z, w, h, d, floorY }) {
-  const wood = new THREE.MeshPhysicalMaterial({ color: 0x3A2E26, roughness: .58, metalness: .05, clearcoat: .2 })
+  const wood = new THREE.MeshStandardMaterial({ color: 0x3A2E26, roughness: .52, metalness: .05 })
   const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wood)
   body.position.set(x, floorY + h / 2 + .16, z); parent.add(body)
   for (const sx of [-1, 1]) {
@@ -215,6 +215,13 @@ function credenza(parent, { x, z, w, h, d, floorY }) {
  * its face is not at its position.
  */
 export function createRoomDecor(room, { floorY, wallFace }) {
+  /* Everything this builds goes in one group rather than loose into the room, so
+     `__unit.perf()` can switch the whole furnishing off in a frame and price it.
+     Reassigning the parameter keeps the sixty `room.add` calls below untouched. */
+  const group = new THREE.Group()
+  room.add(group)
+  room = group
+
   const lamps = []
   /* ---- arched acoustic panels, in two groups either side of the centre ---- */
   const PANEL = { w: 1.52, h: 4.20, d: .16 }
@@ -228,7 +235,7 @@ export function createRoomDecor(room, { floorY, wallFace }) {
   for (const g of groups) {
     for (const x of g) {
       const [colour, motif] = scheme[n % scheme.length]
-      const m = new THREE.Mesh(geom, new THREE.MeshPhysicalMaterial({
+      const m = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({
         map: panelFace(colour, motif, 4000 + n * 137),
         roughness: .94, metalness: 0,
       }))
@@ -254,7 +261,7 @@ export function createRoomDecor(room, { floorY, wallFace }) {
   for (let i = 0; i < 44; i++) {
     const rec = new THREE.Mesh(
       new THREE.BoxGeometry(.035 + rnd() * .02, 1.02, .96),
-      new THREE.MeshPhysicalMaterial({
+      new THREE.MeshStandardMaterial({
         color: spines[i % spines.length], roughness: .88, metalness: 0,
       }))
     rec.position.set(-11.6 + i * .095, floorY + .78, cz + .06)
@@ -266,9 +273,9 @@ export function createRoomDecor(room, { floorY, wallFace }) {
 
   /* a plant, because every studio has one and it is the only soft thing here */
   const pot = new THREE.Mesh(new THREE.CylinderGeometry(.24, .18, .38, 14),
-    new THREE.MeshPhysicalMaterial({ color: 0x6B4A38, roughness: .9 }))
+    new THREE.MeshStandardMaterial({ color: 0x6B4A38, roughness: .9 }))
   pot.position.set(-7.6, left.top + .19, cz - .06); room.add(pot)
-  const leaf = new THREE.MeshPhysicalMaterial({ color: 0x35492F, roughness: .85, side: THREE.DoubleSide })
+  const leaf = new THREE.MeshStandardMaterial({ color: 0x35492F, roughness: .85, side: THREE.DoubleSide })
   for (let i = 0; i < 9; i++) {
     const a = (i / 9) * 6.2832
     const l = new THREE.Mesh(new THREE.CircleGeometry(.20, 8, 0, Math.PI), leaf)
@@ -282,17 +289,17 @@ export function createRoomDecor(room, { floorY, wallFace }) {
   const pedalCols = [0x8A2E12, 0x2E4750, 0x6B5A2A, 0x24303A, 0x5A2321]
   for (let i = 0; i < 5; i++) {
     const p = new THREE.Mesh(new THREE.BoxGeometry(.42, .16, .58),
-      new THREE.MeshPhysicalMaterial({ color: pedalCols[i], roughness: .5, metalness: .5 }))
+      new THREE.MeshStandardMaterial({ color: pedalCols[i], roughness: .5, metalness: .5 }))
     p.position.set(7.35 + i * .58, right.top + .08, cz - .02); room.add(p)
     const knob = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .06, 10),
-      new THREE.MeshPhysicalMaterial({ color: 0xC9C2B0, roughness: .4, metalness: .3 }))
+      new THREE.MeshStandardMaterial({ color: 0xC9C2B0, roughness: .4, metalness: .3 }))
     knob.position.set(7.35 + i * .58, right.top + .19, cz - .16); room.add(knob)
   }
 
   /* coiled cables on the shelf below — one warm, one cold, like the Plate */
   for (const [i, col] of [[0, 0x8A2E12], [1, 0x2E5A70]]) {
     const coil = new THREE.Mesh(new THREE.TorusGeometry(.30, .045, 8, 28),
-      new THREE.MeshPhysicalMaterial({ color: col, roughness: .72 }))
+      new THREE.MeshStandardMaterial({ color: col, roughness: .72 }))
     coil.rotation.x = Math.PI / 2
     coil.position.set(7.8 + i * .95, floorY + .72, cz + .10); room.add(coil)
   }
@@ -310,15 +317,27 @@ export function createRoomDecor(room, { floorY, wallFace }) {
    * would actually do it in: kill the room lights, work by candle, and let the
    * Screen have the last of it.
    */
+  let globeI = 1.7
+  let lastK = 1
   function update(vigil) {
     const k = Math.max(0, Math.min(1, 1 - vigil / .55))
     const e = k * k * (3 - 2 * k)
+    lastK = e
     for (const l of lamps) {
-      l.light.intensity = e * 2.4
+      l.light.intensity = e * globeI
+      /* out means out of the shader, not multiplied by zero — see `dim()` */
+      l.light.visible = l.light.intensity > 0.0005
       l.globe.material.emissiveIntensity = .06 + e * 1.44
     }
   }
   update(0)
 
-  return { update }
+  /* `__unit.setLight({ globe })` — the fitted value needs eyes on it like the rest. */
+  function setGlobe(i) {
+    globeI = i
+    for (const l of lamps) { l.light.intensity = lastK * globeI; l.light.visible = l.light.intensity > 0.0005 }
+    return globeI
+  }
+
+  return { update, setGlobe, group }
 }
