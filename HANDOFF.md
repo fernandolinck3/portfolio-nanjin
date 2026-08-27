@@ -1,53 +1,62 @@
 # Handoff — Fer Bittencourt portfolio ("Tenebrae")
 
-**Date:** 2026-08-27 · **Repo:** `~/Documents/fernando-portfolio` · **Branch:** `lyra`
+**Date:** 2026-08-27 · **Repo:** `~/dev/fernando-portfolio` · **Branch:** `lyra`
 **Language:** Fernando writes EN and PT-BR; reply in whichever he used last (last was EN).
 
 ## Read this first
 
-**Seventeen ADRs**, five of them reversals. `CONTEXT.md` is the glossary and it is current as of the
+**Nineteen ADRs**, five of them reversals. 0018 (the room's light) carries two corrections
+written the same day; 0019 (why the scene was slow) overturns most of what 0018 assumed about
+performance. `docs/realism-budget.md` is the plan for adding to the room without spending the frame. `CONTEXT.md` is the glossary and it is current as of the
 last commit. `docs/tickets/README.md` is the board. This file does not repeat them.
 
-**Everything from this session is committed** — seven commits, `45be78c` through `b25d416`, working
-tree clean, `npm run check` clean, 41 tests passing. Read the tree; it is HEAD.
+**HEAD is `e929df8` and there is a lot of uncommitted work on top of it** — the light rig
+(ADR-0018), the performance fixes (ADR-0019), the Physical to Standard conversion,
+`docs/realism-budget.md` and `prototype/light-fit/`. `npm run check` clean, 41 tests passing.
+Nothing is committed because Fernando has not asked; ask him early, it is a lot to be carrying.
 
-Nothing is pushed. T-14 is still Fernando's call.
+Nothing is pushed. T-14 is still his call — and with the repo out of iCloud there is now **no second
+copy of this work anywhere**, which raises the stakes on T-14 considerably.
 
-## TWO THINGS THAT WILL WASTE YOUR DAY
+## THE TWO THINGS THAT WASTED THREE SESSIONS ARE BOTH FIXED
 
-**1. The repo lives in `~/Documents`, which is iCloud-synced, on a disk at 98% with 9.1Gi free.**
+**1. The repo has moved to `~/dev/fernando-portfolio`.** It is out of iCloud. Do not put it back.
 
-macOS evicts file *contents* to iCloud when the disk is low, leaving `dataless` stubs. Every read then
-faults over the network. Yesterday that meant `vite` and `esbuild` hanging with no output at all,
-`npx vitest run` taking 833 seconds, a twenty-minute window where every file returned
-`Operation timed out`, and eventually `ENOSPC` — which makes *every* tool call fail.
+What that was costing, measured on the same machine, same commands, before and after:
 
-Today it was quieter, but a `vitest` run still took **268 seconds of pure jsdom setup** on one
-occasion and **445ms** on another, with no change to the code between them. That is the disk, not the
-tests.
+| | in `~/Documents` (iCloud) | in `~/dev` |
+|---|---|---|
+| `npx vitest run` | **190–370 seconds** | **0.32 s** |
+| `npm run check` | 2.6s, often timing out | 0.29 s |
+| `vite` startup | 6.3 s | 0.21 s |
+| `git status` | **hung, 7-minute timeout** | 0.10 s |
 
-**Do not run `brctl download .` on this repo.** It queues `node_modules`, saturates the `bird` daemon,
-and fills the disk. It turns a slow repo into an unusable one.
+`git fsck` could not complete at all — the object store itself had been evicted, so every object read
+faulted over the network. That is what "the repo is slow" actually was, for three sessions.
 
-Mitigation in place: **both** test files now carry `@vitest-environment node`
-(`prototype/screen/reaction.test.js` and `src/content/modules.test.ts`). The repo default is jsdom.
-Add the pragma to any new test that does not touch the DOM — it is the difference between 400ms and
-four minutes.
-
-**The real fix is to move the repo out of `~/Documents`** — `~/dev/fernando-portfolio`. It has now
-been raised four times across three sessions. It is his call and he has not made it.
+**Still true and still urgent: the disk.** It went from 9.2Gi free to 3.8Gi *during one session* and
+now reads 100%. `~/Library/Caches` was 16Gi and is the first place to look. A full disk is what
+produced the `ENOSPC` and the twenty-minute window where every tool call failed.
 
 **2. Do not open the browser yourself.**
 
-`open http://localhost:5174/` spawns a tab rendering a heavy WebGL scene and **lags his machine** —
-he said so directly on 2026-08-27. Start the vite server if it is not running, verify with
-`npm run check` and `npx vitest run`, then *tell him what to reload*. Do not open it.
+This was true when the scene cost 108ms a frame. It costs 7.4ms now, and on 2026-08-27 he asked
+directly — *"you do it"* — and then *"open the preview for me"*. Ask before driving his browser, but
+**do ask**: four rounds of blind performance fixes achieved nothing, and twenty minutes of measuring
+in a real tab found the actual cause. See ADR-0019.
 
 ## What you actually have to verify with
 
-You cannot see. The Chrome extension is **not connected** — `tabs_context_mcp` returns
-"Browser extension is not connected" and every browser tool with it. Fernando is the only pair of
-eyes on this project. Three things follow:
+**The Chrome extension is connected now.** That changes the job. Two cautions from using it:
+
+- An automated tab is a **hidden** tab, and Chrome throttles `requestAnimationFrame` to nothing in
+  one. Any benchmark built on rAF — including `__unit.perf()` — will simply never finish. Measure by
+  calling `renderer.render()` in a tight loop and forcing GPU completion with a one-pixel
+  `readPixels`. No frames needed, no vsync quantisation.
+- The scene takes several seconds to build its textures at load. Poll for `window.__unit` rather
+  than assuming it is there, and keep `setTimeout` waits under ~4s or the evaluation times out.
+
+Still true: three things follow from not being able to see by default.
 
 - **`npm run check`** bundles both entry points through esbuild. It catches syntax errors, duplicate
   declarations and broken imports across the whole graph in about a second. Run it before handing
