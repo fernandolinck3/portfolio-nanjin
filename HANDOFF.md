@@ -1,173 +1,184 @@
 # Handoff — Fer Bittencourt portfolio ("Tenebrae")
 
-**Date:** 2026-08-27 · **Repo:** `~/dev/fernando-portfolio` · **Branch:** `lyra`
+**Date:** 2026-08-27 · **Repo:** `~/dev/fernando-portfolio` · **Branch:** `lyra` · **HEAD:** `2683835`
 **Language:** Fernando writes EN and PT-BR; reply in whichever he used last (last was EN).
 
 ## Read this first
 
-**Nineteen ADRs**, five of them reversals. 0018 (the room's light) carries two corrections
-written the same day; 0019 (why the scene was slow) overturns most of what 0018 assumed about
-performance. `docs/realism-budget.md` is the plan for adding to the room without spending the frame. `CONTEXT.md` is the glossary and it is current as of the
-last commit. `docs/tickets/README.md` is the board. This file does not repeat them.
+**Twenty-three ADRs**, several of them reversals. `CONTEXT.md` is the glossary.
+`docs/tickets/README.md` is the board. `docs/realism-budget.md` is the plan for adding to the room
+without spending the frame. This file does not repeat them.
 
-**HEAD is `e929df8` and there is a lot of uncommitted work on top of it** — the light rig
-(ADR-0018), the performance fixes (ADR-0019), the Physical to Standard conversion,
-`docs/realism-budget.md` and `prototype/light-fit/`. `npm run check` clean, 41 tests passing.
-Nothing is committed because Fernando has not asked; ask him early, it is a lot to be carrying.
+**The working tree is clean and 54 commits deep.** Unlike every previous handoff, there is no pile of
+uncommitted work to worry about.
 
-Nothing is pushed. T-14 is still his call — and with the repo out of iCloud there is now **no second
-copy of this work anywhere**, which raises the stakes on T-14 considerably.
+**There is still no remote.** `git remote -v` is empty. Fifty-four commits and about a week of work
+exist as **one copy on one disk**, now that the repo is out of iCloud. T-14 is his call and has been
+raised in four consecutive sessions; raise it again, early, and offer to do the whole setup.
 
-## THE TWO THINGS THAT WASTED THREE SESSIONS ARE BOTH FIXED
+## The goal he actually stated
 
-**1. The repo has moved to `~/dev/fernando-portfolio`.** It is out of iCloud. Do not put it back.
+> *"i need a version online of my portfolio asap"*
 
-What that was costing, measured on the same machine, same commands, before and after:
+That is the frame for everything below. It is closer than it has ever been — the build works and
+produces a real site — and the only thing left is somewhere to put it.
 
-| | in `~/Documents` (iCloud) | in `~/dev` |
-|---|---|---|
-| `npx vitest run` | **190–370 seconds** | **0.32 s** |
-| `npm run check` | 2.6s, often timing out | 0.29 s |
-| `vite` startup | 6.3 s | 0.21 s |
-| `git status` | **hung, 7-minute timeout** | 0.10 s |
+## The build ships the prototype now
 
-`git fsck` could not complete at all — the object store itself had been evicted, so every object read
-faulted over the network. That is what "the repo is slow" actually was, for three sessions.
+This changed on 2026-08-27 and it is the thing most likely to surprise you.
 
-**Still true and still urgent: the disk.** It went from 9.2Gi free to 3.8Gi *during one session* and
-now reads 100%. `~/Library/Caches` was 16Gi and is the first place to look. A full disk is what
-produced the `ENOSPC` and the twenty-minute window where every tool call failed.
+- `npm run build:site` → `dist-site/`, via `vite.site.config.ts`. **This is the real site.**
+- `npm run preview:site` serves the built output.
+- `npm run build` still builds the root `index.html` → `src/App.tsx`, which is **eleven lines and
+  renders an empty `<main>`**. Every production build before this one was a blank page.
 
-**2. Do not open the browser yourself.**
+Three things that config needs, each of which fails *only in a deployed build*:
 
-This was true when the scene cost 108ms a frame. It costs 7.4ms now, and on 2026-08-27 he asked
-directly — *"you do it"* — and then *"open the preview for me"*. Ask before driving his browser, but
-**do ask**: four rounds of blind performance fixes achieved nothing, and twenty minutes of measuring
-in a real tab found the actual cause. See ADR-0019.
+- `publicDir: '../public'` — Vite would look in `prototype/public`; the Works live at the repo root.
+- `base: './'` — so the output runs from a subdirectory as well as a domain root.
+- Work stills resolve through `BASE_URL` in `focus.js`, because `modules.ts` stores them as
+  root-absolute `/works/…`, which would resolve past that subdirectory.
 
-## What you actually have to verify with
+The workbench dials are hidden behind **`?debug`**. They stay in the DOM because `scene.js` binds to
+each one by id and throws on the first missing element — do not delete them.
 
-**The Chrome extension is connected now.** That changes the job. Two cautions from using it:
+**This contradicts ADR-0002 and T-02**, which say `src/` owns the DOM truth layer. It was flagged to
+Fernando and he has not ruled. **No ADR is written.** If he blesses it, write one; if he wants `src/`
+to own it, T-02 is the ticket and the prototype is the reference implementation.
 
-- An automated tab is a **hidden** tab, and Chrome throttles `requestAnimationFrame` to nothing in
-  one. Any benchmark built on rAF — including `__unit.perf()` — will simply never finish. Measure by
-  calling `renderer.render()` in a tight loop and forcing GPU completion with a one-pixel
-  `readPixels`. No frames needed, no vsync quantisation.
-- The scene takes several seconds to build its textures at load. Poll for `window.__unit` rather
-  than assuming it is there, and keep `setTimeout` waits under ~4s or the evaluation times out.
+## What you can actually verify with
 
-Still true: three things follow from not being able to see by default.
+The Chrome extension is connected. **The single most expensive lesson of the last session is here.**
 
-- **`npm run check`** bundles both entry points through esbuild. It catches syntax errors, duplicate
-  declarations and broken imports across the whole graph in about a second. Run it before handing
-  anything over. It caught a duplicate `const glass` that would have killed the entire scene.
-- **It will not catch anything geometric.** A mesh facing the wrong way, an occluded panel, a wheel
-  overhanging the Plate — all valid code. Two full rounds were lost to exactly this today.
-- **Build the geometry in Node and print it.** `three` is in `node_modules`; a ten-line script that
-  constructs a geometry and prints its UV range, normal directions and bounding box is the closest
-  thing to eyes available. That is how the missing faceplate was found. It only works from inside the
-  repo — Node will not resolve `three` from the scratchpad.
+### rAF is dead in an automated tab
 
-**Arithmetic is verification.** Every proportion problem today was found by computing clearances
-before touching the file, not by looking.
+An automated tab is a *hidden* tab. `document.visibilityState === 'hidden'` and
+**`requestAnimationFrame` fires 0 times per second.** Measured, not assumed.
 
-## What happened this session
+This means the scene renders a few frames at load and then freezes. A screenshot will show a Unit
+that looks basically right with a **blank Screen**, and it is very tempting to read that as a bug. It
+is not. Half a session went into chasing it before `visibilityState` was checked.
 
-Long session, almost all of it on the Unit and the room.
+**Do not debug a frozen scene. Drive it by hand instead:**
 
-1. **The light travels.** The Screen no longer flips at Vigil 0.94 — palette, a celestial gauge and
-   Lyra's own tones move continuously from Vigil 0, driven by `dusk()` off the Candles' own ramps.
-   The *layout* still swaps at the threshold, which is what keeps a Face a Face and not a palette.
-   `prototype/light.js` owns the ramps; `scene.js` and the Screen both import it (ADR-0016).
-2. **The two Screens became one.** `prototype/screen/render.js` is the Screen; `screen.js` is only a
-   bench. The Unit renders the same 320x180 buffer through `display.js` and uploads it. This was the
-   Screen half of T-04.
-3. **Works are summoned to a plinth** (ADR-0017). Click a row on the Screen, the room puts itself out,
-   a Work assembles on a plinth beside the Altar, and the Screen becomes its plaque. Sun or a second
-   click sends it back and hands the Vigil to the visitor.
-4. **Lyra hangs on the wall** — gilt frame, engraved plaque, faintly self-lit so she survives full
-   Vigil. A fixture, deliberately not where Works go.
-5. **Fernando's faceplate went on** (`prototype/ornament/plate.png`). The Plate took the artwork's own
-   1.82 aspect, which is also what bought the width for bigger Decks *and* a bigger Screen.
-6. **The Screen is set into the Chassis** — a real aperture through Chassis and Plate, walls, a milled
-   and beaded rim, glass.
-7. **Proportions are one block.** The Decks were overhanging the Plate and 24% larger than the circles
-   drawn for them; the Pad row was wider than the Screen.
-8. **The Decks are pierced Gothic tracery** lit from behind, from his `circle` are.na channel.
-9. **The room is a studio, not a chapel** — acoustic panels, monitors, credenza of records, pedal
-   cabinet, two globe lamps that die with the Vigil (from his `roomexample.png`).
-10. **Shadows** (T-07). Only the key casts, framed tightly on the Unit.
+```js
+const u = window.__unit
+u.introStep(1)            // land the opening without waiting for it
+u.setBoot(1)              // finish the Screen's power-on
+u.setCam({ tilt: 4, dist: 4.0 })
+u.render()                // draws exactly one frame — no rAF involved
+```
 
-## Four bugs worth remembering, because they will recur
+`__unit.render()` exists for precisely this and updates the matrices first, because the last frame's
+matrices cannot be trusted in a throttled tab.
 
-- **A mesh can be perfect and invisible.** `plateGeom()` bakes its own `rotateX(-90°)`; the old
-  `face.rotation.x` was left in place, so the Plate's printed layer faced the floor and was
-  backface-culled. Symptom: "the faceplate design is missing."
-- **Recessing a thing without cutting a hole for it hides it.** The Screen went to `y=.272` under a
-  solid Chassis (top `.340`) and a solid Plate (`.353`). Symptom: "the display is just black."
-- **`metalness: .85` makes albedo a reflection tint, not colour.** Printed colour on the Plate was
-  invisible until it got a `metalnessMap` dropping the ink to a dielectric.
-- **`ornamentMask()` is the only source of relief.** `faceMaps()` also builds a height canvas that
-  **nothing reads**. Ornament drawn only there is ornament nobody sees.
+### Canvas work needs no scene at all
 
-## State of the Unit
+`prototype/deck-fit/` draws the Deck and control maps straight onto a plain page. Canvas draws
+**synchronously**, so throttling is irrelevant and you see the actual texture at full resolution
+rather than a 190px disc on a Plate. Every proportion in the last session was fitted there. It is the
+same instinct as `prototype/light-fit/`; use it, and extend it when you add a new drawn part.
 
-- Plate 5.94 x 3.26 (the artwork's aspect, no stretch). Decks r .93 at x ±1.99. Screen opening
-  1.84 x 1.035, 31% of the Plate. Pads 89% of the Screen's width. All in the `PROPORTIONS` block near
-  the top of `scene.js`, with the reserves derived from it.
-- Live dials on `window.__unit`: `setEng` (`print`, `scrim`, `art`, `artFit`, `foliate`, `invert`),
-  `setDisplay` (`scan`, `comb`, `bloom`, `vignette`, `sheen`), `setScreen` (`emissive`, `roughness`,
-  `glass`), `setQuality` (2 crisp / 1 cheap / 0 shadows off). They exist because nothing here can be
-  set without eyes, and they let Fernando answer instead of describing.
+### Everything else still true
 
-## Open, in rough order
+- **`npm run check`** bundles both entry points through esbuild in about a second. Run it before
+  handing anything over. It has caught duplicate declarations that would have killed the scene.
+- **It will not catch anything geometric.** A mesh facing the wrong way is valid code.
+- **`npx vitest run`** — 41 tests, ~17s.
+- **Arithmetic is verification.** The opening tilt was found by projecting the candlestick's top into
+  NDC, not by looking at it.
 
-1. **Nothing since the shadows pass has been seen by anyone.** The whole room — panels, monitors,
-   credenza, lamps, shadows, roughness variation — was built blind. Get him to look before building
-   more on it. If shadows landed, bloom and the window compound; if not, more effects make it worse.
-2. **The Decks are rejected.** "the wheels are not nice" (2026-08-27), parked at his request. Unknown
-   whether the *idea* is wrong (pierced stone) or the *execution* (too fine at ~190px, wrong
-   material, wrong motif). Render four variants side by side rather than iterating one at a time.
-3. **The window is still a Gothic lancet** with tracery and velvet curtains. His reference has a
-   round-arched one with a muntin grid, a full moon and bare branches. Big read at the top of frame.
-4. **Bloom.** `three/examples/jsm/postprocessing` ships inside the `three` package, so it is not a new
-   dependency under ADR-0004. Candles, phosphor and Deck tracery all want it. Costs a full-screen pass
-   on a machine that is already struggling.
-5. **Two models is undecided.** He said Grimoire and Cracktro "should be two different models, cause I
-   really love them both." The Unit is pinned to Grimoire and Cracktro is unwired but intact in
-   `render.js`. **No ADR written** — it would reverse 0012, 0015 and 0016, and that needs his
-   decision, not my guess. My suggestion on the table: ship Tenebrae as the Grimoire model and make
-   the Cracktro instrument Project 002, which turns scope into content.
-6. **Lyra's bubble** is plain and occludes the Module. He asked for it to be ornamental and to stop
-   covering things. Not done — it was about to move files, and now it has.
-7. **The Crossfader is idle inside PROJECTS.** It carries Now/Next and nothing else (ADR-0005).
-   Leaving it idle is defensible; giving it a job is a decision, not an implementation.
-8. **`src/App.tsx` is still 11 lines.** Two full sessions in the prototype. T-02 has not moved.
+## State of the object
+
+- **Plate** 5.94 × 3.26. **Decks** r .93 at x ±1.99. **Screen opening** 1.84 × 1.035.
+  **Pads** .23 at .28 pitch. All in the `PROPORTIONS` block near the top of `scene.js`.
+- **The room is hidden.** `setRoom(false)` hides room *meshes only, never the Group* — hiding the
+  Group would kill the lights inside it. Target was 60fps; measured ~90 with the room off.
+- **Lights are not culled by three.** Every visible light compiles into the shader and is evaluated by
+  every lit fragment regardless of intensity. `dim(light, 0)` sets `visible = false` for this reason.
+  A light at intensity 0 costs full price. This was the whole of ADR-0019.
+- **Post is `RenderPass → OutputPass → grade`.** GTAO and bloom are **out of the chain**, not turned
+  down — a pass costs what it costs whether or not its output is used. `lift` is `0x000000`; any lift
+  at all is a raised black point, which is what "the fog" was, twice.
+- **The opening** (`intro.js`): `OPEN` tilt 18 / dist 6.4, `REST` tilt 6 / dist 5.6, straight on
+  (yaw 0). `TRAVEL` 3.0, `BOOT` 5.2, `HOLD` 0.7 — camera and boot run on separate clocks so changing
+  one does not change the other. Plays every load; a click skips it.
+- **Focus** (`focus.js`): clicking a Work zooms the camera until the Screen fills the frame, then a
+  DOM panel cross-fades over it. **This reverses ADR-0017** (the plinth). The Screen is 320×180 and
+  photographs of posters turn to mush upscaled 4.7×; the DOM holds the content instead, which is
+  ADR-0002 and also makes the Works indexable and readable on a phone.
+- **Content** is real: `src/content/modules.ts` holds six Modules (IDENT, NOW/NEXT, WORKS, PATH,
+  METHOD, OUT) and six real Works with stills in `public/works/`.
+- **The Decks and controls follow `cross and jogs.png`** (2026-08-27): reeded rim, medallion band,
+  tracery field, a boss at the hub. Sun counts in stars, Moon in phases. `control-faces.js` draws the
+  Pads and Crossfader.
+
+## Bugs worth remembering, because this class recurs
+
+- **A drawing function named for what it is not.** `sunVoids`/`moonVoids` drew the tracery and the
+  code treated those shapes as the *holes*, so the wheel came out pale with petal-shaped bites in it
+  for months. They are `sunBars`/`moonBars` now. When a name and a use disagree, the use is usually
+  the bug.
+- **A geometry change is a lighting change.** Correcting that polarity quadrupled the lit area, and
+  the Sun washed out to flat cream. The emissive gain had to drop 1.5 → 0.55. Same light,
+  redistributed — not a taste adjustment.
+- **`slab()` is an `ExtrudeGeometry`**, and its UV generator emits **shape coordinates in world
+  units**, not 0..1. Map a texture naively onto a 0.23-wide Pad and it samples a 0.23-wide sliver and
+  comes out one flat colour. `fit()` in `control-faces.js` remaps it.
+- **A shape that shears is invisible as a void and obvious as a bar.** `petal()`'s flanks are offset
+  by a fraction that grows with radius. Fine as a hole; eight of them as *bars* around a hub read as
+  a turbine, because every blade leans the same way. `leaf()` is mirrored by construction.
+- **A mesh can be perfect and invisible.** `plateGeom()` bakes its own `rotateX(-90°)`; a leftover
+  `face.rotation.x` faced the printed layer at the floor, where it was backface-culled.
+- **`metalness: .85` makes albedo a reflection tint, not colour.** Printed colour needed a
+  `metalnessMap` dropping the ink to a dielectric before it appeared at all.
+
+## Open
+
+1. **T-14, publish.** Blocked on him, and now the only thing between him and his stated goal. Netlify
+   or Cloudflare Pages will take `dist-site/` as a drag-and-drop; a GitHub remote first is the version
+   that also protects the work. Offer both, do the setup.
+2. **Write the ADR for shipping `prototype/`** — or unpick it into `src/` (T-02). Needs his ruling.
+3. **`src/App.tsx` is still eleven lines.** T-02 has not moved in three sessions.
+4. **Three deliberate gaps against `cross and jogs.png`**, all offered and none taken: the Pad row is
+   six separate wells where the reference has one continuous brass tray with dividers; the Sun's
+   petals are flat where the reference carves a rib down each; `HOT CUE` / `CROSSFADE` lack the arrow
+   glyphs flanking them.
+5. **The clipped back candlestick** at the tight framing. Three options were offered, none chosen.
+6. **Two models undecided.** He said Grimoire and Cracktro "should be two different models, cause I
+   really love them both." The Unit is pinned to Grimoire; Cracktro is unwired but intact in
+   `render.js`. **No ADR** — it would reverse 0012, 0015 and 0016 and needs his decision, not a guess.
+   Suggestion on the table: ship Tenebrae as Grimoire, make Cracktro Project 002.
+7. **Lyra's bubble** is plain. He asked for ornamental, and for it to stop covering text. The covering
+   is fixed; the ornament is not.
 
 ## Blocked on Fernando
 
-- **The real Works** (T-13-adjacent). He has "some websites and some posters"; `WORKS` holds four
-  stamped PLACEHOLDER stand-ins. They must be replaced before publishing, not quietly kept.
-- **RACK contents** (T-13) — slot 4 still lists influences, not tools. Blocked three sessions.
-- **Publishing the repo** (T-14).
-- **Moving out of iCloud.** Highest-value item on the list and still unmade.
-- **His own voice.** Ident, Method, and Lyra's six lines are mine. They are honest and they are not
-  his.
+- **The LinkedIn URL.** `modules.ts` has the name "Fernando Linck" and no link. Instagram has both.
+- **The PATH glossary rename** — needs his word, and a `CONTEXT.md` entry when it lands.
+- **RACK contents** (T-13) — slot 4 still lists influences, not tools. Blocked four sessions.
+- **His own voice.** Ident, Method and Lyra's lines are mine. They are honest and they are not his.
 
 ## Cautions
 
-- **Build and show. Descriptions do not land.** Confirmed again, all session. Every decision that
-  stuck was settled by a render or a reference image, never by a paragraph.
-- **He answers with images.** Three arrived in one session — a full CDJ render, a flat faceplate, a
-  room. Check `~/Downloads` when he says "I have a reference"; verify the file is what it claims
-  (a `.png` was a GIF once), and read the whole thing before assuming which parts apply. He will say
-  which — "it should be considered just the faceplate."
-- **His references carry more than he asks for.** The faceplate's 1.82 aspect was the answer to a
-  proportions problem he had not asked about. Measure them.
-- **Give him the thing, not a toggle.** Confirmed twice now.
-- **Do not add dependencies** (ADR-0004). When Node could not decode a PNG the answer was 120 lines on
+- **Build and show. Descriptions do not land.** Every decision that stuck was settled by a render or a
+  reference image, never by a paragraph. He said *"i dont understand"* to a wall of text, once.
+- **He answers with images.** Check `~/Downloads` when he mentions a reference. Verify the file is
+  what it claims — a `.png` was a GIF once — and read the whole thing before assuming which parts
+  apply.
+- **His references carry more than he asks for.** The faceplate's 1.82 aspect answered a proportions
+  problem he had not raised. `cross and jogs.png` was given for three controls and also settled the
+  Decks' whole palette. Measure them; crop them with `sips` and look properly.
+- **Do not open his browser without asking** — but *do* ask. Four rounds of blind performance fixes
+  achieved nothing; twenty minutes of measuring in a real tab found the cause.
+- **Give him the thing, not a toggle.** Confirmed three times now.
+- **Do not add dependencies** (ADR-0004). When Node could not decode a PNG the answer was 120 lines of
   `zlib`, not a package.
-- **He moves fast and reverses himself.** Five ADRs are reversals. When he changes direction, write
-  the ADR — do not just change the code, and do not re-litigate the old one.
-- **When he says something is broken, believe him and go find the mechanism.** Every "it's missing" or
-  "it's black" this session was a real, specific, findable bug — never a taste disagreement.
+- **He moves fast and reverses himself.** When he changes direction, write the ADR — do not just
+  change the code, and do not re-litigate the old one.
+- **When he says something is broken, believe him and go find the mechanism.** Every "it's missing"
+  and "it's black" has been a real, specific, findable bug — never a taste disagreement. The one
+  exception is worth knowing: *"the hover is slow"* was not lag, it was a change of 0.048 in lightness
+  on a near-black pad. A response you cannot see and a response that has not happened look identical.
+- **The disk.** It has hit 100% before and produced `ENOSPC` with a twenty-minute window where every
+  tool call failed. `~/Library/Caches` is the first place to look.
