@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Deck fit</title>
+<style>
+  html,body{margin:0;background:#0B0A09;color:#8A8378;
+    font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+  h1{font-size:12px;letter-spacing:.22em;color:#C9C2B0;font-weight:600;padding:14px 18px;margin:0;
+     border-bottom:1px solid #1E1B18}
+  .grid{display:grid;grid-template-columns:2.2fr 1fr 1fr;gap:10px;padding:18px;max-width:1400px;align-items:start}
+  figure{margin:0}
+  figcaption{padding:6px 2px;letter-spacing:.14em;color:#6E6559}
+  canvas{width:100%;display:block;background:#000;border:1px solid #1E1B18}
+  /* the albedo is what the eye judges; show it against the Plate's own metal */
+  .lead canvas{background:#26282B}
+</style>
+<h1>PART FIT — the maps, as drawn</h1>
+<div class="grid" id="c"></div>
+<div class="grid" id="g"></div>
+<script type="module">
+  import { deckMaps } from '../deck-faces.js'
+  import { padMaps, faderSlot, faderCap } from '../control-faces.js'
+
+  /* the controls first — they are the small parts and the ones being fitted */
+  const cg = document.getElementById('c')
+  const show = (host, name, canvas) => {
+    const f = document.createElement('figure')
+    f.append(canvas)
+    const c = document.createElement('figcaption')
+    c.textContent = name
+    f.append(c)
+    host.append(f)
+  }
+  const pm = padMaps(0.23)
+  show(cg, 'PAD · dark', pm.dark.image)
+  show(cg, 'PAD · lit', pm.lit.image)
+  show(cg, 'PAD · lamp', pm.lamp.image)
+  show(cg, 'FADER · slot', faderSlot(1.30, 0.14).image)
+  show(cg, 'FADER · cap', faderCap(0.13, 0.26).image)
+  const g = document.getElementById('g')
+  for (const kind of ['sun', 'moon']) {
+    const m = deckMaps(kind)
+    for (const [name, t] of [['albedo', m.albedo], ['height', m.height], ['emissive', m.emissive]]) {
+      const f = document.createElement('figure')
+      if (name === 'albedo') f.className = 'lead'
+      f.append(t.image)
+      const c = document.createElement('figcaption')
+      c.textContent = kind.toUpperCase() + ' · ' + name
+      f.append(c)
+      g.append(f)
+    }
+  }
+</script>

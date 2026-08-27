@@ -8,6 +8,7 @@ import { createSummoning } from './summon.js'
 import { createPortrait } from './portrait.js'
 import { createDisplay } from './display.js'
 import { printLayer, engravedLayer } from './plate-art.js'
+import { padMaps, faderSlot, faderCap } from './control-faces.js';
 import { deckMaps, deckGlow } from './deck-faces.js'
 import { createRoomDecor } from './room-decor.js'
 import { createAltarProps } from './altar-props.js'
@@ -1415,7 +1416,7 @@ function deck(x, kind) {
   const plateMat = new THREE.MeshStandardMaterial({
     map: DECK[kind].albedo, bumpMap: DECK[kind].height, bumpScale: 5,
     emissiveMap: DECK[kind].emissive,
-    emissive: kind === 'sun' ? 0xF0A24A : 0x8FBEDC,
+    emissive: kind === 'sun' ? 0xE08A28 : 0x8FBEDC,
     emissiveIntensity: 0,
     metalness: .18, roughness: kind === 'sun' ? .62 : .68,
   });
@@ -1456,8 +1457,20 @@ const deckMats = [moon.plate.material, sun.plate.material];
  * not the cyan-and-magenta a real controller would wear. The point is a lit
  * control, not a nightclub.
  */
+/**
+ * The Pad's face is drawn, not tinted.
+ *
+ * `color` is white-ish so the map reads true — it is a multiplier now, and the
+ * hover works by moving it rather than by replacing a flat fill. The selected Pad
+ * swaps to the bone map outright: on this Plate the difference between "on" and
+ * "off" has to survive being seen at 40px across a dark room, and a change of
+ * material does that where a change of brightness does not.
+ */
+const PADMAP = padMaps(PAD.size);
 const padMat = () => new THREE.MeshStandardMaterial({
-  color: 0x141517, metalness: .16, roughness: .74,
+  color: 0xC6C6C6, map: PADMAP.dark,
+  emissiveMap: PADMAP.lamp, emissive: new THREE.Color(0xC4601C), emissiveIntensity: .55,
+  metalness: .16, roughness: .74,
 });
 /* the well the Pad sits in — darker, and rougher, so the two never read as one part */
 const padWellMat = new THREE.MeshStandardMaterial({
@@ -1531,8 +1544,15 @@ function updatePads(dt) {
 
     /* hover: immediate, and big enough to read on a near-black pad */
     const hot = padHover === i;
-    p.material.color.setHex(hot ? 0x2B2E33 : 0x141517);
-    if (e > 0.001) p.material.color.offsetHSL(0, 0, -e * .04);
+    /* the selected Pad is bone, the rest are graphite — a material change, not a
+       brightness one, so the row can be read at a glance */
+    const face = i === curPage ? PADMAP.lit : PADMAP.dark;
+    if (p.material.map !== face) p.material.map = face;
+    p.material.color.setHex(hot ? 0xFFFFFF : 0xC6C6C6);
+    if (e > 0.001) p.material.color.offsetHSL(0, 0, -e * .06);
+    /* the LED in the head: low on the bone Pad, where its recess is already
+       painted hot, and brightest under the pointer */
+    p.material.emissiveIntensity = i === curPage ? .18 : (hot ? 1.5 : .55);
 
     /* the ember, eased in and out */
     const m = lampMats[i];
@@ -1548,13 +1568,32 @@ function updatePads(dt) {
 
 /* crossfader */
 const slot = new THREE.Mesh(slab(FADER.len, .14, .04, .015),
-  new THREE.MeshStandardMaterial({ color: 0x0C0D0E, metalness: .5, roughness: .6 }));
+  new THREE.MeshStandardMaterial({
+    color: 0xFFFFFF, map: faderSlot(FADER.len, .14), metalness: .5, roughness: .6,
+  }));
 slot.position.set(0, .335, FADER.z); unit.add(slot);
-const cap = new THREE.Mesh(slab(.13, .26, .11, .02),
-  new THREE.MeshStandardMaterial({ color: 0xB6B4AA, metalness: .7, roughness: .28 }));
+const cap = new THREE.Mesh(slab(.13, .26, .11, .03),
+  new THREE.MeshStandardMaterial({
+    color: 0xFFFFFF, map: faderCap(.13, .26), metalness: .35, roughness: .42,
+  }));
 /** Where the cap sits for a given crossfade, 0..1. */
 const capX = v => -FADER.travel / 2 + v * FADER.travel;
 cap.position.set(capX(.18), .35, FADER.z); cap.userData.ctl = 'fader'; unit.add(cap);
+/**
+ * The light behind the cap.
+ *
+ * In the reference the two beads either side of the cap are burning and the rest
+ * are cold — the lamp is *under* the cap and only the beads it is passing catch
+ * it. Modelling that as six switchable lamps would be six materials to drive; one
+ * short emissive strip that travels with the cap gives the same read, because what
+ * the eye is actually seeing is a glow that moves with the handle.
+ */
+const capGlow = new THREE.Mesh(slab(.34, .055, .010, .027),
+  new THREE.MeshStandardMaterial({
+    color: 0x140901, emissive: new THREE.Color(0xD8801E), emissiveIntensity: 2.4,
+    roughness: .55, metalness: 0,
+  }));
+capGlow.position.set(capX(.18), .346, FADER.z); unit.add(capGlow);
 
 /* ---------- the altar ----------
    Baroque, not satanic: polished veined marble, an embroidered cloth, turned gilt
@@ -2244,9 +2283,21 @@ function applyVigil() {
      the Moon's is dark at first light and takes over as the room goes. They cross
      near the middle of the rite, where neither has won. */
   {
+    /**
+     * The gain dropped from 1.5 to 0.55, and not because it looked too bright.
+     *
+     * When the tracery's polarity was corrected — bars are stone, the field around
+     * them is glass — the **lit area roughly quadrupled**. It used to be a course
+     * of piercings on a solid disc; it is now the whole field minus eight petals.
+     * The same intensity over four times the surface is four times the light, and
+     * the Sun came out as a flat cream disc with the amber washed out of it.
+     *
+     * So this is the same wheel emitting the same amount of light, redistributed.
+     * The number is a consequence of the geometry change, not a taste adjustment.
+     */
     const glow = deckGlow(vigil);
-    sun.mat.emissiveIntensity = glow.sun * 1.5;
-    moon.mat.emissiveIntensity = glow.moon * 1.5;
+    sun.mat.emissiveIntensity = glow.sun * .55;
+    moon.mat.emissiveIntensity = glow.moon * .55;
     dim(sun.lamp, glow.sun * 1.1);
     dim(moon.lamp, glow.moon * 1.1);
   }
@@ -2410,6 +2461,7 @@ el.addEventListener('pointermove', e => {
   if (active === 'fader') {
     xfVal = Math.max(0, Math.min(1, startVal + (e.clientX - px) / 300));
     cap.position.x = capX(xfVal);
+    capGlow.position.x = cap.position.x;
     setScreenCrossfade(xfVal);
     drawScreen();
   } else if (active === 'sun' || active === 'moon') {
