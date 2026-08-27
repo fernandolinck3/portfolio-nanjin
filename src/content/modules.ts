@@ -17,10 +17,24 @@ export type Side = { heading: string; lines: string[] }
 /** A Rack row: what it is, what kind of thing it is, and when. */
 export type Row = readonly [title: string, type: string, year: string]
 
-type Base = { slot: number; id: string; title: string }
+type Base = {
+  slot: number
+  id: string
+  title: string
+  /** Short form printed above the Pad. The Plate has ~96px of pitch per Pad, so a
+      title like "NOW / NEXT" runs into its neighbours; this is what fits. */
+  pad?: string
+}
 
 export type Module =
-  | (Base & { kind: 'prose'; lines: string[]; dim?: string[]; mail?: string })
+  | (Base & {
+      kind: 'prose'
+      lines: string[]
+      dim?: string[]
+      mail?: string
+      /** Where else to find him. `url` absent means show the handle, do not link it. */
+      links?: readonly { label: string; handle: string; url?: string }[]
+    })
   | (Base & { kind: 'thesis'; a: Side; b: Side })
   | (Base & { kind: 'table'; head: readonly [string, string, string]; rows: readonly Row[] })
   | (Base & { kind: 'steps'; steps: string[] })
@@ -33,7 +47,10 @@ export type Module =
 export const SCREEN_BUDGET = {
   prose: { lines: 4, lineChars: 52, dim: 2, dimChars: 58 },
   thesis: { lines: 4, lineChars: 52, headingChars: 40 },
-  table: { rows: 5, cellChars: 30 },
+  /* 6 since PATH became the record: at a 16px step six rows land inside the
+     Screen's floor with room for the status line. Verified on the panel, not
+     assumed — five was the cap when the step was 18. */
+  table: { rows: 6, cellChars: 30 },
   steps: { steps: 6, stepChars: 48 },
 } as const
 
@@ -80,9 +97,13 @@ export type Work = {
   no: string
   id: string
   title: string
-  kind: 'Unit' | 'Site' | 'Poster'
+  kind: 'Unit' | 'Site' | 'Poster' | 'Campaign' | 'Social'
   year: string
+  /** Who it was for. Absent on self-directed work. */
+  client?: string
   blurb: string[]
+  /** Web-sized stills under `public/works/`. The first is the one the panel shows. */
+  images?: string[]
   sheet?: string
   /** True while this row is a stand-in and its content is not yet Fernando's. */
   placeholder?: boolean
@@ -110,24 +131,73 @@ export const WORKS: readonly Work[] = [
     ],
   },
   {
-    no: '002', id: 'site-a', title: 'Untitled site', kind: 'Site', year: '—',
-    placeholder: true,
-    blurb: ['Placeholder. A website Fernando has built,', 'not yet chosen or written up.'],
+    no: '002',
+    id: 'nelogica-bollinger',
+    title: 'Bandas de Bollinger',
+    kind: 'Campaign',
+    client: 'Nelogica',
+    year: '2025',
+    images: ['/works/nelogica-bollinger.jpg'],
+    blurb: [
+      'Launch campaign for an eight-week trading',
+      'course. Feed and story, built to be read at',
+      'thumb speed on a dark timeline.',
+    ],
   },
   {
-    no: '003', id: 'site-b', title: 'Untitled site', kind: 'Site', year: '—',
-    placeholder: true,
-    blurb: ['Placeholder. A website Fernando has built,', 'not yet chosen or written up.'],
+    no: '003',
+    id: 'ru-mine',
+    title: 'R U MINE?',
+    kind: 'Poster',
+    client: 'Classic Reeboks',
+    year: '2023',
+    images: ['/works/ru-mine-a.jpg', '/works/ru-mine-b.jpg'],
+    blurb: [
+      'An Arctic Monkeys night in Gravatai. Two',
+      'passes at the same bill \u2014 one all halftone and',
+      'bleed, one cut into hard red blocks.',
+    ],
   },
   {
-    no: '004', id: 'poster-a', title: 'Untitled poster', kind: 'Poster', year: '—',
-    placeholder: true,
-    blurb: ['Placeholder. A poster from Fernando\'s own', 'graphic work.'],
+    no: '004',
+    id: 'rifa-handbanners',
+    title: 'Rifa Handbanners',
+    kind: 'Poster',
+    year: '2025',
+    images: ['/works/rifa-handbanners.jpg'],
+    blurb: [
+      'A fan raffle sheet. Arched niches, engraved',
+      'serif and a single red \u2014 the closest thing here',
+      'to the language the Unit ended up in.',
+    ],
   },
   {
-    no: '005', id: 'poster-b', title: 'Untitled poster', kind: 'Poster', year: '—',
-    placeholder: true,
-    blurb: ['Placeholder. A poster from Fernando\'s own', 'graphic work.'],
+    no: '005',
+    id: 'graecus',
+    title: 'Graecus',
+    kind: 'Social',
+    client: 'Graecus',
+    year: '2026',
+    images: ['/works/graecus-mdsale.jpg', '/works/graecus-namorados.jpg'],
+    blurb: [
+      'Agency social, carousel format. Glass cards',
+      'over photography, one accent, a house grid',
+      'that survives whatever the brief is.',
+    ],
+  },
+  {
+    no: '006',
+    id: 'parize',
+    title: 'Parize Imoveis',
+    kind: 'Social',
+    client: 'Parize Imoveis',
+    year: '2024',
+    images: ['/works/parize-dombosco.jpg', '/works/parize-natal.jpg'],
+    blurb: [
+      'End-to-end marketing for a local estate agent:',
+      'listings, seasonal posts, paid assets and the',
+      'landing pages under them.',
+    ],
   },
 ]
 
@@ -140,15 +210,25 @@ export const MODULES: readonly Module[] = [
     id: 'ident',
     title: 'IDENT',
     kind: 'prose',
+    /**
+     * This said "No agency. No client case studies yet." It was true when it was
+     * written and it is not true now: there is four years of client work behind
+     * it — a trading platform, a cruise line, an estate agent, an agency. Copy
+     * that undersells is as inaccurate as copy that oversells, and PRODUCT.md
+     * asks for claims that check out, in both directions.
+     */
     lines: [
       'I build interfaces in the browser, and I think',
       'about who is reading them. Frontend execution',
       'with a marketing head on it, and a read on',
       'culture that is mine rather than borrowed.',
     ],
+    /* The budget counts *written* lines; the Screen wraps them to its own width,
+       which on this Module is about 33 characters. Two 45-character lines became
+       four rendered ones and the Screen said so: "+1 LINES". */
     dim: [
-      'No agency. No client case studies yet. This unit',
-      'is the first thing I have made in public.',
+      'Trading platform, cruise line,',
+      'agency. Porto Alegre, Brazil.',
     ],
   },
 
@@ -161,6 +241,7 @@ export const MODULES: readonly Module[] = [
     slot: 2,
     id: 'now-next',
     title: 'NOW / NEXT',
+    pad: 'NOW·NEXT',
     kind: 'thesis',
     a: {
       heading: 'A — What I can do today.',
@@ -184,7 +265,9 @@ export const MODULES: readonly Module[] = [
   {
     slot: 3,
     id: 'project-001',
-    title: 'PROJECT 001',
+    /* Retitled: this Module renders the series, not one project — `render.js`
+       branches on the id and draws `WORKS` here, so the prose below is unused. */
+    title: 'WORKS',
     kind: 'prose',
     /**
      * Every line here names something the visitor can see on the panel in front
@@ -209,22 +292,30 @@ export const MODULES: readonly Module[] = [
   {
     slot: 4,
     id: 'rack',
-    title: 'RACK',
+    title: 'PATH',
     kind: 'table',
-    head: ['TITLE', 'TYPE', 'YEAR'],
+    head: ['WHAT', 'WHERE', ''],
     /**
-     * PLACEHOLDER — these are influences, not a Rack. CONTEXT.md defines the
-     * Rack in the eurorack sense: the set of modules you own and patch together,
-     * every entry verifiable. PRODUCT.md forbids inventing them, so this is
-     * blocked on Fernando (T-13) and must not be filled in by reading
-     * package.json and guessing.
+     * Was a PLACEHOLDER list of influences, which T-13 flagged and which blocked
+     * for three sessions. It is the record now, and every row is checkable
+     * against Fernando's CV — which is the bar CONTEXT.md sets for the Rack
+     * ("every entry verifiable") and the reason the influences never met it.
+     *
+     * **Renames the Rack.** CONTEXT.md defines it in the eurorack sense: the set
+     * of modules you own and patch together. A work history is a defensible
+     * reading of that and it is still a change to a glossary term, so it wants
+     * Fernando's word and an entry in CONTEXT.md rather than a silent swap.
+     *
+     * Only what the CV states. Graecus appears in WORKS but not in the CV, so the
+     * nature of that engagement is not recorded here rather than guessed at.
      */
     rows: [
-      ['Tenebrae unit', 'Build', '2026'],
-      ['Serial Experiments Lain', 'Influence', '1998'],
-      ['Baroque · Sting', 'Influence', '1998'],
-      ['Alva Noto — Xerrox', 'Influence', '2007'],
-      ['In the Mood for Love', 'Influence', '2000'],
+      ['Front-end development', 'Nelogica', ''],
+      ['Web design & landing pages', 'Nelogica', ''],
+      ['AI & automation', 'Independent', ''],
+      ['CRO & growth marketing', 'Nelogica', ''],
+      ['Program publishing', 'MSC Crociere', ''],
+      ['Marketing & design', 'Parize · Graecus', ''],
     ],
   },
 
@@ -253,8 +344,18 @@ export const MODULES: readonly Module[] = [
       'Write to me directly — no form, no funnel.',
     ],
     /** Fernando's real address. It ships; it does not go in fixtures or logs. */
-    mail: 'fernandolinck3@gmail.com',
-    dim: ['São Paulo. English or Portuguese.'],
+    /* Fernando's real address, chosen by him over the gmail this used to carry.
+       It ships; it does not go in fixtures or logs. */
+    mail: 'fernandolinck@outlook.com',
+    links: [
+      { label: 'IG', handle: '@nan._.jin', url: 'https://instagram.com/nan._.jin' },
+      /* No `url`: the display name is what Fernando gave, and guessing a LinkedIn
+         slug from a name is exactly the kind of invention PRODUCT.md forbids.
+         It renders as text until he supplies the address. */
+      { label: 'IN', handle: 'Fernando Linck' },
+    ],
+    /* Was "São Paulo". The CV says Porto Alegre, and so does every role in it. */
+    dim: ['Porto Alegre, Brazil. English or Portuguese.'],
   },
 ]
 
