@@ -12,7 +12,7 @@ The portfolio is not a page containing a unit; the Unit is the portfolio.
 _Avoid_: device, machine, panel, widget, deck
 
 **Part**:
-A physical sub-assembly of the Unit — Chassis, Plate, Screen, Pad, Jog, Knob, Crossfader. Parts are
+A physical sub-assembly of the Unit — Chassis, Plate, Screen, Pad, Deck, Crossfader. Parts are
 the axis the build is organised along: each is designed and polished against its own references.
 _Avoid_: component, element, module (Module means content)
 
@@ -66,6 +66,33 @@ against this Unit itself.
 _Avoid_: crate, stack, skills, tech list
 
 Because the Pads are the only navigation, every Module must fit the Screen exactly. Nothing scrolls.
+The one exception is Project 001, where the rows of the series are clickable — selection *within* a
+Module, never selection *of* one (ADR-0017).
+
+**Work**:
+One of the numbered things Fernando has made, counting from this Unit as 001. A Work is an image —
+a site, a poster — which is why it cannot live on the Screen and is summoned to the Plinth instead.
+_Avoid_: piece, case study, portfolio item, project (Project 001 means the Unit)
+
+**Plinth**:
+The stone pedestal standing off the Altar's right shoulder. It is empty until a Work is called to
+it, which is what makes calling one an event. The Work stands on it lit from below, and the Screen
+becomes its plaque — the image where there is room for it, the words where words are legible.
+_Avoid_: pedestal, stand, podium, display
+
+**Summoning**:
+The rite that brings a Work to the Plinth. The visitor clicks a Work on the Screen and the room puts
+itself out — the Candles gutter, the Plinth takes light, the Work assembles out of motes. Turning
+the Sun, or clicking the Screen again, sends it back and hands the Vigil to the visitor. The Vigil is
+borrowed for the duration, never kept.
+_Avoid_: modal, lightbox, detail view, popup
+
+**Portrait**:
+Lyra on the chapel wall, gilt-framed, with her name engraved on a plaque beneath her. A fixture, not
+a display: it is hanging there before the visitor touches anything, and a trace of self-illumination
+keeps her legible at full Vigil when every Candle is dead. Distinct from the Plinth in kind — a Work
+is called and dismissed; she is simply there.
+_Avoid_: painting, picture, artwork, portrait of the character
 
 **Flat Plate**:
 The Unit rendered as a printed silkscreen in CSS from the DOM truth layer, served where the 3D
@@ -93,8 +120,10 @@ _Avoid_: bend, dim, brightness, corruption, knob
 
 **Face**:
 One of the Screen's complete visual treatments — the same six Modules, a different visual language
-throughout. Grimoire, Cracktro and Instrument are the three drawn. A Face is authored per Module,
-not applied as a palette. The visitor changes it; it never changes which Module is live.
+throughout. Grimoire is the day Face and Cracktro the night one; Instrument was deleted (ADR-0015).
+A Face is authored per Module, not applied as a palette — which is why the Vigil moves the Screen's
+colour continuously but swaps its *layout* only at the threshold (ADR-0016). The Vigil chooses the
+Face; it never changes which Module is live.
 _Avoid_: theme, skin, mode, style
 
 **Lyra**:
@@ -129,6 +158,19 @@ The transition between Modules. The Wizard raises her hand and throws a spell: a
 sweeps out from her palm across the Screen with sparks running ahead of it, and the new Module types
 itself on behind it. Modules do not cut or fade — she changes them.
 _Avoid_: transition, wipe, animation
+
+**Gauge**:
+The small sky in the corner of the Screen: one body crossing a short track, a rayed sun at first
+light and a crescent moon by the time the last Candle dies. It is the Screen reading the Vigil out
+loud, so the night is visible coming rather than arriving in one frame.
+_Avoid_: clock, meter, indicator, sun/moon icon
+
+**Niche**:
+The shallow lancet recess the Wizard stands in — lit back wall, jambs, a floor she has weight on and
+a shadow at her feet. It is how the Module accounts for her: without it she is composited over
+whatever space the copy left, which is the difference between a figure in a composition and a sprite
+on a page.
+_Avoid_: alcove, frame, box, container
 
 **Nightwork**:
 The engraving cut into the Plate that is invisible under full light and only becomes legible as the
