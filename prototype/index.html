@@ -24,6 +24,9 @@
     background:#DEDCD3;color:#17181B;border:1px solid #000;cursor:pointer}
   #err{position:fixed;top:0;left:0;right:0;max-height:60%;overflow:auto;margin:0;padding:12px;color:#F03A22;
     background:rgba(0,0,0,.92);font:11px/1.5 monospace;white-space:pre-wrap;z-index:99;display:none}
+  #fps{min-width:5.5em;display:inline-block}
+  #fps[data-ok="1"]{color:#7FD9B0}
+  #fps[data-ok="0"]{color:#C4703A}
 </style>
 <div id="stage"></div>
 <nav class="sr" aria-label="Unit controls">
@@ -35,8 +38,8 @@
 <div class="hud">
   <p class="note">Click the pads. Turn the Sun to bring the light up, the Moon to put it out.<br>Drag the fader to crossfade. On PROJECTS, click a work on the screen — the room puts itself out and the work comes up on the plinth. Click again, or touch the Sun, to send it back.</p>
   <span class="ctl">VIGIL <input id="vigil" type="range" min="0" max="100" value="0" aria-label="Vigil"> <b id="vv">00</b></span>
-  <span class="ctl">CAM <input id="tilt" type="range" min="0" max="70" value="28" aria-label="Camera tilt"> <b id="tiltv">28&deg;</b></span>
-  <span class="ctl">DIST <input id="dist" type="range" min="55" max="240" value="74" aria-label="Camera distance"> <b id="distv">7.4</b></span>
+  <span class="ctl">CAM <input id="tilt" type="range" min="0" max="70" value="6" aria-label="Camera tilt"> <b id="tiltv">6&deg;</b></span>
+  <span class="ctl">DIST <input id="dist" type="range" min="45" max="240" value="56" aria-label="Camera distance"> <b id="distv">5.6</b></span>
   <span class="ctl">BAND <input id="band" type="range" min="40" max="200" value="118" aria-label="Engraving band"> <b id="bandv">118</b></span>
   <span class="ctl">DENSITY <input id="waves" type="range" min="0" max="26" value="0" aria-label="Engraving density"> <b id="wavesv">0</b></span>
   <span class="ctl">WEIGHT <input id="lw" type="range" min="10" max="120" value="50" aria-label="Engraving line weight"> <b id="lwv">5.0</b></span>
@@ -50,6 +53,8 @@
   <span class="ctl">ART ZOOM <input id="artZoom" type="range" min="60" max="260" value="100" aria-label="Plate art zoom"> <b id="artZoomv">1.00</b></span>
   <span class="ctl">INK <input id="ink" type="range" min="5" max="100" value="30" aria-label="Engraving contrast"> <b id="inkv">0.30</b></span>
   <span class="ctl">SEED <input id="seed" type="range" min="1" max="60" value="25" aria-label="Seed"> <b id="seedv">25</b></span>
+  <span class="ctl"><button id="replay" type="button">REPLAY INTRO</button></span>
+  <span class="ctl">FPS <b id="fps">--</b></span>
 </div>
 <script>
 window.addEventListener('error',function(e){var d=document.getElementById('err');d.style.display='block';d.textContent+='ERR: '+(e.message||e)+' @'+(e.lineno||'')+String.fromCharCode(10);});

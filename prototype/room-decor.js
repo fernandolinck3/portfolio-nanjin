@@ -158,7 +158,10 @@ function globeLamp(parent, x, y, z) {
     }))
   globe.position.set(x, y + .60, z); parent.add(globe)
 
-  const light = new THREE.PointLight(0xF3C070, 1.7, 10, 2)
+  /* With skyLight demoted to real moonlight these two are the room's daylight, so
+     they carry far more than they used to — and being point lights they do it in
+     pools that fall off, which is the whole point. */
+  const light = new THREE.PointLight(0xF3C070, 5.2, 16, 2)
   light.position.set(x, y + .62, z); parent.add(light)
   return { globe, light }
 }
@@ -214,7 +217,7 @@ function credenza(parent, { x, z, w, h, d, floorY }) {
  * `wallFace` is the z of the far wall's visible surface — it is an extrusion, so
  * its face is not at its position.
  */
-export function createRoomDecor(room, { floorY, wallFace }) {
+export function createRoomDecor(room, { floorY, wallFace, sideX }) {
   /* Everything this builds goes in one group rather than loose into the room, so
      `__unit.perf()` can switch the whole furnishing off in a frame and price it.
      Reassigning the parameter keeps the sixty `room.add` calls below untouched. */
@@ -223,88 +226,115 @@ export function createRoomDecor(room, { floorY, wallFace }) {
   room = group
 
   const lamps = []
-  /* ---- arched acoustic panels, in two groups either side of the centre ---- */
-  const PANEL = { w: 1.52, h: 4.20, d: .16 }
-  const geom = archGeom(PANEL.w, PANEL.h, PANEL.d)
-  const scheme = [
-    [BONE, 'star'], [EMBER, 'moon'], [COLD, 'sun'],
-    [COLD, 'sun'], [EMBER, 'moon'], [BONE, 'star'],
-  ]
-  const groups = [[-10.6, -8.9, -7.2], [4.2, 5.9, 7.6]]
-  let n = 0
-  for (const g of groups) {
-    for (const x of g) {
-      const [colour, motif] = scheme[n % scheme.length]
-      const m = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({
-        map: panelFace(colour, motif, 4000 + n * 137),
-        roughness: .94, metalness: 0,
-      }))
-      m.position.set(x, floorY + 3.05, wallFace + .02)
-      room.add(m)
-      n++
-    }
+  /**
+   * Staging (ADR-0020).
+   *
+   * Everything used to sit on the back wall, at one distance, mirrored left to
+   * right: three panels each side, a credenza at x=-9.4 and a pedal cabinet at
+   * x=+8.6, both facing the camera square-on. Nothing overlapped anything, so
+   * there was nothing for the eye to read as depth, and the mirror symmetry read
+   * as a stage set rather than a room somebody works in.
+   *
+   * The reference does the opposite, and it is the whole reason it reads as a
+   * space: the furniture stands against the **side** walls, running away from the
+   * camera, **overlapping** the panels behind it. Convergence and occlusion are
+   * what depth actually is — a bevel on a card is still a card.
+   *
+   * So each side gets a `bay`: a group parked against its wall and rotated a
+   * quarter turn, with its contents built in local coordinates. Rotating the group
+   * rather than every mesh is what keeps this readable — local +x runs along the
+   * wall, local +z comes out of it.
+   */
+  const bay = (x, z, turn) => {
+    const g = new THREE.Group()
+    g.position.set(x, 0, z)
+    g.rotation.y = turn
+    room.add(g)
+    return g
   }
 
-  /* ---- monitors, flanking the window ---- */
-  monitor(room, -3.75, wallFace + 1.30, floorY, wallFace + 1.30)
-  monitor(room, 3.75, wallFace + 1.30, floorY, wallFace + 1.30)
-
-  /* ---- the credenza of records, under the left panels ---- */
-  const cz = wallFace + .85
-  const left = credenza(room, { x: -9.4, z: cz, w: 5.0, h: 1.45, d: 1.15, floorY })
+  /* ---- the left bay: the credenza of records, along the left wall ---- */
+  const LEFT_D = 1.15
+  const left = bay(-sideX + 0.30 + LEFT_D / 2, wallFace + 6.4, Math.PI / 2)
+  const leftTop = credenza(left, { x: 0, z: 0, w: 6.0, h: 1.45, d: LEFT_D, floorY })
 
   /* Records: thin slabs leaning in a row. Their spines are the only place in the
      room with arbitrary colour, which is what makes them read as somebody's
      collection rather than as decoration. */
   const rnd = rng(8123)
   const spines = ['#5A2321', '#2E4750', '#7A6A4A', '#3A2E26', '#8A5A3C', '#243038']
-  for (let i = 0; i < 44; i++) {
-    const rec = new THREE.Mesh(
-      new THREE.BoxGeometry(.035 + rnd() * .02, 1.02, .96),
-      new THREE.MeshStandardMaterial({
-        color: spines[i % spines.length], roughness: .88, metalness: 0,
-      }))
-    rec.position.set(-11.6 + i * .095, floorY + .78, cz + .06)
+  const recGeom = new THREE.BoxGeometry(1, 1.02, .96)
+  for (let i = 0; i < 40; i++) {
+    const rec = new THREE.Mesh(recGeom, new THREE.MeshStandardMaterial({
+      color: spines[i % spines.length], roughness: .88, metalness: 0,
+    }))
+    rec.scale.x = .035 + rnd() * .02
+    rec.position.set(-2.5 + i * .105, floorY + .78, .06)
     rec.rotation.z = (rnd() - .5) * .05
-    room.add(rec)
+    left.add(rec)
   }
-
-  lamps.push(globeLamp(room, -11.5, left.top, cz - .04))
 
   /* a plant, because every studio has one and it is the only soft thing here */
   const pot = new THREE.Mesh(new THREE.CylinderGeometry(.24, .18, .38, 14),
     new THREE.MeshStandardMaterial({ color: 0x6B4A38, roughness: .9 }))
-  pot.position.set(-7.6, left.top + .19, cz - .06); room.add(pot)
-  const leaf = new THREE.MeshStandardMaterial({ color: 0x35492F, roughness: .85, side: THREE.DoubleSide })
+  pot.position.set(2.35, leftTop.top + .19, -.06); left.add(pot)
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x35492F, roughness: .85, side: THREE.DoubleSide })
+  const leafGeom = new THREE.CircleGeometry(.20, 8, 0, Math.PI)
   for (let i = 0; i < 9; i++) {
     const a = (i / 9) * 6.2832
-    const l = new THREE.Mesh(new THREE.CircleGeometry(.20, 8, 0, Math.PI), leaf)
-    l.position.set(-7.6 + Math.cos(a) * .12, left.top + .52 + (i % 3) * .14, cz - .06 + Math.sin(a) * .12)
+    const l = new THREE.Mesh(leafGeom, leafMat)
+    l.position.set(2.35 + Math.cos(a) * .12, leftTop.top + .52 + (i % 3) * .14, -.06 + Math.sin(a) * .12)
     l.rotation.set(-.9 + (i % 3) * .2, a, 0)
-    room.add(l)
+    left.add(l)
   }
+  lamps.push(globeLamp(left, -2.6, leftTop.top, -.04))
 
-  /* ---- the pedal cabinet on the right ---- */
-  const right = credenza(room, { x: 8.6, z: cz, w: 3.4, h: 1.30, d: 1.10, floorY })
+  /* ---- the right bay: the pedal cabinet, along the right wall ---- */
+  const RIGHT_D = 1.10
+  const right = bay(sideX - 0.30 - RIGHT_D / 2, wallFace + 7.2, -Math.PI / 2)
+  const rightTop = credenza(right, { x: 0, z: 0, w: 4.2, h: 1.30, d: RIGHT_D, floorY })
   const pedalCols = [0x8A2E12, 0x2E4750, 0x6B5A2A, 0x24303A, 0x5A2321]
+  const pedalGeom = new THREE.BoxGeometry(.42, .16, .58)
+  const knobGeom = new THREE.CylinderGeometry(.05, .05, .06, 10)
+  const knobMat = new THREE.MeshStandardMaterial({ color: 0xC9C2B0, roughness: .4, metalness: .3 })
   for (let i = 0; i < 5; i++) {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(.42, .16, .58),
-      new THREE.MeshStandardMaterial({ color: pedalCols[i], roughness: .5, metalness: .5 }))
-    p.position.set(7.35 + i * .58, right.top + .08, cz - .02); room.add(p)
-    const knob = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .06, 10),
-      new THREE.MeshStandardMaterial({ color: 0xC9C2B0, roughness: .4, metalness: .3 }))
-    knob.position.set(7.35 + i * .58, right.top + .19, cz - .16); room.add(knob)
+    const pd = new THREE.Mesh(pedalGeom, new THREE.MeshStandardMaterial({
+      color: pedalCols[i], roughness: .5, metalness: .5 }))
+    pd.position.set(-1.35 + i * .58, rightTop.top + .08, -.02); right.add(pd)
+    const kn = new THREE.Mesh(knobGeom, knobMat)
+    kn.position.set(-1.35 + i * .58, rightTop.top + .19, -.16); right.add(kn)
   }
-
   /* coiled cables on the shelf below — one warm, one cold, like the Plate */
+  const coilGeom = new THREE.TorusGeometry(.30, .045, 8, 28)
   for (const [i, col] of [[0, 0x8A2E12], [1, 0x2E5A70]]) {
-    const coil = new THREE.Mesh(new THREE.TorusGeometry(.30, .045, 8, 28),
-      new THREE.MeshStandardMaterial({ color: col, roughness: .72 }))
+    const coil = new THREE.Mesh(coilGeom, new THREE.MeshStandardMaterial({ color: col, roughness: .72 }))
     coil.rotation.x = Math.PI / 2
-    coil.position.set(7.8 + i * .95, floorY + .72, cz + .10); room.add(coil)
+    coil.position.set(-.55 + i * .95, floorY + .72, .10); right.add(coil)
   }
+  lamps.push(globeLamp(right, 1.75, rightTop.top, -.04))
 
-  lamps.push(globeLamp(room, 9.9, right.top, cz - .04))
+  /* ---- arched acoustic panels: two on the left, three on the right ----
+     Deliberately unequal. Six panels in two mirrored threes was the single
+     loudest thing saying "this was arranged, not lived in". */
+  const PANEL = { w: 1.52, h: 4.20, d: .16 }
+  const geom = archGeom(PANEL.w, PANEL.h, PANEL.d)
+  const scheme = [[BONE, 'star'], [EMBER, 'moon'], [COLD, 'sun'], [EMBER, 'moon'], [BONE, 'star']]
+  const places = [-8.15, -6.35, 4.35, 6.15, 7.95]
+  places.forEach((x, n) => {
+    const [colour, motif] = scheme[n % scheme.length]
+    const m = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({
+      map: panelFace(colour, motif, 4000 + n * 137), roughness: .94, metalness: 0,
+    }))
+    /* heights nudged apart — a row of tops at one level is another giveaway */
+    m.position.set(x, floorY + 3.05 + (n % 2 ? .18 : -.12), wallFace + .02)
+    room.add(m)
+  })
+
+  /* ---- monitors, forward of the wall on their stands, flanking the window ----
+     Not mirrored: the left one stands closer and reads larger, which is what puts
+     the two of them at different depths instead of on one line. */
+  monitor(room, -3.30, wallFace + 2.10, floorY, wallFace + 2.10)
+  monitor(room, 3.95, wallFace + 1.25, floorY, wallFace + 1.25)
 
   /**
    * The lamps go out with the room.
@@ -317,7 +347,7 @@ export function createRoomDecor(room, { floorY, wallFace }) {
    * would actually do it in: kill the room lights, work by candle, and let the
    * Screen have the last of it.
    */
-  let globeI = 1.7
+  let globeI = 5.2
   let lastK = 1
   function update(vigil) {
     const k = Math.max(0, Math.min(1, 1 - vigil / .55))
@@ -339,5 +369,7 @@ export function createRoomDecor(room, { floorY, wallFace }) {
     return globeI
   }
 
-  return { update, setGlobe, group }
+  /* `lamps` so scene.js can put the globes out when the room itself is hidden —
+     a light that illuminates nothing invisible still costs every lit fragment. */
+  return { update, setGlobe, group, lamps: lamps.map(l => l.light) }
 }

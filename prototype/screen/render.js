@@ -330,16 +330,42 @@ function spriteBox(st) {
 function drawBubble(g, box, lines, ink, mid, bg) {
   const PAD = 4, LH = 9, NAME_H = 8
   g.font = '11px VT323, monospace'
-  let wide = g.measureText(LYRA_NAME).width
-  for (const l of lines) wide = Math.max(wide, g.measureText(l).width)
+
+  /**
+   * The bubble is opaque and it used to be laid out from her sprite alone, so on
+   * any Module that stands her beside the body — WORKS puts her at x=46 with the
+   * series starting at x=96 — it reached straight across and painted over the
+   * text. Fernando: "lyra is covering up parts of the texts".
+   *
+   * She gets her own column and stays in it. The side she is on decides which
+   * span is hers, her lines wrap to it, and the box is clamped to it. If that
+   * leaves too little room to say anything she stays silent rather than
+   * overlapping — a bubble is never worth losing a line of the Module for.
+   */
+  const st = stage()
+  const onLeft = st.fx < W / 2
+  const limit = onLeft ? st.bx - 8 : W - (st.bx + st.bw) - 8
+  const avail = Math.max(0, limit - PAD * 2)
+  if (avail < 34) return
+
+  const fitted = []
+  for (const l of lines) for (const ln of wrap(l, avail)) fitted.push(ln)
+  if (!fitted.length) return
+
+  let wide = Math.min(avail, g.measureText(LYRA_NAME).width)
+  for (const l of fitted) wide = Math.max(wide, Math.min(avail, g.measureText(l).width))
   const w = Math.ceil(wide) + PAD * 2
-  const h = NAME_H + lines.length * LH + PAD * 2
+  const h = NAME_H + fitted.length * LH + PAD * 2
+  lines = fitted
 
   /* Prefer sitting above her; if the Module has pushed her high, sit beside her. */
   let x = Math.round(box.x + (28 * box.scale) / 2 - w / 2)
   let y = box.y - h - 6
   if (y < 4) y = 4
-  x = Math.max(4, Math.min(W - w - 4, x))
+  /* keep her entirely inside her own column, not merely on the Screen */
+  const lo = onLeft ? 4 : st.bx + st.bw + 4
+  const hi = onLeft ? st.bx - 4 - w : W - w - 4
+  x = Math.max(lo, Math.min(hi, x))
 
   g.fillStyle = bg; g.fillRect(x, y, w, h)
   g.fillStyle = ink
@@ -392,7 +418,15 @@ const castP = () => clamp01(since() / CAST_MS)
 let hoverWork = -1, plinthWork = -1
 let workRows = []
 
-const WROW = { h: 17 }
+/**
+ * 17 fitted five rows. There are six Works now, plus the MORE SOON rule.
+ *
+ * The arithmetic, because guessing it wrong is what clipped it twice: the series
+ * starts at `st.by` = 60, the first row sits at +12, and `FLOOR` is 156. Six rows
+ * at 13 put the last one at 137 and the closing rule at 154 — inside the floor,
+ * with the status line still clear beneath it.
+ */
+const WROW = { h: 13 }
 
 /** The series, or — while a Work is on the Plinth — that Work's plaque. */
 function drawWorks(x0, bodyW, top) {
@@ -423,6 +457,24 @@ function drawWorks(x0, bodyW, top) {
     return
   }
 
+  /**
+   * The series sits on its own ground.
+   *
+   * The rest of the Screen is type on the Grimoire's field, which is fine for
+   * prose; a list of six rows over the same field was the one place it stopped
+   * being readable — Fernando: "the screen where the works appear is off the
+   * aesthetic... you can add more black overlay so it can be more readable".
+   *
+   * So the list gets a plate laid under it, dark and hard-edged, with a rule top
+   * and bottom. It is the same move the Plate makes for the Print: clear the
+   * ground before you put a label on it.
+   */
+  const plateY = top - 10
+  const plateH = 12 + WORKS.length * WROW.h + 20
+  tone(x0 - 10, plateY, bodyW + 16, plateH, .92, '#04050A')
+  tone(x0 - 10, plateY, bodyW + 16, 1, .45, INK)
+  tone(x0 - 10, plateY + plateH - 1, bodyW + 16, 1, .45, INK)
+
   g.font = '8px Silkscreen, monospace'; g.fillStyle = DIM
   g.fillText('CLICK A WORK', x0, top)
 
@@ -446,6 +498,14 @@ function drawWorks(x0, bodyW, top) {
     const meta = w.placeholder ? 'PLACEHOLDER' : w.kind.toUpperCase() + ' · ' + w.year
     g.fillText(meta, x0 + bodyW - g.measureText(meta).width, y)
   })
+
+  /* The series is open, and says so. A portfolio that ends on its last row reads
+     as finished; one that says more is coming reads as someone still working.
+     Drawn dim and rule-led so it is plainly a note and not a sixth clickable row. */
+  const endY = top + 12 + WORKS.length * WROW.h
+  tone(x0 - 6, endY - 4, bodyW + 10, 1, .35, INK)
+  g.font = '8px Silkscreen, monospace'; g.fillStyle = DIM
+  g.fillText('MORE SOON', x0, endY + 4)
 }
 
 function grimoire(m, t) {
@@ -556,11 +616,15 @@ function grimoire(m, t) {
       g.fillText(r[0], x0 + 12, y + 8)
       const tw = g.measureText(r[0]).width
       g.font = '8px Silkscreen, monospace'
-      const yr = r[2], yw = g.measureText(yr).width
+      /* The middle column was never drawn — only [0] and [2] ever reached the
+         Screen, so a row's "where" was invisible. Fernando dropped the years, so
+         the right-hand slot shows the third column when there is one and falls
+         back to the second, which is where the "where" now lives. */
+      const yr = r[2] || r[1], yw = g.measureText(yr).width
       leader(x0 + 16 + tw, y + 7, Math.max(4, bodyW - 20 - tw - yw), DIM)
       g.fillStyle = i === 0 ? GOLD : DIM
       g.fillText(yr, x0 + bodyW - yw, y + 8)
-      y += 18
+      y += 16
     })
 
   } else if (m.kind === 'steps') {
@@ -591,6 +655,31 @@ function grimoire(m, t) {
       g.fillText(m.mail, x0 + 6, y + 1)
       g.font = '13px VT323, monospace'
       y += 18
+    }
+    /**
+     * Where else to find him.
+     *
+     * Boxed like the address above, one row, so OUT reads as a set of routes
+     * rather than an address with footnotes. A link without a `url` is drawn the
+     * same but not treated as clickable — `modules.ts` withholds the LinkedIn
+     * address rather than guessing a slug from a name.
+     */
+    if (m.links?.length) {
+      g.font = '8px Silkscreen, monospace'
+      let lx = x0
+      for (const l of m.links) {
+        const label = l.label + ' ' + l.handle
+        const w = Math.ceil(g.measureText(label).width) + 10
+        if (lx + w > x0 + bodyW) break
+        g.fillStyle = DIM
+        g.fillRect(lx, y - 9, w, 1); g.fillRect(lx, y + 4, w, 1)
+        g.fillRect(lx, y - 9, 1, 14); g.fillRect(lx + w - 1, y - 9, 1, 14)
+        g.fillStyle = l.url ? MID : DIM
+        g.fillText(label, lx + 5, y)
+        lx += w + 6
+      }
+      g.font = '13px VT323, monospace'
+      y += 16
     }
     const dimAll = []
     for (const l of (m.dim || [])) dimAll.push(...wrap(l, bodyW))
@@ -821,11 +910,155 @@ export const moduleIndex = () => mod
  * clock, because the Unit already has one and two rAF loops disagreeing about the
  * time is how the raven ends up flying at a different speed than the Cast.
  */
+/**
+ * The Screen powering on, 0 to 1.
+ *
+ * Driven by `intro.js` while the camera travels, so the display comes up *under*
+ * the move rather than after it. Held at 1 for the rest of the session — this is
+ * an arrival, not an effect the Unit does again.
+ */
+let boot = 1
+export function setBoot(k) { boot = clamp01(k) }
+
+/**
+ * A cathode tube finding itself — and saying what it is while it does.
+ *
+ * The loading lives *here*, in the Screen's own 320x180 buffer, rather than as an
+ * overlay on the page. The page is the room the Unit sits in; the Unit is the
+ * thing that switches on. A div fading over the top said "this website is
+ * loading", which is a different sentence.
+ *
+ * Four beats, in the order a tube actually does them:
+ *
+ *   the line     a single bright scan snaps across the middle
+ *   the aperture it eases open out of that line, vertically
+ *   the self-test the Unit names itself and counts its own parts
+ *   the settle   the boot type clears and the Module comes up under it
+ *
+ * Drawn *over* the finished frame, so nothing below has to know the Screen is
+ * still waking up.
+ */
+function powerOn(t) {
+  if (boot >= 1) return
+  const k = boot
+
+  /* the aperture, easing open out of a single line */
+  const open = clamp01(k / 0.38)
+  const eased = 1 - Math.pow(1 - open, 3)
+  const half = Math.max(0.5, (H / 2) * eased)
+  const y0 = Math.round(H / 2 - half), y1 = Math.round(H / 2 + half)
+
+  g.fillStyle = '#000'
+  g.fillRect(0, 0, W, y0)
+  g.fillRect(0, y1, W, H - y1)
+
+  /* the hot edges of the sweep, while it is still travelling */
+  if (open < 1) {
+    g.fillStyle = '#CFEBD8'
+    g.fillRect(0, y0, W, 1)
+    g.fillRect(0, y1 - 1, W, 1)
+  }
+
+  /**
+   * The boot wears the Module's own chrome.
+   *
+   * It was a name floating on black, which is a *different object* from the thing
+   * that comes up half a second later — same Screen, two design languages. So it
+   * is built from exactly the pieces `grimoireChrome` uses: the double rule and
+   * the ruled inner line, the four foliate `corner()` ornaments, blackletter where
+   * the Modules put their titles, Silkscreen for the machine's small print, the
+   * header rule at y=44 that every Module hangs its body under, and the leader
+   * dots the Rack runs between a row and its value. The slot readout becomes the
+   * boot percentage, in the place a Module says MOD 03/06.
+   */
+  const typeIn = clamp01((k - 0.14) / 0.34)
+  const typeOut = clamp01((k - 0.86) / 0.14)
+  const show = typeIn > 0 ? (1 - typeOut) : 0
+  if (show > 0.01) {
+    g.save()
+    g.globalAlpha = show
+    g.fillStyle = BG
+    g.fillRect(0, y0, W, y1 - y0)
+
+    /* the Module's frame, drawn the way grimoireChrome draws it */
+    g.fillStyle = INK
+    g.fillRect(5, 5, W - 10, 1); g.fillRect(5, H - 6, W - 10, 1)
+    g.fillRect(5, 5, 1, H - 10); g.fillRect(W - 6, 5, 1, H - 10)
+    tone(8, 8, W - 16, 1, .5, INK); tone(8, H - 9, W - 16, 1, .5, INK)
+    corner(8, 8, 1, 1); corner(W - 9, 8, -1, 1)
+    corner(8, H - 9, 1, -1); corner(W - 9, H - 9, -1, -1)
+
+    /* header band, in the Module's own places */
+    g.font = '17px UnifrakturMaguntia, serif'
+    g.fillStyle = INK
+    g.fillText('Tenebrae', 20, 32)
+    g.font = '8px Silkscreen, monospace'
+    g.fillStyle = MID
+    const pct = String(Math.round(clamp01(k / 0.86) * 100)).padStart(3, ' ') + '%'
+    g.fillText(pct, W - 20 - g.measureText(pct).width, 40)
+    tone(18, 44, W - 36, 1, .4, INK)
+
+    /**
+     * The name, in the Unit's own hand.
+     *
+     * Blackletter, the same face the Modules title themselves with, because the
+     * name is the one line on this Screen that is not machine output — everything
+     * else the boot says is the device talking about itself.
+     *
+     * Title case, not caps: blackletter capitals are near-illegible in a run, and
+     * the whole tradition sets them as initials with lowercase behind. Still eaten
+     * out by a cursor — a dissolve at 320x180 is mush, a cursor running along a
+     * line is legible at any size and is what a terminal actually does.
+     */
+    const NAME = 'Fernando Bittencourt'
+    const shown = NAME.slice(0, Math.round(NAME.length * typeIn))
+    g.font = '21px UnifrakturMaguntia, serif'
+    g.fillStyle = INK
+    g.fillText(shown, 20, 88)
+    if (typeIn < 1 && Math.floor(t * 5) % 2) {
+      g.fillRect(20 + Math.round(g.measureText(shown).width) + 3, 76, 5, 13)
+    }
+
+    /* what he does, under the name, once it has finished arriving */
+    if (typeIn >= 1) {
+      g.font = '8px Silkscreen, monospace'
+      g.fillStyle = DIM
+      g.fillText('FRONT-END  ·  WEB DESIGN  ·  AI', 20, 106)
+    }
+
+    /* the machine counting itself, on the leader the Rack uses for its rows */
+    const CHECKS = [['PLATE', 0.40], ['DECKS', 0.55], ['PHOSPHOR', 0.70]]
+    g.font = '8px Silkscreen, monospace'
+    CHECKS.forEach(([label, at], i) => {
+      if (k < at) return
+      const y = 126 + i * 12
+      g.fillStyle = DIM
+      g.fillText(label, 20, y)
+      const lw = g.measureText(label).width
+      leader(20 + lw + 6, y - 3, W - 62 - lw, DIM)
+      g.fillStyle = k > at + 0.06 ? GOLD : MID
+      g.fillText('OK', W - 20 - g.measureText('OK').width, y)
+    })
+
+    g.restore()
+  }
+
+  /* brightness climbing once the aperture is open */
+  const settle = clamp01((k - 0.5) / 0.5)
+  if (settle < 1) {
+    g.globalAlpha = (1 - settle) * 0.6
+    g.fillStyle = '#000'
+    g.fillRect(0, 0, W, H)
+    g.globalAlpha = 1
+  }
+}
+
 export function render(t, dt) {
   if (figure !== 'none') updateRaven(dt, t, perchOf(stage()), roamOf(stage()))
   /* the room's light first — every draw below reads the palette it sets */
   setPalette(dusk(vigil))
   DIRS[currentFace()](MODULES[mod], t)
   curtain()
+  powerOn(t)
   return buf
 }

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tenebrae — style test</title>
+<style>
+  html,body { margin:0; height:100%; background:#0B0A09; color:#8A8378;
+              font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  #wrap { display:flex; flex-direction:column; height:100%; }
+  #stage { flex:1; min-height:0; }
+  canvas { display:block; width:100%; height:100%; }
+  #labels { display:flex; border-top:1px solid #1E1B18; }
+  #labels div { flex:1; padding:10px 14px; border-right:1px solid #1E1B18; }
+  #labels div:last-child { border-right:0; }
+  b { color:#C9C2B0; font-weight:600; letter-spacing:.08em; }
+  i { color:#6E6559; font-style:normal; }
+  #hint { padding:8px 14px; border-top:1px solid #1E1B18; color:#5A544A; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage"></div>
+  <div id="labels">
+    <div><b>1 · PLATE</b><br><i>the room surfaced exactly as the Unit is — dark, gilt, metallic.</i></div>
+    <div><b>2 · RELIQUARY</b><br><i>the same, pushed. more gold, deeper black, jewelled accents.</i></div>
+    <div><b>3 · NOCTURNE</b><br><i>ornament held to the borders; the dark does the work.</i></div>
+  </div>
+  <div id="hint">drag to orbit · all three show the same corner, same camera, same geometry</div>
+</div>
+<script type="module" src="./style.js"></script>
+</body>
+</html>

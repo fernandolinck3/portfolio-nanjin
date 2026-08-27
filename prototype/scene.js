@@ -10,14 +10,31 @@ import { createDisplay } from './display.js'
 import { printLayer, engravedLayer } from './plate-art.js'
 import { deckMaps, deckGlow } from './deck-faces.js'
 import { createRoomDecor } from './room-decor.js'
+import { createAltarProps } from './altar-props.js'
+import { createPost } from './post.js'
+import { createFocus } from './focus.js'
+import { createIntro, REST } from './intro.js'
 import {
-  buffer as screenBuffer, render as renderScreen, SCREEN_W, SCREEN_H,
+  buffer as screenBuffer, render as renderScreen, SCREEN_W, SCREEN_H, setBoot,
   setModule as setScreenModule, setVigil as setScreenVigil,
   setCrossfade as setScreenCrossfade, setFace as setScreenFace,
   setHoverWork, setPlinthWork, workRowAt,
 } from './screen/render.js'
 /* ============ Tenebrae — 3D material & form study ============ */
 const W = () => innerWidth, H = () => innerHeight;
+
+/**
+ * Dark before anything else happens.
+ *
+ * `render.js` defaults `boot` to 1 — a Screen that is already on — and the Unit
+ * paints the buffer several times during setup, well before `intro.js` exists to
+ * say otherwise. So the first frames showed the Module in full and then cut back
+ * to the power-on, which is the film running in the wrong order.
+ *
+ * Called here rather than at the intro's construction because "here" is the top of
+ * the module, before a single pixel of the Screen has been drawn.
+ */
+setBoot(0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
 /* On a retina panel `devicePixelRatio` is 2, which is *four times* the fragments of
@@ -48,7 +65,19 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.setSize(W(), H());
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.85;
+/**
+ * Exposure, set by measuring rather than by eye.
+ *
+ * At 0.85 the Sun state read mean 34 / p50 16 with **67% of pixels below 32** —
+ * night numbers, on the setting that is supposed to be daylight. Pushing the sun
+ * harder did not fix it: p90 was already 165 and clipping while p50 stayed at 40,
+ * which is a *contrast* problem, not a brightness one. The levers that lift shadows
+ * are exposure and the environment, not the key.
+ *
+ * 1.75 puts Sun at mean 73 / p50 64 with 0.1% blown — a lit room with nothing
+ * clipping.
+ */
+renderer.toneMappingExposure = 1.40;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.getElementById('stage').appendChild(renderer.domElement);
 
@@ -58,11 +87,34 @@ scene.background = new THREE.Color(0x060505);
 const camera = new THREE.PerspectiveCamera(38, W() / H(), 0.1, 100);
 /* CAM is the angle off vertical, in degrees. 0 is the spec-sheet view straight down;
    larger angles put the candlesticks into profile so they read as candles at all. */
-let CAM = { tilt: 28, dist: 7.4, yaw: 0 };
+/**
+ * This version ships one angle: straight down.
+ *
+ * `CAM_LIMITS` used to open a 70-degree arc of tilt and 84 of yaw, which is how a
+ * room got built that the default view could never see. The Plate is the object
+ * and top-down is the angle it is designed to be read at, so the orbit is closed
+ * and the only camera move that ships is the opening one (`intro.js`).
+ */
+let CAM = { ...REST };
 /* Clamped so the visitor can look up into the room but never behind or under the Unit,
    whose sides are not modelled to hold up there. */
 const CAM_LIMITS = { tilt: [4, 74], yaw: [-42, 42] };
+/* Orbit is off for this version. The sliders in the workbench still drive `CAM`. */
+const ORBIT = false;
+/**
+ * Is the focus flight driving the camera right now?
+ *
+ * A plain `let`, reassigned once `focus` exists, rather than a reference to
+ * `focus` itself: `placeCamera()` runs during module init, hundreds of lines
+ * before `focus` is declared, and a `const` in its temporal dead zone throws even
+ * from `typeof` — which an undeclared name would not.
+ */
+let focusDriving = () => false;
+
 function placeCamera() {
+  /* the focus flight drives the camera outright while it runs; the rig must not
+     fight it for the same transform */
+  if (focusDriving()) return;
   const a = CAM.tilt * Math.PI / 180, y = CAM.yaw * Math.PI / 180;
   const h = Math.sin(a) * CAM.dist;
   camera.position.set(Math.sin(y) * h, Math.cos(a) * CAM.dist, Math.cos(y) * h);
@@ -184,7 +236,10 @@ scene.add(moonlight);
 /* Bounce. A uniform environment is a poor stand-in for GI — real bounce falls off
    into a corner and this does not — but it is the cheap half of the trick, and at
    0.31 it sits under the practicals instead of drowning them. */
-scene.environmentIntensity = 0.40;
+/* The only omnidirectional term in the scene, and therefore the only one that
+   lifts shadows rather than highlights. It carries the daylight state; `applyVigil`
+   takes it to nothing by full Vigil, which is what keeps the night dark. */
+scene.environmentIntensity = 1.85;
 
 /**
  * Only the key casts, and it is framed tightly on the Unit.
@@ -390,8 +445,23 @@ const FACE_Y = .353, WELL_Y = .272;
  * stretched, and its drawn circles land on the wheels they were drawn for.
  */
 const PLATE = { w: 5.94, d: 3.26 };      // 1.822 — the faceplate's own aspect
+/**
+ * The Decks are back at their original size.
+ *
+ * Widening the Screen meant shrinking them — r .93 to .84 — because their outer
+ * edge was already five hundredths off the Plate's edge and there was nowhere else
+ * for the room to come from. Fernando, looking at it: "the faceplate is off now".
+ * He is right, and it is worth writing down why: the Plate takes its proportions
+ * from his own faceplate artwork, and the two circles are the largest shapes on it.
+ * Shrinking them by a tenth reads immediately as the whole face being wrong, in a
+ * way a third more Screen does not repay.
+ *
+ * `SCREEN_Z` moves from -.58 to -.50 instead. Same Screen, eight hundredths lower
+ * down the Plate, which is what buys clearance from the engraved band across the
+ * top — the thing it was actually running into.
+ */
 const WHEEL = { r: .93, x: 1.99, z: -.12 };
-const SCREEN_Z = -.58;                   // clear of the artwork's engraved band
+const SCREEN_Z = -.50;                   // clear of the artwork's engraved band
 const OPENING = { w: 1.84, d: 1.035 };   // 16:9, the buffer's own ratio
 const RIM = { w: 1.96, d: 1.175 };
 const PAD = { size: .23, pitch: .28, z: .55 };
@@ -435,9 +505,13 @@ const RESERVES = [
 ];
 /* The Print gets cleared ground too — labels never fight the field. */
 const PRINT_RESERVES = [
+  /* the Pad label row — ornament must clear it the way it clears every other Print */
+  [PX(PAD_X0 - PAD.size), PY(PAD.z - PAD.size * .60) - 22,
+   PX(-PAD_X0 + PAD.size) - PX(PAD_X0 - PAD.size), 22],
   [PX(-1.05), PY(.86), PX(1.05) - PX(-1.05), 72],   // HOT CUE / CROSSFADE
-  [PX(-2.30), PY(1.18), PX(-1.42) - PX(-2.30), 72], // MOON
-  [PX(1.42), PY(1.18), PX(2.30) - PX(1.42), 72],    // SUN
+  /* The MOON and SUN reserves went with their labels. A reserve is a clearing cut
+     in the ornament so a word can sit on bare ground; leaving them behind would
+     have left two bald patches where nothing is printed any more. */
 ];
 
 /** A fine ruled ground. Engraving never leaves bare metal. */
@@ -868,15 +942,36 @@ function faceMaps() {
     c.font = '500 28px "Azeret Mono", monospace';
     c.fillText('HOT CUE', TW / 2, PY(.86) + 48);
     c.fillText('CROSSFADE', TW / 2, PY(1.34) + 24);
-    c.fillStyle = c === a ? '#C4281C' : '#8E2418';
-    c.fillText('MOON', PX(-1.86), PY(1.18) + 48);
-    c.fillText('SUN', PX(1.86), PY(1.18) + 48);
-    /* boxed, the way the reference rules them — a cartouche around the label
-       rather than a word floating on the field */
-    c.strokeStyle = c === a ? 'rgba(196,40,28,.7)' : 'rgba(142,36,24,.7)';
-    c.lineWidth = 2;
-    for (const cx of [PX(-1.86), PX(1.86)])
-      c.strokeRect(cx - 168, PY(1.18) + 12, 336, 54);
+    /**
+     * The Pads say what they select.
+     *
+     * Six unlabelled squares are six squares — Fernando: "the buttons on the cdj
+     * should have some text to be clear how the user can interact with it". Every
+     * other control on this Plate is named (HOT CUE, CROSSFADE, MOON, SUN); the
+     * Pads were the one row left to guess at.
+     *
+     * Printed above the row rather than below it: below is where CROSSFADE and the
+     * fader live, and a label under a pad would have collided with them.
+     */
+    c.save();
+    /* 14px, not 17: a Pad's pitch is .28 units — about 96px on this texture — and
+       at 17px the longer titles ran straight into their neighbours. */
+    c.font = '500 14px "Azeret Mono", monospace';
+    c.letterSpacing = '0.5px';
+    c.fillStyle = c === a ? '#8E8C84' : '#5F8F7C';
+    MODULES.forEach((m, i) => {
+      /* The well is 1.20x the Pad, so its top edge is at PAD.z - PAD.size*.60 —
+         the label hangs off *that*, not off the Pad, or it floats in the gap. */
+      c.fillText(m.pad || m.title, PX(PAD_X0 + i * PAD.pitch), PY(PAD.z - PAD.size * .60) - 6);
+    });
+    c.restore();
+
+    /* MOON and SUN are gone from the bottom corners at Fernando's ask. They named
+       the two Decks, which sit directly above them and are already unmistakable —
+       a boxed red label under each was the loudest thing on the Plate and it was
+       labelling the one pair of controls nobody was going to misread. The Pads
+       above got the labels instead, because six identical squares genuinely do
+       need them. */
     c.textAlign = 'left';
   });
 
@@ -886,7 +981,25 @@ function faceMaps() {
   const mt = new THREE.CanvasTexture(M); mt.anisotropy = 8;
   return { albedo: at, height: ht, glow: et, metal: mt };
 }
-let maps = faceMaps();
+/**
+ * The Plate starts blank, and is engraved when the machine finishes waking.
+ *
+ * Coalescing the three rebuilds into one was necessary and not sufficient: the
+ * Plate is on screen from the first frame either way, so a single late swap is
+ * still a visible swap — the engraving simply arrived once instead of three times.
+ * Holding the camera did not help either; it only meant the change happened while
+ * you were watching it from further away.
+ *
+ * So nothing is built at load. `faceMat` opens with bare dark metal and no maps at
+ * all, and the engraving is assigned when the artwork and the webfonts have both
+ * landed. That is not a workaround dressed up — a faceplate whose printing appears
+ * as the unit powers on is what the boot sequence is *for*, and it means the first
+ * frame is honest: the Plate really has nothing on it yet.
+ *
+ * `regenFace` handles the rest: it sets `needsUpdate` only on the first assignment,
+ * because that is the one that changes the shader's defines.
+ */
+let maps = null;
 
 /** Rebuild the Plate's Print. Webfonts land after first paint, so this runs again once they do. */
 /**
@@ -1069,13 +1182,14 @@ unit.add(chassis);
 /* printed face (thin decal plane just above the metal) */
 const relief = reliefMaps(1024, 562);
 const faceMat = new THREE.MeshPhysicalMaterial({
-  map: maps.albedo,
+  /* no `map`, `emissiveMap` or `metalnessMap` yet — see `maps` above. Bare metal
+     until the engraving is ready, which the boot covers. */
+  color: 0x26282B,
   normalMap: relief.normal, normalScale: new THREE.Vector2(1, 1),
-  emissiveMap: maps.glow, emissive: 0xffffff, emissiveIntensity: 0,
+  emissive: 0xffffff, emissiveIntensity: 0,
   /* `metalnessMap` is what lets the Print exist: bare Plate stays metal, and
      wherever ink was laid down the surface drops to a dielectric so its colour
      reads as colour instead of as a tint on a reflection. */
-  metalnessMap: maps.metal,
   /* handled metal: the finish is not equally smooth everywhere it has been touched */
   roughnessMap: wearMap(5503, 240, .30, 2),
   /* the one surviving clearcoat in the scene: the Plate is the object, and its
@@ -1083,6 +1197,8 @@ const faceMat = new THREE.MeshPhysicalMaterial({
   metalness: .85, roughness: .34, clearcoat: .3, clearcoatRoughness: .45,
 });
 const face = new THREE.Mesh(plateGeom(PLATE.w, PLATE.d, APERTURE), faceMat);
+/* the only thing the phosphor rake is allowed to touch — see `rake` below */
+face.layers.enable(2);
 /* No mesh rotation: `plateGeom` already lays the shape onto the Plate, the way
    `slab` does. Rotating again turned the printed face upside down, pointed its
    normals at the floor and had it backface-culled — the Chassis stayed and the
@@ -1239,15 +1355,50 @@ bezel.position.set(0, FACE_Y - .002, SCREEN_Z); unit.add(bezel);
  */
 const screenGlass = new THREE.Mesh(new THREE.PlaneGeometry(RIM.w - .02, RIM.d - .02),
   new THREE.MeshStandardMaterial({
-    color: 0x9FB4B0, transparent: true, opacity: .055,
+    color: 0x9FB4B0, transparent: true, opacity: .018,
     /* was clearcoat 1 — a full second lobe for a pane at 5.5% opacity */
     metalness: 0, roughness: .06,
     depthWrite: false,
   }));
 screenGlass.rotation.x = -Math.PI / 2;
 screenGlass.position.set(0, FACE_Y + .006, SCREEN_Z); unit.add(screenGlass);
-const glow = new THREE.PointLight(0x7FD9B0, 2.4, 3.4, 2);
-glow.position.set(0, .95, SCREEN_Z); unit.add(glow);
+/**
+ * The phosphor's spill onto the Plate — and no further.
+ *
+ * At 2.4 it put a teal hotspot in the middle of the Screen and washed the type off
+ * it: the light was drowning the thing it exists to represent. 1.05 halved it and
+ * the blob was still there, because the problem is not how bright it is but *what
+ * it lands on* — it sits inside the well, so the pane of glass over the Screen
+ * catches it square.
+ *
+ * Low enough to read as a glow on the Plate around the aperture, which is what it
+ * is for, and the glass is nearly clear so it has little left to catch.
+ */
+/**
+ * The phosphor's spill — onto the Plate, and onto nothing else.
+ *
+ * This sits at y=0.95, which is six tenths of a unit *above* the glass: a lamp
+ * hanging over the display, shining down onto the surface it is supposed to be
+ * emitted by. That is why it put a teal hotspot in the middle of the Screen and
+ * washed the type off it, and why turning it down from 2.4 to 1.05 to 0.42 kept
+ * the blob and only made it fainter — the problem was never the brightness, it was
+ * what the light was landing on.
+ *
+ * Layers again (see `rake`). The glow gets its own layer and only the Plate, the
+ * Chassis and the rim opt in, so it washes the metal around the aperture — which
+ * is the whole effect it exists for — and cannot touch the Screen or the glass.
+ * Free to be bright again now that it lands somewhere useful.
+ *
+ * Fourth time a light in this scene has needed confining. The rule from ADR-0020
+ * holds: say out loud what stops a light at the edge of its subject, and if the
+ * answer is "nothing", it is aimed at the wrong thing.
+ */
+const GLOW_LAYER = 3;
+const glow = new THREE.PointLight(0x7FD9B0, 1.9, 3.0, 2);
+glow.position.set(0, .95, SCREEN_Z);
+glow.layers.set(GLOW_LAYER);
+unit.add(glow);
+for (const m of [face, chassis, bezel]) m.layers.enable(GLOW_LAYER);
 
 /* ---------- the two decks ----------
    Sun raises the light, Moon puts it out. The rite performed with two hands: there is no
@@ -1279,26 +1430,120 @@ function deck(x, kind) {
   const hub = new THREE.Mesh(new THREE.CylinderGeometry(WHEEL.r * .125, WHEEL.r * .125, .13, 48),
     new THREE.MeshStandardMaterial({ color: kind === 'sun' ? 0x2A2118 : 0x14161A, metalness: .9, roughness: .25 }));
   hub.position.y = .075; g.add(hub);
-  return { group: g, ring, plate, mat: plateMat, lamp };
+  /* `spin` is the platter's angular velocity in rad/s — the drag feeds it and the
+     frame loop bleeds it off against friction. See the Deck block in `frame`. */
+  return { group: g, ring, plate, mat: plateMat, lamp, spin: 0 };
 }
 const moon = deck(-WHEEL.x, 'moon');
 const sun = deck(WHEEL.x, 'sun');
 const deckMats = [moon.plate.material, sun.plate.material];
 
 /* pads */
-const padMat = () => new THREE.MeshStandardMaterial({ color: 0x101112, metalness: .3, roughness: .55 });
+/**
+ * The Pads.
+ *
+ * They were a flat black tile with a lit strip lying on the Plate beside them —
+ * two objects that happened to be adjacent, rather than one control. A performance
+ * pad is a soft square sitting in a milled well, with the light coming from *under*
+ * its edge rather than from a separate lamp next to it.
+ *
+ * So: a well cut into the Plate, a slightly domed pad standing proud of it, and a
+ * ring of light in the gap between the two. The ring is emissive, so the lit Pad
+ * actually throws a little colour onto the metal around it instead of merely being
+ * a red rectangle.
+ *
+ * The colour stays the Plate's own ember (`0xC4281C` is the red the Print uses),
+ * not the cyan-and-magenta a real controller would wear. The point is a lit
+ * control, not a nightclub.
+ */
+const padMat = () => new THREE.MeshStandardMaterial({
+  color: 0x141517, metalness: .16, roughness: .74,
+});
+/* the well the Pad sits in — darker, and rougher, so the two never read as one part */
+const padWellMat = new THREE.MeshStandardMaterial({
+  color: 0x08090A, metalness: .3, roughness: .9,
+});
 const lampMats = [];
 const padMeshes = [];
 for (let i = 0; i < 6; i++) {
   const px = PAD_X0 + i * PAD.pitch;
-  const p = new THREE.Mesh(slab(PAD.size, PAD.size, .07, .02), padMat());
-  p.position.set(px, .34, PAD.z);
-  p.userData.ctl = 'pad'; p.userData.i = i; unit.add(p); padMeshes.push(p);
-  const lm = new THREE.MeshBasicMaterial({ color: i === 0 ? 0xF03A22 : 0x3A100C });
+
+  /* the milled well */
+  const well = new THREE.Mesh(slab(PAD.size * 1.20, PAD.size * 1.20, .045, .026), padWellMat);
+  well.position.set(px, .332, PAD.z); unit.add(well);
+
+  /* the light in the gap, under the Pad's edge */
+  const lm = new THREE.MeshStandardMaterial({
+    color: 0x1A0906,
+    emissive: new THREE.Color(i === 0 ? 0xC4281C : 0x160603),
+    emissiveIntensity: i === 0 ? 2.6 : 0.25,
+    roughness: .5, metalness: 0,
+  });
   lampMats.push(lm);
-  const lamp = new THREE.Mesh(new THREE.PlaneGeometry(PAD.size * .74, .028), lm);
-  lamp.rotation.x = -Math.PI / 2;
-  lamp.position.set(px, .412, PAD.z - PAD.size * .30); unit.add(lamp);
+  const ring = new THREE.Mesh(slab(PAD.size * 1.10, PAD.size * 1.10, .030, .022), lm);
+  ring.position.set(px, .352, PAD.z); unit.add(ring);
+
+  /* the pad itself, standing proud of the ring so the light escapes round it */
+  const p = new THREE.Mesh(slab(PAD.size, PAD.size, .085, .034), padMat());
+  p.position.set(px, .366, PAD.z);
+  p.userData.ctl = 'pad'; p.userData.i = i;
+  /* Rest height, and where it travels to. A pad that does not move when pressed
+     is a picture of a pad — the throw is small because the real ones are. */
+  p.userData.restY = .366;
+  p.userData.pressY = .366 - .030;
+  unit.add(p); padMeshes.push(p);
+}
+
+/**
+ * Pads answer to the hand.
+ *
+ * `padPress[i]` is 0 at rest and 1 fully depressed; `padHover` is which one the
+ * pointer is over. Both are eased in the frame loop rather than set outright, so a
+ * press has a fall and a return instead of snapping between two positions — a
+ * sprung key, not a toggle.
+ */
+const padPress = new Array(6).fill(0);
+let padHover = -1;
+/**
+ * Pads: hover is instant, light is eased.
+ *
+ * The hover was never actually delayed — it was invisible. `offsetHSL` by
+ * .16 x .30 is five hundredths of lightness on a colour that is already almost
+ * black, so the pad did change under the pointer and nobody could tell. Reading
+ * that as lag is the right instinct: a response you cannot see and a response that
+ * has not happened yet look identical.
+ *
+ * So hover is applied **outright**, at a magnitude you can see, and the two things
+ * that genuinely want easing get it: the press travel, and the ember. The lamp
+ * fading up and down is what Fernando asked for and it is also just true of a real
+ * one — an LED behind a diffuser has a rise and a fall, it does not switch.
+ */
+const EASE_PRESS = 0.00004;   // per second; smaller is faster
+const EASE_LAMP = 0.004;
+
+function updatePads(dt) {
+  padMeshes.forEach((p, i) => {
+    /* press: eased, frame-rate independent */
+    const kp = 1 - Math.pow(EASE_PRESS, dt);
+    p.userData.k = (p.userData.k ?? 0) + (padPress[i] - (p.userData.k ?? 0)) * kp;
+    const e = p.userData.k;
+    p.position.y = p.userData.restY + (p.userData.pressY - p.userData.restY) * e;
+
+    /* hover: immediate, and big enough to read on a near-black pad */
+    const hot = padHover === i;
+    p.material.color.setHex(hot ? 0x2B2E33 : 0x141517);
+    if (e > 0.001) p.material.color.offsetHSL(0, 0, -e * .04);
+
+    /* the ember, eased in and out */
+    const m = lampMats[i];
+    const want = i === curPage ? 2.6 : (hot ? 0.85 : 0.25);
+    const kl = 1 - Math.pow(EASE_LAMP, dt);
+    m.emissiveIntensity += (want - m.emissiveIntensity) * kl;
+    /* colour follows the same curve, so a warming Pad passes through the ember
+       rather than jumping to it */
+    const f = Math.min(1, Math.max(0, (m.emissiveIntensity - 0.25) / 2.35));
+    m.emissive.setRGB(.086 + f * .68, .024 + f * .134, .012 + f * .098);
+  });
 }
 
 /* crossfader */
@@ -1392,18 +1637,50 @@ function clothTexture() {
 
 const altar = new THREE.Group(); scene.add(altar);
 
-const mensa = new THREE.Mesh(new THREE.BoxGeometry(14.6, .62, 8.6),
+/**
+ * The desk, with an edge.
+ *
+ * It was a `BoxGeometry` — a razor arris all the way round, which is the single
+ * loudest tell that something was made in code rather than in a workshop. Nothing
+ * has a perfectly sharp edge; every real table top is eased, and that eased edge is
+ * where the light actually catches.
+ *
+ * `slab()` gives it a rounded profile for nothing, since it is the same extrusion
+ * the Chassis and the Pads already use. This is the "bevels are free" line from
+ * `docs/realism-budget.md`, spent on the largest surface in the frame.
+ */
+const mensa = new THREE.Mesh(slab(14.6, 8.6, .62, .07),
   new THREE.MeshStandardMaterial({
-    map: woodTexture(false), bumpMap: woodTexture(true), bumpScale: .5,
+    map: woodTexture(false), bumpMap: woodTexture(true), bumpScale: .8,
+    roughnessMap: wearMap(7711, 220, .38, 3),
     /* The Altar top is one of the two largest surfaces on screen, so its clearcoat
-       was one of the two most expensive. Roughness alone still reads as waxed. */
-    color: 0xA08B78, metalness: 0, roughness: .38,
+       was one of the two most expensive. Roughness alone still reads as waxed.
+       Darkened from 0xA08B78: that was a *pale* wood, and at exposure 1.75 the
+       largest surface in the frame was blowing toward white and dragging the whole
+       image with it. The reference's table is dark walnut. */
+    color: 0x554438, metalness: 0, roughness: .40,
   }));
-mensa.position.y = -.31; altar.add(mensa);
+/* `slab` extrudes from y=0 upward, so the top lands at 0 where the Box's centre did */
+mensa.position.y = -.62; altar.add(mensa);
 
-const cloth = new THREE.Mesh(new THREE.PlaneGeometry(7.6, 4.75),
+/**
+ * The cloth, darkened — and flagged.
+ *
+ * At 0x9a927f this was a *pale* linen, and at exposure 1.75 it became the brightest
+ * large surface in the frame: a washed-out rectangle sitting where the reference has
+ * bare dark wood, dragging the whole picture up with it.
+ *
+ * **Contradicts `CONTEXT.md`**, which defines the Altar as "a slab of black veined
+ * marble, an embroidered linen cloth, and the Candles". The cloth is canon and it is
+ * not being removed here. Two things are worth Fernando's decision rather than mine:
+ * the glossary says *marble* where the mensa has been wood for some time, and the
+ * reference room — a studio since ADR-0017's furnishing pass, not a chapel — puts the
+ * instrument straight onto the timber. The cloth may be a survival of the chapel this
+ * room stopped being.
+ */
+const cloth = new THREE.Mesh(new THREE.PlaneGeometry(6.9, 4.2),
   new THREE.MeshStandardMaterial({
-    map: clothTexture(), transparent: true, roughness: .95, metalness: 0, color: 0x9a927f,
+    map: clothTexture(), transparent: true, roughness: .95, metalness: 0, color: 0x4C4436,
   }));
 cloth.rotation.x = -Math.PI / 2; cloth.position.y = .004; altar.add(cloth);
 
@@ -1445,9 +1722,9 @@ function candlestick(x, z, height) {
   /* 5.5 while three falloff-free directionals were doing the work; the fit against
      the reference puts it here now that this light is actually carrying the Altar.
      Lower number, far larger share — it went from 2% of the Altar to 54%. */
-  const light = new THREE.PointLight(0xFFB162, 4.4, 15, 2);
+  const light = new THREE.PointLight(0xFFB162, 3.6, 15, 2);
   light.position.copy(flame.position); g.add(light);
-  return { group: g, flame, halo, light, base: { flame: 1, light: 4.4, halo: .3 } };
+  return { group: g, flame, halo, light, base: { flame: 1, light: 3.6, halo: .3 } };
 }
 
 /* A triangle, as the rite's hearse is a triangle. Ordered as they go out. */
@@ -1465,9 +1742,31 @@ const CANDLES = [
    moon through that window is the only thing left besides the Screen. */
 
 const room = new THREE.Group(); scene.add(room);
-const FLOOR_Y = -2.95, WALL_Z = -11.5, WALL_H = 12;
+/**
+ * The room is a *corner*, not a backdrop.
+ *
+ * It was 30 wide, 11.5 deep and **12 tall**, with the side walls parked at x=+-15
+ * where no camera angle in `CAM_LIMITS` can reach them. Everything therefore hung
+ * on one flat plane at one distance, evenly spaced and mirrored, with eight units
+ * of empty dark wall above it — which is exactly why it read as a stage flat and
+ * not as a space.
+ *
+ * What makes the reference read as a room is that the **left wall is in frame and
+ * receding**, and that the furniture stands against the sides and *overlaps* what
+ * is behind it. Occlusion and convergence are what the eye takes for depth; a
+ * chamfer on a card is still a card.
+ *
+ * So: the ceiling comes down to head height, the side walls come in to where they
+ * are actually visible, and the room closes overhead.
+ */
+const FLOOR_Y = -2.95, WALL_Z = -11.5, WALL_H = 7.4;
+const SIDE_X = 11.6;                       // side walls, now inside the view
+const CEIL_Y = FLOOR_Y + WALL_H;
+const DEPTH = 21;                          // how far the room runs toward the camera
 /* a lancet opening: jambs, springing, apex */
-const WIN = { x: 2.45, y0: 0.20, spring: 3.55, y1: 6.10 };
+/* lowered with the ceiling — the head used to spring at 3.55 and finish at 6.10,
+   which in a 7.4-tall wall would leave almost no wall above it */
+const WIN = { x: 2.30, y0: -0.10, spring: 2.20, y1: 3.95 };
 
 /**
  * The wall: dark painted plaster with gilt celestial drawing on it.
@@ -1600,14 +1899,14 @@ const panelMat = new THREE.MeshStandardMaterial({
   color: 0xC8C6C2, roughness: .93, metalness: 0,
 });
 
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(70, 70),
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(SIDE_X * 2, DEPTH),
   new THREE.MeshStandardMaterial({
     map: woodTexture(false), bumpMap: woodTexture(true), bumpScale: .4,
     roughnessMap: wearMap(3301, 300, .42, 6),
     /* the other large surface — see the Altar top above */
     color: 0x6B584A, roughness: .56, metalness: 0,
   }));
-floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR_Y; room.add(floor);
+floor.rotation.x = -Math.PI / 2; floor.position.set(0, FLOOR_Y, WALL_Z + DEPTH / 2); room.add(floor);
 
 const rug = new THREE.Mesh(new THREE.PlaneGeometry(19, 13),
   new THREE.MeshStandardMaterial({ map: rugTexture(), roughness: .98, metalness: 0, color: 0x9a8f86 }));
@@ -1615,8 +1914,8 @@ rug.rotation.x = -Math.PI / 2; rug.position.set(0, FLOOR_Y + .01, 1.5); room.add
 
 /* far wall, extruded around a lancet opening */
 const wallShape = new THREE.Shape();
-wallShape.moveTo(-15, FLOOR_Y); wallShape.lineTo(15, FLOOR_Y);
-wallShape.lineTo(15, FLOOR_Y + WALL_H); wallShape.lineTo(-15, FLOOR_Y + WALL_H); wallShape.closePath();
+wallShape.moveTo(-SIDE_X, FLOOR_Y); wallShape.lineTo(SIDE_X, FLOOR_Y);
+wallShape.lineTo(SIDE_X, CEIL_Y); wallShape.lineTo(-SIDE_X, CEIL_Y); wallShape.closePath();
 const hole = new THREE.Path();
 hole.moveTo(-WIN.x, WIN.y0);
 hole.lineTo(-WIN.x, WIN.spring);
@@ -1628,11 +1927,24 @@ wallShape.holes.push(hole);
 const wall = new THREE.Mesh(new THREE.ExtrudeGeometry(wallShape, { depth: .7, bevelEnabled: false }), panelMat);
 wall.position.z = WALL_Z; room.add(wall);
 
-/* side walls, so turning the view does not find a void */
-for (const sx of [-15, 15]) {
-  const w = new THREE.Mesh(new THREE.BoxGeometry(.7, WALL_H, 30), panelMat);
-  w.position.set(sx, FLOOR_Y + WALL_H / 2, WALL_Z + 15); room.add(w);
+/**
+ * Side walls, in frame now rather than hiding at +-15.
+ *
+ * These are the depth. The left one runs away from the camera and its perspective
+ * is the strongest convergence cue in the picture — the reference leans on exactly
+ * that, and carries its big gilt sun on the left wall for the same reason.
+ */
+for (const sx of [-SIDE_X, SIDE_X]) {
+  const w = new THREE.Mesh(new THREE.BoxGeometry(.6, WALL_H, DEPTH), panelMat);
+  w.position.set(sx, FLOOR_Y + WALL_H / 2, WALL_Z + DEPTH / 2); room.add(w);
 }
+
+/* A ceiling. Not to be looked at — to stop the room leaking into the void
+   overhead, and to give the far corners somewhere to be dark against. */
+const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(SIDE_X * 2, DEPTH),
+  new THREE.MeshStandardMaterial({ color: 0x1A1613, roughness: .96, metalness: 0 }));
+ceiling.rotation.x = Math.PI / 2;
+ceiling.position.set(0, CEIL_Y, WALL_Z + DEPTH / 2); room.add(ceiling);
 
 /* the sky beyond: day and night, crossfaded by the Vigil */
 function skyTexture(night) {
@@ -1641,7 +1953,11 @@ function skyTexture(night) {
   const rnd = rng(night ? 31337 : 8123);
   const sky = g.createLinearGradient(0, 0, 0, 1024);
   if (night) { sky.addColorStop(0, '#0d1626'); sky.addColorStop(.6, '#141d2c'); sky.addColorStop(1, '#1b2130'); }
-  else { sky.addColorStop(0, '#9FB4C6'); sky.addColorStop(.55, '#C9CFCE'); sky.addColorStop(1, '#D8D2C2'); }
+  /* The day sky is drawn unlit, so whatever hex goes here is very nearly what the
+     pixel becomes. At the old values the window was a blown white rectangle and the
+     brightest thing in the room by a wide margin — which is not what a window does,
+     even at noon, seen from inside a dark room. */
+  else { sky.addColorStop(0, '#5A6E82'); sky.addColorStop(.55, '#77807E'); sky.addColorStop(1, '#847F70'); }
   g.fillStyle = sky; g.fillRect(0, 0, 1024, 1024);
   if (night) {
     for (let i = 0; i < 700; i++) {
@@ -1738,8 +2054,9 @@ const velvet = new THREE.MeshStandardMaterial({
   map: velvetTexture(), color: 0x8C4A46, roughness: .96, metalness: 0, side: THREE.DoubleSide,
 });
 for (const sx of [-1, 1]) {
-  const curtain = new THREE.Mesh(new THREE.CylinderGeometry(.62, .78, 8.0, 20, 1, true, 0, Math.PI), velvet);
-  curtain.position.set(sx * (WIN.x + .95), WIN.y1 - 4.1, WALL_Z + .55);
+  /* 8.0 tall hanging from a 12-unit wall put its hem below the floorboards here */
+  const curtain = new THREE.Mesh(new THREE.CylinderGeometry(.62, .78, 6.5, 20, 1, true, 0, Math.PI), velvet);
+  curtain.position.set(sx * (WIN.x + .95), WIN.y1 - 3.25, WALL_Z + .55);
   curtain.rotation.y = sx > 0 ? -Math.PI / 2 : Math.PI / 2;
   room.add(curtain);
 }
@@ -1747,10 +2064,31 @@ const rail = new THREE.Mesh(new THREE.CylinderGeometry(.075, .075, WIN.x * 2 + 3
 rail.rotation.z = Math.PI / 2; rail.position.set(0, WIN.y1 + .25, WALL_Z + .55); room.add(rail);
 
 /* window light — the decks decide whether it is the sun or the moon out there */
-const skyLight = new THREE.DirectionalLight(0xFFE4BC, 3.2);
+/**
+ * The window's light, and nothing else's.
+ *
+ * `skyLight` was a falloff-free directional at **3.2** — the largest light in the
+ * scene, declared six hundred lines from the rig and missed by the whole of
+ * ADR-0018's analysis. Together with `wallWash` it carried 38-74% of every surface
+ * in the room, which is why the back wall lit evenly and all six acoustic panels
+ * read at the same brightness however far they sat from a lamp.
+ *
+ * That even wall is the thing that made the room a flat. In the reference the
+ * panels fall off *across each group* — the one nearest the lamp is bright, the far
+ * one is nearly gone — and that gradient is most of what says "these are objects in
+ * a space" rather than "this is a printed backdrop".
+ *
+ * So it is moonlight now: cold, weak, and honestly directional, because a moon is.
+ * The room is lit by its lamps and its Candles, and between them it is dark.
+ */
+/* Strong and warm at Sun, weak and cold at full Vigil — see `applyVigil`. Cutting
+   it to a flat 0.45 fixed the night and put out the day with it. */
+const skyLight = new THREE.DirectionalLight(0xFFE0B8, 3.0);
 skyLight.position.set(1.1, 4.6, WALL_Z); skyLight.target.position.set(0, 0, 1);
 room.add(skyLight, skyLight.target);
-const wallWash = new THREE.DirectionalLight(0xC8B79A, .5);
+/* `wallWash` was the other half of the flat. Kept at a whisper so the far corners
+   are dark rather than absent — a corner at pure zero reads as a hole, not a room. */
+const wallWash = new THREE.DirectionalLight(0xC8B79A, .07);
 wallWash.position.set(0, 5, 6); wallWash.target.position.set(0, 2, WALL_Z);
 room.add(wallWash, wallWash.target);
 
@@ -1764,9 +2102,11 @@ const summoning = createSummoning(scene, WORKS, { floorY: FLOOR_Y });
    Lyra, gilt-framed on the wall left of the window, with her plaque under her.
    She is a fixture, not a display: she is hanging there before the visitor
    touches anything and she is still there at full Vigil. */
+/* Sized for the old 12-unit wall, she topped out at y=4.65 — above the new
+   ceiling at 4.45, so her frame was growing through it. */
 const portrait = createPortrait(scene, {
-  x: -4.9, y: FLOOR_Y + 5.4, wallFace: WALL_Z + 0.7,
-  height: 4.4, name: 'Lyra', line: 'KEEPER OF THE VIGIL',
+  x: -5.35, y: FLOOR_Y + 3.75, wallFace: WALL_Z + 0.7,
+  height: 2.9, name: 'Lyra', line: 'KEEPER OF THE VIGIL',
 });
 
 /**
@@ -1783,7 +2123,10 @@ const portrait = createPortrait(scene, {
  * her, the wall around her and the near monitor, which is what the reference does.
  * Teal because it is the Screen's phosphor — the same light, one wall over.
  */
-const pictureLight = new THREE.PointLight(0x7FD9B0, 11, 9, 2);
+/* Was 11 at distance 9, and in a room this size that is not a picture light, it is
+   a green floodlight — at high Vigil it washed the entire right-hand wall teal.
+   The reference's glow behind its painting is small, local and barely there. */
+const pictureLight = new THREE.PointLight(0x8FD9C4, 2.6, 4.6, 2);
 pictureLight.position.set(-4.9, FLOOR_Y + 5.4, WALL_Z + 1.9);
 scene.add(pictureLight);
 const PIC0 = pictureLight.intensity;
@@ -1792,7 +2135,7 @@ const PIC0 = pictureLight.intensity;
    Acoustic panels, monitors, the credenza of records, the pedal cabinet and the
    two globe lamps. The Altar, the Candles, the window and the Portrait are not
    touched — this furnishes the room around them. */
-const decor = createRoomDecor(room, { floorY: FLOOR_Y, wallFace: WALL_Z + 0.7 });
+const decor = createRoomDecor(room, { floorY: FLOOR_Y, wallFace: WALL_Z + 0.7, sideX: SIDE_X });
 
 /* canvas type is drawn once at load, before the webfonts land */
 document.fonts?.ready?.then(() => summoning.refresh());
@@ -1813,6 +2156,13 @@ for (const lx of [-6.2, 6.2]) for (const lz of [-3.5, 3.5]) {
   leg.position.set(lx, FLOOR_Y, lz); room.add(leg);
 }
 
+/* ---------- what else is on the Altar ----------
+   A book, a pen, two cards, a wand, headphones and a cable port. The Altar is the
+   largest surface in frame and it carried three candlesticks and nothing else,
+   which is most of why it read as a product shot. Geometry only — no new lights,
+   nothing physical: clutter is the one thing this scene can afford (ADR-0019). */
+const altarProps = createAltarProps(altar);
+
 /* ---------- vigil: the lights go out one at a time (ADR-0006) ----------
    The three Candles *are* the three stages now. They used to be decoration on top
    of a three-point rig that did the actual dimming — rim on the first ramp, fill on
@@ -1824,9 +2174,29 @@ for (const lx of [-6.2, 6.2]) for (const lz of [-3.5, 3.5]) {
    rakes across the Plate at a grazing angle so the Nightwork engraved there reads. */
 let vigil = +(new URLSearchParams(location.search).get('vigil') || 0) / 100;
 
-/** Grazing phosphor spill. Absent under room light, it is the only source at full vigil. */
+/**
+ * Grazing phosphor spill — for the Plate, and *only* the Plate.
+ *
+ * This is a DirectionalLight because it wants parallel rays raking across the
+ * engraving at a shallow angle, which is what makes the Nightwork read at full
+ * Vigil. But a directional has no position and no falloff, so it was raking the
+ * whole room: as the Vigil rose the walls, the floor and the ceiling all turned
+ * phosphor green, because nothing told it to stop at the edge of the Unit.
+ *
+ * Third time this exact shape of bug has appeared — `skyLight` flooding the back
+ * wall, the key flooding the floor, now this. A directional cannot be aimed *at*
+ * something; it can only be pointed in a direction and it hits everything facing
+ * that way.
+ *
+ * Layers are the fix that keeps the grazing character. A light only illuminates
+ * objects whose layers it shares, so putting both this and the Plate on layer 2
+ * confines it exactly, with no cone to tune and no falloff to fake. The Plate stays
+ * on layer 0 as well, so the camera still draws it.
+ */
+const RAKE_LAYER = 2;
 const rake = new THREE.DirectionalLight(0x7FD9B0, 0);
 rake.position.set(-3.4, .34, -2.2); unit.add(rake);
+rake.layers.set(RAKE_LAYER);
 
 const KEY0 = key.intensity, MOON0 = moonlight.intensity;
 const ENV0 = scene.environmentIntensity ?? 1;
@@ -1859,7 +2229,15 @@ function applyVigil() {
     dim(c.light, c.base.light * k);
     c.flame.visible = c.halo.visible = k > .001;
   });
-  scene.environmentIntensity = ENV0 * (1 - vigil * .88);
+  /**
+   * Linear to zero, not to a floor.
+   *
+   * This used to be `ENV0 * (1 - vigil * .88)`, which bottoms out at 12% of full
+   * — and with `ENV0` now carrying the daylight, that residue left the night at
+   * mean 53 against the reference's 21. Tenebrism does not survive a floor under
+   * the ambient: the whole effect is that there is *nothing* between the pools.
+   */
+  scene.environmentIntensity = ENV0 * (1 - vigil);
 
   /* The wheels show whose hand is winning. Light comes through their tracery: the
      Sun's holds while the room is lit and is out by the time the last Candle is;
@@ -1878,9 +2256,24 @@ function applyVigil() {
 
   /* the decks turn the day. Sun up, and it is afternoon outside; Moon up, and it is night. */
   nightSky.material.opacity = vigil;
-  dim(skyLight, 3.2 * (1 - vigil) + 1.1 * vigil);
+  /**
+   * The window, across the whole Vigil.
+   *
+   * This is the one light that legitimately *is* a flat directional, because that
+   * is what a sun or a moon through a window is. The mistake in ADR-0020 was
+   * treating its flatness as the fault and cutting it everywhere; the fault was
+   * only ever at **night**, where 3.2 of daylight-coloured wash was drowning the
+   * Candles and the lamps and making every acoustic panel read alike.
+   *
+   * By day a room lit through a window really is broadly and evenly lit, and
+   * fighting that just makes a dark room with a sun outside it. So it travels:
+   * 2.6 and warm at Sun, 0.5 and cold at Moon, and the tenebrism arrives with the
+   * night rather than being on all the time.
+   */
+  dim(skyLight, 3.0 * (1 - vigil) + 0.50 * vigil);
+  skyLight.color.setRGB(1 - vigil * .34, .878 - vigil * .13, .722 + vigil * .14);
   skyLight.color.setRGB(1 - vigil * .38, .894 - vigil * .18, .737 + vigil * .11);
-  dim(wallWash, .5 * (1 - vigil) + .3 * vigil);
+  dim(wallWash, .07 * (1 - vigil) + .04 * vigil);
   wallWash.color.setRGB(.784 - vigil * .22, .718 - vigil * .08, .604 + vigil * .16);
 
   /* the screen takes over the room */
@@ -1934,7 +2327,8 @@ function screenRowAt(e) {
 
 function setPage(n) {
   curPage = (n + MODULES.length) % MODULES.length;
-  lampMats.forEach((m, i) => m.color.setHex(i === curPage ? 0xF03A22 : 0x3A100C));
+  /* The lamps are eased toward their target in `updatePads`, so nothing is set
+     here — a Pad that snapped on would undo the fade the moment the page changed. */
   setScreenModule(curPage);
   drawScreen();
 }
@@ -1959,12 +2353,17 @@ el.addEventListener('pointerdown', e => {
   px = e.clientX; py = e.clientY;
   if (hit) {
     const c = hit.userData.ctl;
-    if (c === 'pad') { setPage(hit.userData.i); return; }
+    if (c === 'pad') { padPress[hit.userData.i] = 1; setPage(hit.userData.i); return; }
     if (c === 'screen') {
       /* while a Work is up, the Screen is the way back — anywhere on it */
       if (rite.phase === 'rising' || rite.phase === 'held') { banish(); return; }
+      if (focus.active) { focus.exit(); return; }
       const row = screenRowAt(e);
-      if (row >= 0) { summonWork(row); return; }
+      /* The plinth is still there and still works — `summonWork(row)` — but this
+         is the move being tried instead: fly the camera in until the Screen fills
+         the frame, then hand the Work to real HTML (ADR-0017 reversal, prototyped
+         in `focus.js`). */
+      if (row >= 0) { focus.enter(WORKS[row] || WORKS[0]); return; }
       /* not on a row: fall through, so the Screen is still somewhere you can grab
          the view from the way every other dead area of the Unit is */
     }
@@ -1979,6 +2378,7 @@ el.addEventListener('pointerdown', e => {
     }
   }
   /* nothing on the Unit: the drag moves the view instead */
+  if (!ORBIT) { intro.skip(); return; }
   active = 'cam'; el.setPointerCapture(e.pointerId); el.style.cursor = 'grabbing';
 });
 
@@ -1988,12 +2388,13 @@ el.addEventListener('pointermove', e => {
     const ctl = hit && hit.userData.ctl;
     /* A row only lamps while it is actually callable — not while a Work is
        already up, when the whole Screen means "send it back" instead. */
+    padHover = ctl === 'pad' ? hit.userData.i : -1;
     const row = (ctl === 'screen' && rite.phase === 'idle') ? screenRowAt(e) : -1;
     if (row !== hoverWork) { hoverWork = row; setHoverWork(row); drawScreen(); }
     el.style.cursor = ctl === 'pad' ? 'pointer'
       : ctl === 'fader' ? 'ew-resize'
       : ctl === 'screen' && (row >= 0 || rite.phase !== 'idle') ? 'pointer'
-      : 'grab';
+      : ORBIT ? 'grab' : 'default';
     return;
   }
   if (active === 'cam') {
@@ -2016,12 +2417,20 @@ el.addEventListener('pointermove', e => {
     const a = deckAngle(e, d0.group); let d = a - jogLast;
     if (d > Math.PI) d -= 6.2832; if (d < -Math.PI) d += 6.2832;
     jogLast = a; d0.group.rotation.y -= d;
+    /* Remember how fast the hand is moving, so letting go can hand the wheel its
+       own momentum. Blended rather than replaced: one jittery sample should not
+       decide how far a heavy platter coasts. */
+    d0.spin = d0.spin * .55 + (-d / Math.max(dtNow, 1 / 120)) * .45;
     /* Sun brings the light up, Moon puts it out — whichever way you turn it. */
     setVigil(vigil + (active === 'moon' ? 1 : -1) * Math.abs(d) * .34);
   }
 });
 
-el.addEventListener('pointerup', () => { active = null; el.style.cursor = 'default'; });
+el.addEventListener('pointerup', () => {
+  active = null; el.style.cursor = 'default';
+  /* every Pad comes back up — release anywhere, not only over the one pressed */
+  padPress.fill(0);
+});
 
 /* keyboard + screen-reader layer */
 document.querySelectorAll('[data-act]').forEach(b => {
@@ -2029,6 +2438,9 @@ document.querySelectorAll('[data-act]').forEach(b => {
     setPage(+b.dataset.act);
   });
 });
+/* Workbench: run the opening again without a reload. */
+document.getElementById('replay')?.addEventListener('click', () => intro.replay());
+
 const vslider = document.getElementById('vigil');
 vslider.addEventListener('input', () => setVigil(+vslider.value / 100));
 
@@ -2065,6 +2477,9 @@ dial('seed', v => 20260800 + v, v => String(v - 20260800));
 
 addEventListener('resize', () => {
   camera.aspect = W() / H(); camera.updateProjectionMatrix(); renderer.setSize(W(), H());
+  /* the composer owns its own render targets and does not learn about this
+     otherwise — a resized canvas over stale targets is how post ends up stretched */
+  post.setSize(W(), H());
 });
 /* the canvas is sized before layout settles often enough to be worth a second pass */
 requestAnimationFrame(() => {
@@ -2080,15 +2495,30 @@ const camDial = (id, key, fmt) => {
 };
 camDial('tilt', 'tilt', v => v + '\u00B0');
 camDial('dist', 'dist', v => v.toFixed(1));
-/* Ornament artwork, if it has been dropped in. Falls back to the procedural vine when absent. */
-(async () => {
+/**
+ * Load the Plate's assets, then rebuild it **once**.
+ *
+ * It used to rebuild on every arrival: once procedurally at module load, again
+ * when the faceplate artwork landed, again when the webfonts did. Each rebuild
+ * swaps four textures totalling about thirty megabytes, and each swap is visible —
+ * which is the flicker Fernando saw, the Plate arriving in three versions.
+ *
+ * They are coalesced now. The assets resolve into `plateReady`; whoever finishes
+ * last triggers a single rebuild, and `intro.js` holds the opening pose until that
+ * has happened, so the one remaining swap lands while the camera is still far off
+ * and the Screen has not booted.
+ */
+let plateResolve
+const plateReady = new Promise(r => { plateResolve = r })
+
+const artLoaded = (async () => {
   for (const f of ['ornament/plate.png', 'ornament/plate.jpg', 'ornament/plate.svg']) {
     try {
       const res = await fetch(f, { method: 'HEAD' });
       if (!res.ok) continue;
       const img = new Image();
       await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = f; });
-      ART = img; ART_DARK = artIsDark(img); regenFace();
+      ART = img; ART_DARK = artIsDark(img);
       console.log('[tenebrae] plate art loaded:', f, img.width + 'x' + img.height);
       return;
     } catch { /* not there yet */ }
@@ -2099,7 +2529,7 @@ camDial('dist', 'dist', v => v.toFixed(1));
       if (!res.ok) continue;
       const img = new Image();
       await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = f; });
-      ORN = img; regenFace();
+      ORN = img;
       console.log('[tenebrae] ornament loaded:', f, img.width + 'x' + img.height);
       return;
     } catch { /* not there yet */ }
@@ -2111,7 +2541,7 @@ setVigil(vigil);
 
 /* The Print is drawn before webfonts arrive, and document.fonts.ready does not load a face that
    nothing on the page has used yet — an unused family silently falls back. Ask for each one. */
-Promise.all([
+const fontsLoaded = Promise.all([
   ...Object.values(TITLES).map(t => document.fonts.load(t.font.replace(/^(\S+\s+\S+)/, '$1'))),
   document.fonts.load('500 30px "Azeret Mono"'),
   document.fonts.load('700 30px Archivo'),
@@ -2120,7 +2550,17 @@ Promise.all([
   document.fonts.load('8px Silkscreen'),
   document.fonts.load('13px VT323'),
   document.fonts.load('17px UnifrakturMaguntia'),
-]).then(regenFace);
+]);
+
+/* Whoever finishes last rebuilds the Plate — once, with everything it needs. */
+Promise.all([artLoaded, fontsLoaded]).then(() => {
+  regenFace();
+  /* the holding tint would otherwise multiply the albedo it was standing in for */
+  faceMat.color.setHex(0xFFFFFF);
+  plateResolve();
+});
+/* and a backstop, so a missing font or a dead fetch cannot hold the opening for ever */
+setTimeout(() => plateResolve(), 6000);
 
 /** Workbench hook: lets a browser session drive and verify the Unit without guessing pixels. */
 /**
@@ -2185,7 +2625,7 @@ castOnly(unit, altar, summoning.group);
 
 window.__unit = {
   /** rAF is throttled in a background tab, so never trust the last frame's matrices. */
-  render() { camera.updateMatrixWorld(true); scene.updateMatrixWorld(true); renderer.render(scene, camera); },
+  render() { camera.updateMatrixWorld(true); scene.updateMatrixWorld(true); post.render(performance.now() / 1000); },
   screenOf(o) {
     camera.updateMatrixWorld(true); scene.updateMatrixWorld(true);
     const v = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld).project(camera);
@@ -2223,6 +2663,10 @@ window.__unit = {
     renderer.setPixelRatio(PIXEL_RATIO);
     renderer.setSize(W(), H());
     SCREEN_STEP = level >= 2 ? 1 / 24 : level >= 1 ? 1 / 15 : 1 / 10;
+    /* occlusion and bloom are full-screen passes; at `survive` they are the first
+       thing to go, because the scene still reads without them and does not without
+       a frame rate */
+    post.set({ on: level >= 1 });
     if (level <= 0) { renderer.shadowMap.enabled = false; }
     else {
       renderer.shadowMap.enabled = true;
@@ -2343,6 +2787,45 @@ window.__unit = {
   },
 
   /**
+   * Occlusion, bloom, grade and grain, live.
+   *
+   *   __unit.setPost({ on: true, bloomStrength: .38, bloomThreshold: 2.6,
+   *                    bloomRadius: .35, ao: .85, aoRadius: .42,
+   *                    grain: .055, vignette: .70, saturation: 1.06 })
+   *
+   * `bloomThreshold` is the one to reach for first: too low and the whole room
+   * hazes over, which reads as fog rather than as light.
+   */
+  setPost(p) { return post.set(p); },
+
+  /** Drive the focus flight without hunting for a row: `__unit.focusWork(1)`. */
+  focusWork(i = 0) { focus.enter(WORKS[i] || WORKS[0]); return WORKS[i]?.title },
+  unfocus() { focus.exit() },
+  /* Advance the focus flight by hand. An automated tab is a *hidden* tab and
+     Chrome throttles rAF to nothing in one, so the flight never runs there
+     otherwise — the same trap that stopped `perf()` from ever completing. */
+  focusStep(dt = 1 / 60, n = 1) { for (let i = 0; i < n; i++) focus.update(dt); return focus.holding },
+  /* Same reason as `focusStep`: an automated tab is a hidden tab and rAF does not
+     run in one, so the opening move has to be advanced by hand to be checked. */
+  introStep(dt = 1 / 60, n = 1) {
+    for (let i = 0; i < n; i++) intro.update(dt)
+    renderScreen(0, dt); display.paint(); screenTex.needsUpdate = true
+    return { running: intro.running, cam: { ...CAM } }
+  },
+  replayIntro() { intro.replay(); return 'playing' },
+  /**
+   * Park the Screen at any moment of its power-on, 0 to 1, and hold it there.
+   *
+   * The opening runs in under three seconds, which is right for a visitor and
+   * useless for looking at one frame of it. Once the intro has finished this is
+   * not fought over by anything, so the Screen simply stays where it is put:
+   * `__unit.setBoot(.35)` is the name typing, `.6` the loading line, `1` normal.
+   */
+  setBoot(k) { setBoot(k); return k },
+  /** `__unit.setRoom(true)` puts the walls, panels and furniture back. */
+  setRoom(on) { setRoomLights(on); return setRoom(on) },
+
+  /**
    * The rig, live.
    *
    * Every number in the light rig was fitted against measurements off Fernando's
@@ -2350,8 +2833,8 @@ window.__unit = {
    * make them right — the fit knows eight sample points and nothing about how the
    * room reads. This is how they get judged. Values are the current ones:
    *
-   *   __unit.setLight({ exposure: .85, env: .40, key: 17, moon: .42,
-   *                     candle: 4.4, globe: 1.7, picture: 11 })
+   *   __unit.setLight({ exposure: 1.40, env: 1.85, key: 17, moon: .42,
+   *                     candle: 3.6, globe: 5.2, picture: 2.6 })
    *
    * `exposure` first. If the whole room is simply too dark on his display that is
    * the one dial to move, and moving it does not disturb the balance underneath.
@@ -2484,6 +2967,115 @@ function dim(light, intensity) {
   light.visible = intensity > 0.0005;
 }
 
+/**
+ * Occlusion, bloom, grade and grain (ADR-0021).
+ *
+ * Built here rather than beside the renderer because `RenderPass` needs the scene
+ * fully populated, and the room, the Altar and the props are all assembled above.
+ */
+const post = createPost(renderer, scene, camera, { width: W(), height: H() });
+
+/**
+ * Zoom to the Screen, hand the Work to the DOM (prototype — reverses ADR-0017).
+ *
+ * `onProgress` dims the room on the way in, so the Unit is the only thing left lit
+ * when the panel arrives. The Vigil is *not* touched: the visitor's own setting is
+ * still theirs when they come back out.
+ */
+const ROOM_DIM = [];
+scene.traverse(n => { if (n.isLight && n !== rake) ROOM_DIM.push([n, n.intensity]); });
+const focus = createFocus({
+  camera,
+  mount: document.getElementById('stage'),
+  screen: { centre: new THREE.Vector3(0, FACE_Y, SCREEN_Z), width: OPENING.w, depth: OPENING.d },
+  onProgress(t) {
+    /* the room falls away; the Screen's own glow and the phosphor do not */
+    for (const [l, base] of ROOM_DIM) l.intensity = base * (1 - t * 0.88);
+    post.set({ vignette: 0.70 + t * 0.5 });
+  },
+  /**
+   * Prev/next while a Work is up, so browsing does not mean flying out and back in
+   * for every piece. Wraps, because a portfolio is a ring, not a list with ends.
+   */
+  onStep(d) {
+    if (typeof d !== 'number') return
+    const i = WORKS.indexOf(focus.work)
+    const n = ((i < 0 ? 0 : i) + d + WORKS.length) % WORKS.length
+    focus.show(WORKS[n])
+  },
+  restore() {
+    /* ask the rig where it wants the camera *now*, so a view dragged before
+       entering is the view returned to */
+    const a = CAM.tilt * Math.PI / 180, y = CAM.yaw * Math.PI / 180;
+    const h = Math.sin(a) * CAM.dist;
+    const pos = new THREE.Vector3(Math.sin(y) * h, Math.cos(a) * CAM.dist, Math.cos(y) * h);
+    const look = new THREE.Vector3(0, .35 + Math.max(0, (CAM.tilt - 34) / 40) * 2.4, 0);
+    const m = new THREE.Matrix4().lookAt(pos, look, new THREE.Vector3(0, 1, 0));
+    return { pos, quat: new THREE.Quaternion().setFromRotationMatrix(m) };
+  },
+});
+focusDriving = () => focus.active;
+
+/**
+ * Show the room, or don't.
+ *
+ * Everything behind the Altar — walls, ceiling, acoustic panels, both bays, the
+ * window, the portrait, the rug — is scenery the camera barely sees at this
+ * framing, and all of it is drawn every frame. Off, for now.
+ *
+ * **Meshes only, never the Group.** Hiding `room` itself would hide the lights
+ * inside it: three skips invisible objects when it gathers lights, so `skyLight`,
+ * `wallWash`, the globe lamps and Lyra's picture light would all go out with the
+ * scenery and the Unit would lose most of its illumination. Hiding the meshes one
+ * by one keeps every light exactly where it was.
+ *
+ * The floor stays. Without it the Altar's legs end in nothing.
+ */
+const roomScenery = [];
+room.traverse(o => {
+  if ((o.isMesh || o.isInstancedMesh) && o !== floor) roomScenery.push(o);
+});
+portrait.group?.traverse?.(o => { if (o.isMesh) roomScenery.push(o); });
+function setRoom(on) {
+  for (const m of roomScenery) m.visible = on;
+  return { shown: on, meshes: roomScenery.length };
+}
+/**
+ * Lights that lit only the room go out with it.
+ *
+ * `setRoom` deliberately hides meshes and not the Group, so the lights survive —
+ * which was right when the room was still there and is waste now that it is not.
+ * `wallWash` lit the far wall. The two globe lamps lit the bays. The picture light
+ * lit Lyra's frame. All four are now illuminating nothing the camera can see, and
+ * three.js has no idea: every visible light is compiled into the shader and
+ * evaluated by **every lit fragment**, whatever it happens to be pointed at
+ * (ADR-0019).
+ *
+ * Four of twelve, for no visible change at all. What stays is what actually falls
+ * on the Unit and the desk: the key, the moon, the three Candles, the Deck lamps
+ * and the phosphor.
+ */
+const roomOnlyLights = [wallWash, pictureLight, ...decor.lamps ?? []];
+function setRoomLights(on) {
+  for (const l of roomOnlyLights) if (l) l.visible = on;
+}
+
+setRoom(false);
+setRoomLights(false);
+
+
+/**
+ * The opening move. It drives `CAM` rather than the camera directly, so it goes
+ * through the same rig everything else does and hands over cleanly at the end.
+ */
+const intro = createIntro({
+  apply(c) { Object.assign(CAM, c); placeCamera(); },
+  onBoot(k) { setBoot(k); },
+  /* Hold at the opening pose until the Plate has its final texture, so the one
+     remaining rebuild lands while the camera is far off and the Screen is dark. */
+  waitFor: plateReady,
+});
+
 /* The Screen's own frame rate, independent of the room's. */
 let SCREEN_STEP = 1 / 24, screenClock = 0;
 /* `__unit.perf()` switches the Screen off entirely to price it. Nothing else does. */
@@ -2491,13 +3083,71 @@ let SCREEN_ON = true;
 /* When a measurement is running, the loop hands it every frame's timings. */
 let perfSample = null;
 
+/* The last frame's delta, so the pointer handler can turn a drag into a velocity.
+   Pointer events do not carry one and `performance.now()` deltas between moves are
+   noisier than the frame clock. */
+let dtNow = 1 / 60;
+
+/**
+ * A live frame rate, in the workbench.
+ *
+ * Measuring this from an automated tab stopped being possible — the same
+ * configuration benchmarked between 26ms and 110ms, a four-fold spread, because
+ * the driving browser is worn out after a day of loading this scene. The only
+ * trustworthy instrument left is the machine the thing is running on, so the
+ * number goes where Fernando can read it.
+ *
+ * Averaged over half a second: an instantaneous readout flickers too much to judge
+ * and a long one hides the stalls that actually matter.
+ */
+const fpsEl = document.getElementById('fps');
+let fpsFrames = 0, fpsClock = 0;
+function tickFps(dt) {
+  if (!fpsEl) return;
+  fpsFrames++; fpsClock += dt;
+  if (fpsClock < 0.5) return;
+  const fps = fpsFrames / fpsClock;
+  fpsEl.textContent = fps.toFixed(0) + ' · ' + (1000 / fps).toFixed(1) + 'ms';
+  fpsEl.dataset.ok = fps >= 55 ? '1' : '0';
+  fpsFrames = 0; fpsClock = 0;
+}
+
 let t0 = 0;
 function frame(t) {
   const dt = Math.min(.05, (t - t0) / 1000); t0 = t;
+  dtNow = dt;
   const w0 = perfSample ? performance.now() : 0;
   /* the decks keep turning very slowly, opposite ways, so the Unit never looks frozen */
-  sun.group.rotation.y -= dt * .04 * (1 - vigil);
-  moon.group.rotation.y += dt * .04 * vigil;
+  /**
+   * The platters have weight.
+   *
+   * They used to be driven directly by the pointer and otherwise creep at a fixed
+   * rate, so letting go stopped them dead — which is the one thing a heavy wheel
+   * never does. Each Deck now carries a `spin` in radians per second: the drag
+   * feeds it, and it bleeds off against a drag coefficient instead of being
+   * cleared.
+   *
+   * `Math.pow(FRICTION, dt)` rather than a per-frame multiply, so the coast lasts
+   * the same wall-clock time at 24fps as at 120.
+   *
+   * The idle creep is still there underneath — the wheel whose hand is winning
+   * turns slowly on its own — but it is added to the momentum rather than
+   * replacing it, so a spun Deck settles back into its drift instead of snapping
+   * to it.
+   */
+  const FRICTION = 0.12;                       // per second; lower is heavier
+  for (const [d0, drift] of [[sun, -.04 * (1 - vigil)], [moon, .04 * vigil]]) {
+    if (Math.abs(d0.spin) > 0.0004) {
+      d0.group.rotation.y += d0.spin * dt;
+      d0.spin *= Math.pow(FRICTION, dt);
+      /* a spun Deck keeps working the Vigil as it coasts, the way it does under
+         the hand — otherwise the throw stops mattering the moment you let go */
+      setVigil(vigil + (d0 === moon ? 1 : -1) * Math.abs(d0.spin * dt) * .34);
+    } else {
+      d0.spin = 0;
+      d0.group.rotation.y += drift * dt;
+    }
+  }
   /* candlelight is never steady */
   CANDLES.forEach((c, i) => {
     if (!c.live) return;
@@ -2528,7 +3178,11 @@ function frame(t) {
   }
   summoning.update(smooth(rite.k), t / 1000);
   portrait.update(vigil);
-  renderer.render(scene, camera);
+  tickFps(dt);
+  updatePads(dt);
+  if (intro.running && !focus.active) intro.update(dt);
+  focus.update(dt);
+  post.render(t / 1000);
   /* `interval` is what the visitor feels — wall time between frames, and with vsync
      on it is quantised to multiples of the refresh, so it shows dropped frames and
      nothing else. `work` is the CPU actually spent in here, which is what tells you
