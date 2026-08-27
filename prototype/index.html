@@ -27,6 +27,11 @@
   #fps{min-width:5.5em;display:inline-block}
   #fps[data-ok="1"]{color:#7FD9B0}
   #fps[data-ok="0"]{color:#C4703A}
+  /* The workbench is not part of the object. It stays in the DOM because scene.js
+     binds to every dial by id and would throw on the first missing element, but it
+     is only shown when the URL asks: /?debug */
+  .ctl{display:none}
+  body[data-debug] .ctl{display:flex}
 </style>
 <div id="stage"></div>
 <nav class="sr" aria-label="Unit controls">
@@ -58,5 +63,9 @@
 </div>
 <script>
 window.addEventListener('error',function(e){var d=document.getElementById('err');d.style.display='block';d.textContent+='ERR: '+(e.message||e)+' @'+(e.lineno||'')+String.fromCharCode(10);});
+</script>
+<script>
+  /* ?debug shows the dials. Read before scene.js so the first paint is already right. */
+  if (location.search.includes('debug')) document.body.dataset.debug = '1';
 </script>
 <script type="module" src="./scene.js"></script>

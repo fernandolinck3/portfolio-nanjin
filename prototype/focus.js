@@ -26,6 +26,21 @@ import * as THREE from 'three'
 const EASE = t => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 
 /**
+ * Resolve a Work's still against the deployed base path.
+ *
+ * `modules.ts` stores these as `/works/foo.jpg`, which is the right shape for the
+ * *data* — a bare, root-relative path that says nothing about where the site is
+ * hosted. But the build emits its scripts relatively (`base: './'`), so the site
+ * runs from a subdirectory as well as a domain root, and a root-absolute image URL
+ * would resolve past that subdirectory to the server root and 404.
+ *
+ * That failure only ever appears in a deployed build — never in `npm run dev`,
+ * where the site *is* at the root — which makes it precisely the kind of bug worth
+ * spending four lines to never have.
+ */
+const asset = p => (import.meta.env?.BASE_URL || '/') + String(p).replace(/^\//, '')
+
+/**
  * Where the camera has to stand for the Screen to fill the frame.
  *
  * The Screen is set into a horizontal Plate, so it faces straight up and the
@@ -149,7 +164,7 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
     const shots = current?.images || []
     const plate = panel.querySelector('.work-plate')
     const count = panel.querySelector('.work-count')
-    plate.style.backgroundImage = shots.length ? `url(${shots[shot % shots.length]})` : 'none'
+    plate.style.backgroundImage = shots.length ? `url(${asset(shots[shot % shots.length])})` : 'none'
     plate.dataset.many = shots.length > 1 ? '1' : '0'
     count.textContent = shots.length > 1 ? `${(shot % shots.length) + 1} / ${shots.length}` : ''
   }
