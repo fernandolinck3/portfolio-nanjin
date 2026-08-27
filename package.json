@@ -9,7 +9,8 @@
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -b --pretty false",
     "prototype": "vite prototype --port 5174",
-    "screens": "node prototype/screen/build.mjs && open \"file://$PWD/Screens.html?v=$(date +%s)\""
+    "screens": "node prototype/screen/build.mjs && open \"file://$PWD/Screens.html?v=$(date +%s)\"",
+    "check": "esbuild prototype/scene.js prototype/screen/screen.js --bundle --external:three --format=esm --loader:.ts=ts --outdir=/tmp/tenebrae-check --log-level=warning && echo 'both entry points bundle clean'"
   },
   "dependencies": {
     "react": "^19.1.1",

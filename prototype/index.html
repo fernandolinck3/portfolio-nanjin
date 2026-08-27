@@ -1,5 +1,5 @@
 <title>Tenebrae Unit</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=Azeret+Mono:wght@400;500&family=UnifrakturMaguntia&family=Pirata+One&family=Grenze+Gotisch:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=Azeret+Mono:wght@400;500&family=UnifrakturMaguntia&family=Pirata+One&family=Grenze+Gotisch:wght@400;600&family=Silkscreen:wght@400;700&family=VT323&display=swap">
 <style>
   *{box-sizing:border-box} html,body{height:100%;margin:0;overflow:hidden;background:#0A0A0B}
   #stage{position:fixed;inset:0} canvas{display:block}
@@ -14,6 +14,9 @@
   input[type=range]::-moz-range-track{height:2px;background:#3A3A38}
   input[type=range]::-moz-range-thumb{width:12px;height:20px;border-radius:0;background:#DEDCD3;border:1px solid #000}
   .note{max-width:52ch;line-height:1.7}
+  .ctl button{font:inherit;letter-spacing:.12em;background:transparent;color:#8A8880;
+    border:1px solid #3A3A38;padding:3px 7px;cursor:pointer}
+  .ctl button:hover{background:#DEDCD3;color:#17181B;border-color:#DEDCD3}
   .sr{position:fixed;left:0;top:0;z-index:80;display:flex;gap:4px;padding:6px}
   .sr button{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
   .sr button:focus{position:static;width:auto;height:auto;clip:auto;margin:0;padding:5px 9px;
@@ -30,7 +33,7 @@
 </nav>
 <pre id="err"></pre>
 <div class="hud">
-  <p class="note">Click the pads. Turn the Sun to bring the light up, the Moon to put it out.<br>Drag the fader to crossfade.</p>
+  <p class="note">Click the pads. Turn the Sun to bring the light up, the Moon to put it out.<br>Drag the fader to crossfade. On PROJECTS, click a work on the screen — the room puts itself out and the work comes up on the plinth. Click again, or touch the Sun, to send it back.</p>
   <span class="ctl">VIGIL <input id="vigil" type="range" min="0" max="100" value="0" aria-label="Vigil"> <b id="vv">00</b></span>
   <span class="ctl">CAM <input id="tilt" type="range" min="0" max="70" value="28" aria-label="Camera tilt"> <b id="tiltv">28&deg;</b></span>
   <span class="ctl">DIST <input id="dist" type="range" min="55" max="240" value="74" aria-label="Camera distance"> <b id="distv">7.4</b></span>
