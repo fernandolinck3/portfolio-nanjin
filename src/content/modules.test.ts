@@ -1,3 +1,11 @@
+/**
+ * @vitest-environment node
+ *
+ * These assertions are arithmetic over an imported array — no DOM is touched. The
+ * repo's default environment is jsdom, and standing jsdom up out of node_modules
+ * costs minutes on an iCloud-backed disk (see HANDOFF.md), so this suite opts out
+ * the same way `prototype/screen/reaction.test.js` does.
+ */
 import { describe, expect, it } from 'vitest'
 import { MODULES, SCREEN_BUDGET, moduleAt, type Module } from './modules'
 

@@ -64,6 +64,76 @@ export function lyraAt(index: number): readonly string[] {
   return LYRA_LINES[((index % LYRA_LINES.length) + LYRA_LINES.length) % LYRA_LINES.length]
 }
 
+/**
+ * A Work — something Fernando made, numbered from this Unit onward.
+ *
+ * Kept separate from `MODULES` on purpose. Where these get *shown* is undecided:
+ * a website or a poster is an image with real detail in it, and the Screen is a
+ * 320x180 four-tone inset seen at an angle, so it physically cannot carry one.
+ * Whatever answers that (see ADR-0017 once it is written) will read this list;
+ * the list itself does not need to know.
+ *
+ * `blurb` is what can be said on the Screen. `sheet` is the image that needs
+ * somewhere bigger to live.
+ */
+export type Work = {
+  no: string
+  id: string
+  title: string
+  kind: 'Unit' | 'Site' | 'Poster'
+  year: string
+  blurb: string[]
+  sheet?: string
+  /** True while this row is a stand-in and its content is not yet Fernando's. */
+  placeholder?: boolean
+}
+
+/**
+ * The series.
+ *
+ * 001 is real and checkable — the visitor is standing in it. Everything after it
+ * is a PLACEHOLDER holding a shape, and says so in its own row: Fernando has
+ * websites and posters to add, and the titles, years and copy below are not them.
+ * PRODUCT.md forbids illustrative concepts presented as real work, so these must
+ * be replaced before the Unit is published (T-14) rather than quietly kept.
+ */
+export const WORKS: readonly Work[] = [
+  {
+    no: '001',
+    id: 'tenebrae',
+    title: 'Tenebrae',
+    kind: 'Unit',
+    year: '2026',
+    blurb: [
+      'The unit you are holding. A single instrument',
+      'rendered in real time, engraved in code.',
+    ],
+  },
+  {
+    no: '002', id: 'site-a', title: 'Untitled site', kind: 'Site', year: '—',
+    placeholder: true,
+    blurb: ['Placeholder. A website Fernando has built,', 'not yet chosen or written up.'],
+  },
+  {
+    no: '003', id: 'site-b', title: 'Untitled site', kind: 'Site', year: '—',
+    placeholder: true,
+    blurb: ['Placeholder. A website Fernando has built,', 'not yet chosen or written up.'],
+  },
+  {
+    no: '004', id: 'poster-a', title: 'Untitled poster', kind: 'Poster', year: '—',
+    placeholder: true,
+    blurb: ['Placeholder. A poster from Fernando\'s own', 'graphic work.'],
+  },
+  {
+    no: '005', id: 'poster-b', title: 'Untitled poster', kind: 'Poster', year: '—',
+    placeholder: true,
+    blurb: ['Placeholder. A poster from Fernando\'s own', 'graphic work.'],
+  },
+]
+
+/** How many of the series are real rather than holding a shape. */
+export const REAL_WORKS = WORKS.filter(w => !w.placeholder).length
+
 export const MODULES: readonly Module[] = [
   {
     slot: 1,
