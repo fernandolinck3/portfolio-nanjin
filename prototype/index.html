@@ -46,26 +46,50 @@
   #fps[data-ok="0"]{color:#C4703A}
 
   /**
-   * Portrait on a phone: ask for the phone to be turned.
+   * Portrait on a phone: **turn the page, not the phone.**
    *
-   * The Unit is 1.82 wide and the Screen inside it is 16:9. In a portrait viewport
-   * the whole object shrinks to fit its width and the 320x180 display lands at a size
-   * nothing on it can be read at — the layout is not cramped, it is illegible. There
-   * is no orientation lock a web page can rely on (`screen.orientation.lock` needs
-   * fullscreen and is refused on iOS), so the honest move is to say so and wait.
+   * The Unit is 1.82 wide and the display inside it is 16:9, so a portrait viewport
+   * shrinks the object to a size nothing on it can be read at. The first pass put up
+   * a wall and asked the visitor to rotate. Fernando: *"não precisa girar a tela.
+   * Mantenha ela na horizontal (com o aviso)."* Right — a page that works beats a
+   * page that makes a request, and no page can rely on an orientation lock anyway
+   * (`screen.orientation.lock` needs fullscreen and iOS refuses it).
    *
-   * Gated on `pointer: coarse` as well as orientation, so a tall desktop window gets
-   * the object rather than an instruction it cannot follow.
+   * So the whole frame turns a quarter and is sized to the swapped viewport.
+   * `translate(100vw,0) rotate(90deg)` about the corner maps a frame point (lx, ly)
+   * to (100vw − ly, lx), which `scene.js` inverts so the pointer lands where the
+   * object thinks it is — see `pt()` and `turned()` there, and `W()`/`H()`, which
+   * swap with it. Everything inside comes along, fixed-position overlays included,
+   * because a transformed element is the containing block for them.
+   *
+   * The notice stays as a banner rather than a wall: turning the phone is still
+   * better, it is just no longer required.
    */
-  #rotate{position:fixed;inset:0;z-index:60;display:none;place-items:center;text-align:center;
-    background:#0A0A0B;color:#8A8880;padding:32px;
-    font-family:"Azeret Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.14em;line-height:2}
-  #rotate b{display:block;color:#C9BE96;font-size:15px;letter-spacing:.24em;margin-bottom:18px}
-  #rotate svg{display:block;margin:0 auto 26px;stroke:#8A7A54;fill:none;stroke-width:1.5}
+  #frame{position:fixed;inset:0}
   @media (orientation: portrait) and (pointer: coarse){
-    #rotate{display:grid}
-    #stage,.hud,.touch,.sr{display:none}
+    #frame{width:100vh;height:100vw;transform:translate(100vw,0) rotate(90deg);
+      transform-origin:0 0}
+    #turn{display:flex}
   }
+  /* the same thing on demand, so the rotated path can be checked without a phone */
+  body[data-turned] #frame{width:100vh;height:100vw;
+    transform:translate(100vw,0) rotate(90deg);transform-origin:0 0}
+  body[data-turned] #turn{display:flex}
+  #turn{position:absolute;z-index:55;left:50%;transform:translateX(-50%);bottom:14px;
+    display:none;align-items:center;gap:10px;margin:0;padding:8px 14px;
+    background:rgba(10,9,8,.82);border:1px solid #3A3A38;color:#8A8880;
+    font-family:"Azeret Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.16em}
+  #turn svg{stroke:#8A7A54;fill:none;stroke-width:1.5;flex:0 0 auto}
+
+  /* Browser chrome eats a third of a phone screen and a strip of every desktop
+     window — *"a parte do navegador ta deixando tudo mt pequeno."* Safari has no
+     fullscreen that leaves the page in charge, so the page offers one. Hidden where
+     the API is missing rather than shown and inert. */
+  #full{position:absolute;z-index:55;top:14px;right:16px;padding:7px 12px;
+    background:rgba(10,9,8,.72);border:1px solid #3A3A38;color:#8A8880;cursor:pointer;
+    font-family:"Azeret Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.18em}
+  #full:hover,#full:focus-visible{color:#F0E8D2;border-color:#8A7A54}
+  #full[hidden]{display:none}
   /* The workbench is not part of the object. It stays in the DOM because scene.js
      binds to every dial by id and would throw on the first missing element, but it
      is only shown when the URL asks: /?debug */
@@ -81,19 +105,15 @@
   .touch button:active{background:#241D16}
   @media (hover:none){ .touch{display:flex} }
 </style>
-<div id="rotate" role="alertdialog" aria-live="polite">
-  <div>
-    <!-- a phone turning: the frame rotates, the arrow says which way -->
-    <svg width="74" height="74" viewBox="0 0 74 74" aria-hidden="true">
-      <rect x="25" y="12" width="24" height="42" rx="3"/>
-      <line x1="32" y1="18" x2="42" y2="18"/>
-      <path d="M18 60 a22 22 0 0 0 38 0"/>
-      <path d="M18 60 l-5 -7 M18 60 l7 -4"/>
-    </svg>
-    <b>Vire o celular</b>
-    A unidade é larga como o instrumento que ela é.<br>Na horizontal, o mostrador fica legível.
-  </div>
-</div>
+<div id="frame">
+<button id="full" type="button" hidden>TELA CHEIA</button>
+<p id="turn" role="status">
+  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="8" y="2" width="8" height="14" rx="1.5"/>
+    <path d="M5 19 a9 9 0 0 0 14 0"/><path d="M5 19 l-2 -3 M5 19 l3 -1.5"/>
+  </svg>
+  Vire o celular para uma tela maior
+</p>
 <div id="stage"></div>
 <!--
   The semantic layer. ADR-0002: the DOM is the truth and the Screen is a render of
@@ -142,11 +162,13 @@
   <span class="ctl"><button id="eclipse" type="button">ECLIPSE</button> <b id="eclipsev">bloqueado</b></span>
   <span class="ctl">FPS <b id="fps">--</b></span>
 </div>
+</div>
 <script>
 window.addEventListener('error',function(e){var d=document.getElementById('err');d.style.display='block';d.textContent+='ERR: '+(e.message||e)+' @'+(e.lineno||'')+String.fromCharCode(10);});
 </script>
 <script>
   /* ?debug shows the dials. Read before scene.js so the first paint is already right. */
   if (location.search.includes('debug')) document.body.dataset.debug = '1';
+  if (location.search.includes('turned')) document.body.dataset.turned = '1';
 </script>
 <script type="module" src="./scene.js"></script>

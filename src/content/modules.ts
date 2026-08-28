@@ -179,7 +179,7 @@ export const WORKS: readonly Work[] = [
        ela deixou de estar vazia — duas peças reais entraram. Nenhuma data, nenhum
        título inventado; o que não se sabe continua não sendo dito. */
     empty: true,
-    images: ['/works/ru-mine-a.jpg', '/works/ru-mine-b.jpg'],
+    images: ['/works/alt-escape.jpg', '/works/ru-mine-a.jpg', '/works/ru-mine-b.jpg'],
     blurb: [
       'Uma galeria em construção para reunir pôsteres,',
       'composições e estudos visuais em um mesmo arquivo.',

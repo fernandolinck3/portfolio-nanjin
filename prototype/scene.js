@@ -25,7 +25,36 @@ import {
   setEclipseSeen, setEclipseUnlocked, setEclipseOpen,
 } from './screen/render.js'
 /* ============ Tenebrae — 3D material & form study ============ */
-const W = () => innerWidth, H = () => innerHeight;
+/**
+ * The frame's own size and the pointer's place in it — which are not the viewport's
+ * when the page has been turned.
+ *
+ * In portrait on a touch device `#frame` is rotated a quarter turn and sized to the
+ * swapped viewport (see `index.html`). Everything downstream — the renderer, the
+ * camera's aspect, `screenOf`, every hit test — has to work in the frame's space or
+ * the object is drawn in one orientation and clicked in another.
+ *
+ * The CSS is `translate(100vw,0) rotate(90deg)` about the corner, so a frame point
+ * (lx, ly) lands at (100vw − ly, lx). `pt` is that inverted, and it is the **only**
+ * place a raw `clientX`/`clientY` is read: everything else takes its coordinates
+ * from here, including the drag deltas, which are then already in frame space.
+ */
+/* `?turned` forces it on a desktop. The rotated path is the one nobody sees until a
+   phone user taps a Pad and hits the one beside it, so it has to be reachable
+   without a phone — the CSS reads the same flag from `data-turned` on the body. */
+const FORCE_TURNED = location.search.includes('turned');
+const turned = () => FORCE_TURNED ||
+  matchMedia('(orientation: portrait) and (pointer: coarse)').matches;
+const W = () => (turned() ? innerHeight : innerWidth);
+const H = () => (turned() ? innerWidth : innerHeight);
+const pt = e => (turned()
+  ? { x: e.clientY, y: innerWidth - e.clientX }
+  : { x: e.clientX, y: e.clientY });
+/** The canvas box in frame space. `getBoundingClientRect` returns the rotated
+    bounding box, which is the wrong rectangle by exactly the thing we corrected. */
+const frameRect = () => (turned()
+  ? { left: 0, top: 0, width: innerHeight, height: innerWidth }
+  : el.getBoundingClientRect());
 
 /**
  * Dark before anything else happens.
@@ -2769,34 +2798,32 @@ const el = renderer.domElement;
 /* The Unit does not move. It is a heavy object on a table, not a thing that follows a cursor. */
 let active = null, px = 0, py = 0, startVal = 0, jogAcc = 0, jogLast = 0;
 /**
- * One detent, in radians of platter rotation — about 20 degrees.
+ * One detent, in radians of platter rotation — about 30 degrees.
  *
- * Fitted to the hand rather than to the list: a full turn is eighteen notches, so
- * stepping a six-item list end to end is a third of a revolution, which is a
- * gesture rather than a wind. `jogCarry` holds the part of a turn that has not yet
- * bought a step, so a slow drag steps once per notch instead of quantising jitter.
- */
-/**
- * 0.50, up from 0.35 — *"a jog deve ter o feeling de ser mais pesada pro usuário não
- * remar tanto."*
+ * **Measured, not guessed.** At 0.38 a quarter turn of the wrist was four items, so
+ * every list on the object went end to end in one gesture: PROJETOS 0→2, CRITÉRIOS
+ * 0→4, HABILIDADES 0→3. That is not a wheel that navigates badly, it is a wheel that
+ * navigates *instantly*, and it reads as broken because you can never land on the
+ * item you meant — *"as jogs não estão navegando direito."*
  *
- * Those two halves pull opposite ways if you read `NOTCH` alone: a bigger detent is
- * a heavier wheel and *more* rowing. The rowing is fixed on the other side — each
- * notch now moves the text twice as far. So the wheel gained weight and the hand
- * lost work, which is what a heavy flywheel actually feels like.
+ * At 0.62 a quarter turn is two and a half steps and a full turn is ten, which is
+ * about what a track wheel gives you and what *"deve girar progressivamente aos poucos"*
+ * describes. `carry` holds the part of a turn that has not yet bought a step, so a
+ * slow drag steps once per notch instead of quantising the hand's jitter.
  */
-const NOTCH = 0.38;
+const NOTCH = 0.62;
 /**
  * The SUN's detent is nearly twice the MOON's, because they no longer move
  * comparable amounts.
  *
  * They used to: one MOON notch was one item, one SUN notch was 46px of a scrolling
- * column. Now one SUN notch is a **whole page**, and at 0.38 rad a casual 45° of
- * wrist threw two pages past the reader. A control should cost about what it moves,
- * so the wheel that moves more asks for more hand — which is also the *"jog mais
- * pesada"* Fernando asked for, arriving as weight rather than as friction.
+ * column. Now one SUN notch is a **whole page**, and a page past the reader costs
+ * more to undo than an item does. A control should ask for about what it moves.
+ *
+ * It only applies while the SUN is a pager. Where a Module's items have no pages the
+ * SUN is choosing an item instead, and an item costs a MOON notch — see `notchOf`.
  */
-const SUN_NOTCH = 0.68;
+const SUN_NOTCH = 1.00;
 /**
  * A detent is sized by what it moves.
  *
@@ -2808,22 +2835,24 @@ const notchOf = kind =>
   (kind === 'sun' && !focus.active && pageRange() > 0 ? SUN_NOTCH : NOTCH);
 
 /**
- * How the wheels feel, in four numbers.
+ * How the wheels feel — and what the coast is allowed to touch.
  *
- * `PULL` is the detent itself. The platter shows its `turn` minus this fraction of
- * the carry, so between two notches the wheel lags the hand and then catches up the
- * moment the notch is spent — which is the small snap Fernando asked for. At 0 the
- * wheel tracks the hand exactly and the detents are invisible; at 1 it would refuse
- * to move at all until it jumped.
+ * **The detent no longer drags the platter behind the hand.** It did: the wheel
+ * showed `turn - PULL * carry`, so between notches it lagged and then caught up.
+ * That is how a real detent feels under a finger and it is not how it *looks* on a
+ * screen, where the only thing visible is the platter failing to keep up with the
+ * cursor — *"remove the snaps please its looking laggy."* The pointer is the hand
+ * here; anything that lags it is lag.
  *
- * `FRICTION` is what the spin retains per second once the hand is off, so a thrown
- * wheel keeps selecting instead of stopping dead. At 0.08 a full-strength flick runs
- * about 2.4 radians past the release — six MOON detents, three or four SUN pages —
- * and takes a bit over a second doing it. `SPIN_MIN` is where the coast is declared
- * over and the platter settles onto its detent, and `SPIN_MAX` caps a violent flick:
- * a wheel is allowed to run on, not to run away through a whole Module.
+ * **The coast is visual only.** A thrown wheel keeps turning, because a heavy
+ * platter does — that is the *"pequena inércia"* — but it no longer spends detents
+ * while it does. Selecting on momentum is how a small flick walked to the end of a
+ * list and stopped there, which is most of *"as jogs não estão navegando direito."*
+ * The hand chooses; the mass only carries the picture. That keeps the part of
+ * ADR-0026 that mattered — no uncontrolled selection — and drops the part that was
+ * costing the reader their place.
  */
-const JOG = { PULL: 0.38, FRICTION: 0.08, SPIN_MIN: 0.30, SPIN_MAX: 6.0 };
+const JOG = { FRICTION: 0.10, SPIN_MIN: 0.25, SPIN_MAX: 3.5 };
 
 /**
  * Spend whatever whole detents a Deck has accumulated.
@@ -2844,9 +2873,9 @@ function spendNotches(d0, kind) {
 }
 
 function pick(e) {
-  const r = el.getBoundingClientRect();
-  ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
-  ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+  const r = frameRect(), p = pt(e);
+  ndc.x = ((p.x - r.left) / r.width) * 2 - 1;
+  ndc.y = -((p.y - r.top) / r.height) * 2 + 1;
   ray.setFromCamera(ndc, camera);
   const hits = ray.intersectObjects(unit.children, true);
   for (const h of hits) { if (h.object.userData.ctl) { lastPick = h; return h.object; } }
@@ -2876,9 +2905,9 @@ function screenRowAt(e) {
   /* any Module with items has rows; this used to name one Module by an id that no
      longer exists, which silently made the whole Screen unclickable */
   if (!MODULES[curPage].items?.length) return -1;
-  const r = el.getBoundingClientRect();
-  ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
-  ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+  const r = frameRect(), p = pt(e);
+  ndc.x = ((p.x - r.left) / r.width) * 2 - 1;
+  ndc.y = -((p.y - r.top) / r.height) * 2 + 1;
   ray.setFromCamera(ndc, camera);
   const hit = ray.intersectObject(screen, false)[0];
   if (!hit || !hit.uv) return -1;
@@ -3322,10 +3351,10 @@ function setVigil(v) {
  */
 
 function deckAngle(e, g) {
-  const r = el.getBoundingClientRect();
+  const r = frameRect(), q = pt(e);
   const p = new THREE.Vector3().setFromMatrixPosition(g.matrixWorld).project(camera);
   const cx = r.left + (p.x * .5 + .5) * r.width, cy = r.top + (-p.y * .5 + .5) * r.height;
-  return Math.atan2(e.clientY - cy, e.clientX - cx);
+  return Math.atan2(q.y - cy, q.x - cx);
 }
 
 el.addEventListener('pointerdown', e => {
@@ -3347,7 +3376,7 @@ el.addEventListener('pointerdown', e => {
     return;
   }
   const hit = pick(e);
-  px = e.clientX; py = e.clientY;
+  { const p = pt(e); px = p.x; py = p.y; }
   if (hit) {
     const c = hit.userData.ctl;
     /* the whole Pad is the target, not its lamp — `userData.ctl` is on the mesh */
@@ -3422,7 +3451,7 @@ el.addEventListener('pointermove', e => {
   }
   if (active === 'cam') {
     const cl = (v, [lo, hi]) => Math.max(lo, Math.min(hi, v));
-    const dx = e.clientX - px, dy = e.clientY - py;
+    const p = pt(e); const dx = p.x - px, dy = p.y - py;
     if (FREECAM && e.shiftKey) {
       /* pan the pivot, in the camera's own basis so it tracks the hand rather than
          the world axes — the yaw is the only rotation that matters for that */
@@ -3434,7 +3463,7 @@ el.addEventListener('pointermove', e => {
       CAM.tilt = cl(CAM.tilt + dy * .16, camLimits().tilt);
       CAM.yaw  = cl(CAM.yaw  - dx * .16, camLimits().yaw);
     }
-    px = e.clientX; py = e.clientY;
+    { const q = pt(e); px = q.x; py = q.y; }
     placeCamera();
     if (FREECAM) showFreecam();
     const t = document.getElementById('tilt'), d = document.getElementById('tiltv');
@@ -3443,7 +3472,7 @@ el.addEventListener('pointermove', e => {
   }
   if (active === 'fader') {
     /* the hand sets a target; `updateFader` is what actually moves the cap */
-    xfHand = Math.max(0, Math.min(1, startVal + (e.clientX - px) / 300));
+    xfHand = Math.max(0, Math.min(1, startVal + (pt(e).x - px) / 300));
   } else if (active === 'sun' || active === 'moon') {
     /**
      * A Deck is a **detented selector** now, not a flywheel.
@@ -3553,6 +3582,41 @@ addEventListener('keydown', e => {
     if (wheel === 'sun') { sunEnter(); e.preventDefault(); return; }
   }
 });
+/**
+ * Fullscreen, because the browser's chrome is a third of a phone and a strip of
+ * every desktop window — *"a parte do navegador ta deixando tudo mt pequeno."*
+ *
+ * Prefixed call included: Safari on macOS still only has `webkitRequestFullscreen`,
+ * and it is the browser the question was asked about. On iOS the API does not exist
+ * for anything but a `<video>`, so the button hides itself rather than sitting there
+ * doing nothing — the rotated frame and the banner are that platform's answer.
+ *
+ * The orientation lock is attempted **after** the request resolves, because it is
+ * only permitted on a fullscreen document. It is a courtesy, not a dependency: where
+ * it is refused the page is already landscape by its own transform.
+ */
+{
+  const btn = document.getElementById('full');
+  const root = document.documentElement;
+  const enter = root.requestFullscreen || root.webkitRequestFullscreen;
+  const leave = document.exitFullscreen || document.webkitExitFullscreen;
+  const on = () => document.fullscreenElement || document.webkitFullscreenElement;
+
+  if (btn && enter) {
+    btn.hidden = false;
+    btn.addEventListener('click', async () => {
+      try {
+        if (on()) { await leave.call(document); return; }
+        await enter.call(root);
+        await screen.orientation?.lock?.('landscape').catch(() => {});
+      } catch { /* refused; the page is legible either way */ }
+    });
+    const label = () => { btn.textContent = on() ? 'SAIR DA TELA CHEIA' : 'TELA CHEIA'; };
+    document.addEventListener('fullscreenchange', label);
+    document.addEventListener('webkitfullscreenchange', label);
+  }
+}
+
 /* Workbench: run the opening again without a reload. */
 document.getElementById('replay')?.addEventListener('click', () => intro.replay());
 
@@ -4509,23 +4573,17 @@ function frame(t) {
   ]) {
     d0.turn += drift * dt;
 
+    /* the coast turns the platter and nothing else — `carry` is the hand's alone */
     if (active !== kind && d0.spin) {
-      const step = d0.spin * dt;
-      d0.turn += step;
-      d0.carry += step;
-      spendNotches(d0, kind);
+      d0.turn += d0.spin * dt;
       d0.spin *= Math.pow(JOG.FRICTION, dt);
       if (Math.abs(d0.spin) < JOG.SPIN_MIN) d0.spin = 0;
     }
+    /* letting go forgets the part-detent under the hand, so the next turn starts
+       from the notch rather than from wherever the finger happened to stop */
+    if (active !== kind) d0.carry = 0;
 
-    /* the settle. Under the hand the carry is the reader's, not ours. */
-    if (active !== kind && !d0.spin && d0.carry) {
-      const k = 1 - Math.pow(.0008, dt);
-      d0.carry -= d0.carry * k;
-      if (Math.abs(d0.carry) < 1e-4) d0.carry = 0;
-    }
-
-    d0.group.rotation.y = d0.turn - JOG.PULL * d0.carry;
+    d0.group.rotation.y = d0.turn;
   }
   /**
    * Candlelight is never steady — and it is never a sine wave either.
