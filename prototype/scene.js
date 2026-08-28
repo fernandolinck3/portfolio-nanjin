@@ -46,8 +46,16 @@ import {
 const FORCE_TURNED = location.search.includes('turned');
 const turned = () => FORCE_TURNED ||
   matchMedia('(orientation: portrait) and (pointer: coarse)').matches;
-const W = () => (turned() ? innerHeight : innerWidth);
-const H = () => (turned() ? innerWidth : innerHeight);
+/**
+ * A fixed frame, for the film.
+ *
+ * Everything downstream reads `W()`/`H()` — the renderer's size, the camera's aspect,
+ * every hit test — so overriding them here is the whole of "render at 1080x1920
+ * regardless of the window". Null in every normal session.
+ */
+let FILM = null;
+const W = () => (FILM ? FILM.w : turned() ? innerHeight : innerWidth);
+const H = () => (FILM ? FILM.h : turned() ? innerWidth : innerHeight);
 const pt = e => (turned()
   ? { x: e.clientY, y: innerWidth - e.clientX }
   : { x: e.clientX, y: e.clientY });
@@ -4210,6 +4218,26 @@ window.__unit = {
   },
   pads: () => padMeshes,
   /**
+   * The controls, as functions.
+   *
+   * The film needs to *use* the object, not pose it — a still of a Unit nobody is
+   * touching is a product shot, and the thing worth showing is that it responds.
+   * These are the same calls the pointer and the keyboard make, exposed so a script
+   * can make them without synthesising events.
+   */
+  press: i => pressPad(i),
+  moon: (step = 1) => moveSelection(step),
+  sun: (step = 1) => moveSection(step),
+  light: v => setLightTo(v),
+  eclipse: () => forceEclipse(),
+  /** Pin the render to a fixed frame. See `FILM`. */
+  setFilmSize(w, h) {
+    FILM = { w, h };
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    renderer.setPixelRatio(1); renderer.setSize(w, h, false);
+    post.setSize(w, h);
+  },
+  /**
    * Where the navigation currently stands.
    *
    * rAF does not run in an automated tab, so a check that drives the Unit has to be
@@ -4943,3 +4971,14 @@ function frame(t) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+
+/**
+ * The film mode, as its own chunk.
+ *
+ * A dynamic import so nothing about recording reaches the site's bundle — this is a
+ * tool for making a clip, not part of the object. It sits at the very end because it
+ * hands `window.__unit` to the script, and that object is built above.
+ */
+if (location.search.includes('film')) {
+  import('./film.js').then(m => m.runFilm(window.__unit, renderer.domElement));
+}
