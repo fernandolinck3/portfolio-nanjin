@@ -7,10 +7,15 @@
    Whatever this shows, the Unit shows. That is the point of the split: there is
    one Screen renderer now, not two that drift. */
 import {
-  buffer, render, SCREEN_W, SCREEN_H,
+  buffer, render, SCREEN_W, SCREEN_H, setBoot,
   setModule, setVigil, setCrossfade, setFigure, setBust, triggerReaction,
   disposeReaction, currentFace,
 } from './render.js'
+
+/* This page is the Screen on a bench, with no opening to wait for. `render.js` now
+   starts dark so the Unit cannot flash a Module before its power-on; the bench says
+   otherwise for itself. */
+setBoot(1)
 import { BUST, BUST_PREV } from './drawn.js'
 
 const big = document.getElementById('big').getContext('2d')

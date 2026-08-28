@@ -1,4 +1,15 @@
-<title>Tenebrae Unit</title>
+<!doctype html>
+<!-- `lang` is on a real `<html>` element because there was not one: the file relied on
+     the parser inventing it, which works for layout and loses the language. A screen
+     reader needs it to choose a Portuguese voice, and the page is Portuguese now. -->
+<html lang="pt-BR">
+<!-- Must be the first thing in the document, and within the first 1024 bytes, or the
+     browser guesses the encoding. It had been guessing: every em dash on the page came
+     out as "â€"" — the HUD read "Keys 1â€"6 pick a module" — because this file had no
+     charset declaration at all and the served default is not UTF-8. -->
+<meta charset="utf-8">
+<meta name="description" content="Estratégia, mensagem, design, front-end e análise em um portfólio interativo.">
+<title>Fernando Linck — Growth, CRO e experiências digitais</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=Azeret+Mono:wght@400;500&family=UnifrakturMaguntia&family=Pirata+One&family=Grenze+Gotisch:wght@400;600&family=Silkscreen:wght@400;700&family=VT323&display=swap">
 <style>
   *{box-sizing:border-box} html,body{height:100%;margin:0;overflow:hidden;background:#0A0A0B}
@@ -13,7 +24,6 @@
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:20px;margin-top:-9px;background:#DEDCD3;border:1px solid #000}
   input[type=range]::-moz-range-track{height:2px;background:#3A3A38}
   input[type=range]::-moz-range-thumb{width:12px;height:20px;border-radius:0;background:#DEDCD3;border:1px solid #000}
-  .note{max-width:52ch;line-height:1.7}
   .ctl button{font:inherit;letter-spacing:.12em;background:transparent;color:#8A8880;
     border:1px solid #3A3A38;padding:3px 7px;cursor:pointer}
   .ctl button:hover{background:#DEDCD3;color:#17181B;border-color:#DEDCD3}
@@ -32,16 +42,43 @@
      is only shown when the URL asks: /?debug */
   .ctl{display:none}
   body[data-debug] .ctl{display:flex}
+  /* The touch row. Shown where there is no hover and no rotary gesture to make —
+     `hover:none` is the honest test for that, rather than a width breakpoint that
+     would also catch a small window on a desktop. */
+  .touch{position:fixed;left:0;right:0;bottom:0;display:none;gap:6px;padding:8px;
+    justify-content:center;z-index:5;font:11px/1 ui-monospace,Menlo,monospace}
+  .touch button{flex:1 1 0;max-width:120px;padding:12px 6px;color:#C9C2B0;
+    background:#141110;border:1px solid #3A2E20;border-radius:3px;letter-spacing:.12em}
+  .touch button:active{background:#241D16}
+  @media (hover:none){ .touch{display:flex} }
 </style>
 <div id="stage"></div>
+<!--
+  The semantic layer. ADR-0002: the DOM is the truth and the Screen is a render of
+  it, so every control the hand can reach has a real focusable element here with a
+  real name. The names now match the visible Pad labels — they used to say "Project
+  001" and "Rack" for Modules called WORKS and PATH, which is the kind of drift a
+  screen-reader user meets and a sighted user never does.
+
+  `.sr` is off-screen; `.touch` is not. Rotary gestures and hover do not exist on a
+  phone, so the same four intents get explicit buttons there.
+-->
 <nav class="sr" aria-label="Unit controls">
-  <button data-act="0">Ident</button><button data-act="1">Now / Next</button>
-  <button data-act="2">Project 001</button><button data-act="3">Rack</button>
-  <button data-act="4">Method</button><button data-act="5">Out</button>
+  <button data-act="0">Quem</button><button data-act="1">Projetos</button>
+  <button data-act="2">Trajeto</button><button data-act="3">Critérios</button>
+  <button data-act="4">Habilidades</button><button data-act="5">Contato</button>
+  <button id="k-moon" data-wheel="moon">Roda da Lua — escolher o item</button>
+  <button id="k-sun" data-wheel="sun">Roda do Sol — explorar o item</button>
+  <button id="k-fader" data-fader>Luz — noite a dia</button>
 </nav>
+<div class="touch" aria-label="Touch controls">
+  <button data-nav="prev" aria-label="Item anterior">‹ ANTERIOR</button>
+  <button data-nav="next" aria-label="Próximo item">PRÓXIMO ›</button>
+  <button data-nav="open" aria-label="Abrir o item selecionado">ABRIR</button>
+  <button data-nav="back" aria-label="Voltar um nível">VOLTAR</button>
+</div>
 <pre id="err"></pre>
 <div class="hud">
-  <p class="note">Click the pads. Turn the Sun to bring the light up, the Moon to put it out.<br>Drag the fader to crossfade. On PROJECTS, click a work on the screen — the room puts itself out and the work comes up on the plinth. Click again, or touch the Sun, to send it back.</p>
   <span class="ctl">VIGIL <input id="vigil" type="range" min="0" max="100" value="0" aria-label="Vigil"> <b id="vv">00</b></span>
   <span class="ctl">CAM <input id="tilt" type="range" min="0" max="70" value="6" aria-label="Camera tilt"> <b id="tiltv">6&deg;</b></span>
   <span class="ctl">DIST <input id="dist" type="range" min="45" max="240" value="56" aria-label="Camera distance"> <b id="distv">5.6</b></span>
@@ -59,6 +96,8 @@
   <span class="ctl">INK <input id="ink" type="range" min="5" max="100" value="30" aria-label="Engraving contrast"> <b id="inkv">0.30</b></span>
   <span class="ctl">SEED <input id="seed" type="range" min="1" max="60" value="25" aria-label="Seed"> <b id="seedv">25</b></span>
   <span class="ctl"><button id="replay" type="button">REPLAY INTRO</button></span>
+  <span class="ctl"><button id="freecam" type="button">FREECAM</button> <b id="freecamv">off</b></span>
+  <span class="ctl"><button id="eclipse" type="button">ECLIPSE</button> <b id="eclipsev">bloqueado</b></span>
   <span class="ctl">FPS <b id="fps">--</b></span>
 </div>
 <script>

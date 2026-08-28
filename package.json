@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -b --pretty false",
-    "prototype": "vite prototype --port 5174",
+    "prototype": "vite --config vite.site.config.ts --port 5174",
     "build:site": "vite build --config vite.site.config.ts",
     "preview:site": "vite preview --config vite.site.config.ts",
     "screens": "node prototype/screen/build.mjs && open \"file://$PWD/Screens.html?v=$(date +%s)\"",

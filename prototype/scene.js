@@ -20,6 +20,9 @@ import {
   setModule as setScreenModule, setVigil as setScreenVigil,
   setCrossfade as setScreenCrossfade, setFace as setScreenFace,
   setHoverWork, setPlinthWork, workRowAt,
+  setFlash, setHint, selectionOf, sectionOf, setSelection, setSection, resetPlace,
+  bootLevel, touchLyra, lyraPhase, pageRange,
+  setEclipseSeen, setEclipseUnlocked, setEclipseOpen,
 } from './screen/render.js'
 /* ============ Tenebrae — 3D material & form study ============ */
 const W = () => innerWidth, H = () => innerHeight;
@@ -103,6 +106,39 @@ const CAM_LIMITS = { tilt: [4, 74], yaw: [-42, 42] };
 /* Orbit is off for this version. The sliders in the workbench still drive `CAM`. */
 const ORBIT = false;
 /**
+ * Freecam — the workbench's camera, never the visitor's.
+ *
+ * `ORBIT` stays `false` and stays a constant: the shipped Unit has one angle, and
+ * that is a decision, not an oversight. This is the other thing, the one that has
+ * been improvised by hand every time a session needed to look at the back of the
+ * candlesticks or check whether the room actually meets the floor — `__unit.setCam`
+ * from the console, one guess at a time.
+ *
+ * It only exists behind `?debug`, because the whole HUD does; the button is in the
+ * DOM either way but there is no way to reach it otherwise.
+ *
+ * What it changes while it is on:
+ *
+ *   - the tilt and yaw clamps open up, so the camera can go under the Plate and
+ *     round the back — the two places `CAM_LIMITS` deliberately forbids because
+ *     nothing there is modelled to hold up;
+ *   - dragging empty space orbits instead of skipping the opening;
+ *   - the wheel dollies, and shift-drag pans the pivot.
+ *
+ * Turning it off puts the camera back rather than leaving the rig wherever it was
+ * parked — a debug view that silently becomes the real one is how a session ends up
+ * debugging the wrong framing. Specifically it goes back to **the view the opening
+ * settles to**, not to whatever was on screen at the moment of the click, because
+ * enabling freecam cuts the opening short and a half-played flight is not a camera
+ * anyone can return to.
+ */
+let FREECAM = false;
+let freecamWas = null;
+const freeLook = () => ORBIT || FREECAM;
+/** Wide enough to get under and behind; not unbounded, so the rig cannot invert. */
+const FREE_LIMITS = { tilt: [-170, 170], yaw: [-180, 180] };
+const camLimits = () => (FREECAM ? FREE_LIMITS : CAM_LIMITS);
+/**
  * Is the focus flight driving the camera right now?
  *
  * A plain `let`, reassigned once `focus` exists, rather than a reference to
@@ -118,9 +154,11 @@ function placeCamera() {
   if (focusDriving()) return;
   const a = CAM.tilt * Math.PI / 180, y = CAM.yaw * Math.PI / 180;
   const h = Math.sin(a) * CAM.dist;
-  camera.position.set(Math.sin(y) * h, Math.cos(a) * CAM.dist, Math.cos(y) * h);
+  /* the pivot the rig orbits, which only freecam ever moves off the origin */
+  const p = CAM.pan || (CAM.pan = { x: 0, y: 0, z: 0 });
+  camera.position.set(p.x + Math.sin(y) * h, p.y + Math.cos(a) * CAM.dist, p.z + Math.cos(y) * h);
   /* look a little higher as the view comes up, so the window enters frame naturally */
-  camera.lookAt(0, .35 + Math.max(0, (CAM.tilt - 34) / 40) * 2.4, 0);
+  camera.lookAt(p.x, p.y + .35 + Math.max(0, (CAM.tilt - 34) / 40) * 2.4, p.z);
 }
 placeCamera();
 
@@ -468,6 +506,13 @@ const RIM = { w: 1.96, d: 1.175 };
 const PAD = { size: .23, pitch: .28, z: .55 };
 const FADER = { len: 1.30, z: 1.16, travel: 1.12 };
 const PAD_X0 = -PAD.pitch * 2.5;   // six on a centred pitch
+/* The ECLIPSE lamps. Up here with the rest of the layout because `RESERVES` needs to
+   clear ground for them, and that array is built long before the meshes are.
+   `y` is the **Plate's top face**, measured — the lamps sit on it, they are not sunk
+   into it. The old slabs got away with `.332` because their bevel plus depth came to
+   `.030` and pushed the top out past the surface at `.352`; a smaller star at the
+   same height disappeared completely, which is what buried the first cut of these. */
+const LED = { y: .352, z: .20, pitch: .118, r: .0195 };
 
 /* Shapes are built in XY and rotated onto the Plate, which maps shape-y to world
    -z — so the aperture goes at -SCREEN_Z. */
@@ -480,6 +525,8 @@ const APERTURE = { w: OPENING.w, d: OPENING.d, y: -SCREEN_Z };
 const TW = 2048, TH = 1124;              // matches PLATE's aspect, so nothing stretches
 const PX = x => (x + PLATE.w / 2) / PLATE.w * TW;
 const PY = z => (z + PLATE.d / 2) / PLATE.d * TH;
+/** Air between a Pad's printed name and the lip of its well, in texture pixels. */
+const LABEL_GAP = 15;
 /**
  * What the Parts occupy, derived from the geometry rather than typed beside it.
  *
@@ -501,16 +548,21 @@ const RESERVES = [
   { r: [PX(-FADER.len / 2 - .06), PY(FADER.z - .20),
         PX(FADER.len / 2 + .06) - PX(-FADER.len / 2 - .06),
         PY(FADER.z + .20) - PY(FADER.z - .20)] },
+  /* The ECLIPSE lamp row, in the band between the Screen and the Pad labels */
+  { r: [PX(-LED.pitch * 3 - .038), PY(LED.z - .032),
+        PX(LED.pitch * 3 + .038) - PX(-LED.pitch * 3 - .038),
+        PY(LED.z + .032) - PY(LED.z - .032)] },
   { c: [PX(-WHEEL.x), PY(WHEEL.z), PX(-WHEEL.x + WHEEL.r) - PX(-WHEEL.x)] },    // Moon deck
   { c: [PX(WHEEL.x), PY(WHEEL.z), PX(WHEEL.x + WHEEL.r) - PX(WHEEL.x)] },       // Sun deck
 ];
 /* The Print gets cleared ground too — labels never fight the field. */
 const PRINT_RESERVES = [
-  /* the Pad label row — ornament must clear it the way it clears every other Print */
-  [PX(PAD_X0 - PAD.size), PY(PAD.z - PAD.size * .60) - 22,
-   PX(-PAD_X0 + PAD.size) - PX(PAD_X0 - PAD.size), 22],
-  [PX(-1.05), PY(.86), PX(1.05) - PX(-1.05), 72],   // HOT CUE / CROSSFADE
-  /* The MOON and SUN reserves went with their labels. A reserve is a clearing cut
+  /* the Pad label row — ornament must clear it the way it clears every other Print.
+     Tall enough for the type *plus* `LABEL_GAP`, or the ornament fills the padding
+     back in and the breathing room is only there on bare metal. */
+  [PX(PAD_X0 - PAD.size), PY(PAD.z - PAD.size * .60) - (LABEL_GAP + 20),
+   PX(-PAD_X0 + PAD.size) - PX(PAD_X0 - PAD.size), LABEL_GAP + 20],
+  /* The HOT CUE, CROSSFADE, MOON and SUN reserves all went with their labels. A reserve is a clearing cut
      in the ornament so a word can sit on bare ground; leaving them behind would
      have left two bald patches where nothing is printed any more. */
 ];
@@ -693,16 +745,25 @@ function ornamentMask(w, h) {
   g.save(); g.scale(sx, sy);
   g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineCap = 'round'; g.lineJoin = 'round';
   if (useArt()) {
-    /* The painting itself takes a shallow relief, so it reads as printed on metal
-       that has texture rather than as a flat sticker. */
-    const [ax, ay, aw, ah] = artRect();
-    g.save();
-    /* The mask is white where metal is cut away, so it takes the *same* inversion
-       the albedo took — otherwise the relief is carved out of the background and
-       the ornament stands in the trench. */
-    g.filter = invertArt() ? 'grayscale(1) invert(1) contrast(1.7)' : 'grayscale(1) contrast(1.7)';
-    g.drawImage(ART, ax, ay, aw, ah);
-    g.restore();
+    /**
+     * The painting contributes **no relief**, and that is deliberate.
+     *
+     * It used to be pushed through here as a shallow height field, on the argument
+     * that it should read as printed on metal that has texture rather than as a flat
+     * sticker. What it actually produced was every edge in the painting bevelled and
+     * every mass standing proud of its background — a mountain range in embossed
+     * tin. Fernando: *"remove the bevel and depthness of the faceplat painting."*
+     *
+     * He is right, and the reference agrees: on the Old Blood pedal the artwork is
+     * **screen-printed**, dead flat, and the only things with edges you can feel are
+     * the parts — the wells, the aperture, the engraved band. Depth belongs to the
+     * machining, not to the picture. The picture is ink.
+     *
+     * The Plate is not left featureless by this. `roughnessMap` still carries the
+     * handled finish, `metalnessMap` still drops the ink to a dielectric so its
+     * colour reads as colour, and the clearcoat is still lacquer over metal. What is
+     * gone is the fiction that the ink stands up off the surface.
+     */
   } else if (ORN) {
     /* tiled artwork */
     const tw = ORN.width * ENG.tile, th = ORN.height * ENG.tile;
@@ -939,10 +1000,12 @@ function faceMaps() {
        which the artwork now owns outright — a word printed across an ornament that
        was composed without it. The Unit says what it is by being it. */
     c.letterSpacing = '0px';
-    c.fillStyle = c === a ? '#9A9890' : '#6FA891';
-    c.font = '500 28px "Azeret Mono", monospace';
-    c.fillText('HOT CUE', TW / 2, PY(.86) + 48);
-    c.fillText('CROSSFADE', TW / 2, PY(1.34) + 24);
+    /* HOT CUE and CROSSFADE are gone at Fernando's ask, and they go the same way
+       MOON and SUN did: they named a row of controls that names itself. Six labelled
+       Pads and a fader in a beaded trough are not things anyone mistakes for each
+       other, and the two words were the largest type on the Plate spent on the least
+       information. Their reserve went with them — a clearing with nothing in it is a
+       bald patch in the ornament, not a space. */
     /**
      * The Pads say what they select.
      *
@@ -962,8 +1025,11 @@ function faceMaps() {
     c.fillStyle = c === a ? '#8E8C84' : '#5F8F7C';
     MODULES.forEach((m, i) => {
       /* The well is 1.20x the Pad, so its top edge is at PAD.z - PAD.size*.60 —
-         the label hangs off *that*, not off the Pad, or it floats in the gap. */
-      c.fillText(m.pad || m.title, PX(PAD_X0 + i * PAD.pitch), PY(PAD.z - PAD.size * .60) - 6);
+         the label hangs off *that*, not off the Pad, or it floats in the gap.
+         `LABEL_GAP` is the air under the baseline: at 6px the descenders were
+         almost touching the well's lip and the word read as part of the control
+         rather than as its name. */
+      c.fillText(m.pad || m.title, PX(PAD_X0 + i * PAD.pitch), PY(PAD.z - PAD.size * .60) - LABEL_GAP);
     });
     c.restore();
 
@@ -975,6 +1041,31 @@ function faceMaps() {
        need them. */
     c.textAlign = 'left';
   });
+
+  /**
+   * The painting glows in the dark, faintly.
+   *
+   * `E` carried the Print alone — labels on black — so at full Vigil the Pad names
+   * were legible and **the artwork was not there at all**. Fernando: *"the vigil
+   * night is wayy too dark ... the design doesnt appear at all."* Correct, and the
+   * missing piece is not more room light: a brighter room would flatten the
+   * tenebrism back out and light the Altar with it. What was actually wrong is that
+   * only *some* of the Plate was phosphorescent.
+   *
+   * So the whole face goes into the glow map at low alpha. The emissive is driven
+   * by `pow(vigil, 1.4)`, so this contributes nothing while the room is lit and
+   * comes up as it dies — the painting keeping a little of the light it was given,
+   * which is what phosphorescence is and what the rest of the Print already did.
+   *
+   * `lighter` rather than a plain draw: the Print is already on this canvas and it
+   * has to stay the brightest thing on it. Compositing over would have replaced
+   * the labels with the artwork behind them.
+   */
+  e.save();
+  e.globalCompositeOperation = 'lighter';
+  e.globalAlpha = 0.34;
+  e.drawImage(A, 0, 0);
+  e.restore();
 
   const at = new THREE.CanvasTexture(A); at.colorSpace = THREE.SRGBColorSpace; at.anisotropy = 8;
   const ht = new THREE.CanvasTexture(Hh); ht.anisotropy = 8;
@@ -1087,7 +1178,21 @@ const display = createDisplay(screenBuffer);
 const screenTex = new THREE.CanvasTexture(display.canvas);
 screenTex.colorSpace = THREE.SRGBColorSpace;
 screenTex.anisotropy = 8;
-let curPage = 0, xfVal = 0.18, hoverWork = -1;
+/**
+ * The Crossfader opens at **DAY**, and that is not a cosmetic default.
+ *
+ * It was 0.18 — a sensible resting place for a control that blended one Module's
+ * thesis, and a bug the moment the same number started meaning *light*. Vigil is
+ * `1 - xfVal`, so the Unit was booting at 82% night with the first Candle already
+ * out, before anyone had touched anything. The opening is a lit room that the
+ * visitor puts out; the fader has to agree with that or the rite starts halfway
+ * through.
+ *
+ * Read from `?vigil=` for the same reason: it is the one place that already sets
+ * the light on load, and two controls disagreeing about it is how this went wrong.
+ */
+let curPage = 0, hoverWork = -1;
+let xfVal = 1 - Math.max(0, Math.min(100, +(new URLSearchParams(location.search).get('vigil') || 0))) / 100;
 
 /* Declared up here, not down with the rest of the rite, because `drawScreen` runs
    once at module load to fill the texture and reads this. */
@@ -1404,36 +1509,128 @@ for (const m of [face, chassis, bezel]) m.layers.enable(GLOW_LAYER);
 /* ---------- the two decks ----------
    Sun raises the light, Moon puts it out. The rite performed with two hands: there is no
    Vigil knob, and the Pads carry navigation alone. */
+/**
+ * The Deck's turned profile, and the UVs that keep the artwork where it was.
+ *
+ * A lathe generates its own UVs from the profile's arc length, which would smear the
+ * face's texture into a bullseye. So the UVs are rewritten from each vertex's own
+ * x/z — the same mapping a cylinder cap uses, `x/2r + 0.5` — which is what puts the
+ * image's inscribed circle exactly on the platter and is the whole reason the crop
+ * was fitted that way.
+ *
+ * `DISH` is 0.6% of the radius. It is deliberately far too small to see as a shape
+ * and quite large enough to see as *shading*: it bends the normal a couple of
+ * degrees across the face, so the light rakes rather than landing flat.
+ */
+/* 0.006 -> 0.0025, with the chamfer softened to match: *"two much bevel and depth."*
+   The dish is meant to be invisible as a shape and only just perceptible as shading;
+   at 0.6% it had become a shape. */
+const DISH = 0.0025;
+function latheDeck(r) {
+  /**
+   * **Bottom to top.** `LatheGeometry` takes the winding of its profile as the
+   * winding of its triangles, so a profile written the way you would describe the
+   * part — face first, then down the side — comes out inside-out, and the face is
+   * backface-culled. It is not invisible when that happens, which is what makes it
+   * hard to see: the polished metal ring underneath shows through instead, and a
+   * Deck reads as a blank chrome disc with a specular dot on it. Same class of bug
+   * as the Plate's `rotateX(-90)`, and it cost the same twenty minutes.
+   */
+  const p = [];
+  const add = (x, y) => p.push(new THREE.Vector2(x, y));
+  add(0, -.052);
+  add(r * .995, -.052);                         // the underside
+  add(r * .995, .044);                          // up the side wall
+  add(r * .984, .050);                          // in across the chamfer
+  for (let i = 22; i >= 1; i--) {
+    const t = i / 22, x = r * .955 * t;
+    add(x, .052 - r * DISH * (1 - t * t));      // the dish, deepest at the hub
+  }
+  add(0, .052 - r * DISH);
+  const geo = new THREE.LatheGeometry(p, 128);
+  const pos = geo.attributes.position, uv = geo.attributes.uv;
+  for (let i = 0; i < pos.count; i++) {
+    uv.setXY(i, pos.getX(i) / (2 * r) + .5, pos.getZ(i) / (2 * r) + .5);
+  }
+  uv.needsUpdate = true;
+  geo.computeVertexNormals();
+  return geo;
+}
+
 /** Rays for the Sun, phases for the Moon — the face is the only thing that differs. */
 function deck(x, kind) {
   const g = new THREE.Group(); g.position.set(x, .34, WHEEL.z); unit.add(g);
   const ring = new THREE.Mesh(new THREE.CylinderGeometry(WHEEL.r, WHEEL.r, .1, 96, 1, false),
     new THREE.MeshStandardMaterial({ color: 0x8E8C84, metalness: 1, roughness: .18 }));
   ring.position.y = .05; ring.userData.ctl = kind; g.add(ring);
-  /* Stone, not metal: the tracery is carved and the light is behind it, so a
-     mirror finish would fight the thing that makes it read. The emissive map is
-     the piercings alone, and `applyVigil` decides how hard they burn. */
+  /**
+   * Stone, not metal: the carving is lit from behind and a mirror finish would
+   * fight the thing that makes it read.
+   *
+   * `bumpScale` came down from 5 to 1.6 when the face became a photograph. A drawn
+   * height map is a clean step between stone and void and takes all the relief you
+   * give it; a luminance map off a rendered illustration already *contains* its own
+   * shading, so driving it hard doubles every highlight the picture came with and
+   * the wheel goes to gravel.
+   */
   const plateMat = new THREE.MeshStandardMaterial({
-    map: DECK[kind].albedo, bumpMap: DECK[kind].height, bumpScale: 5,
+    map: DECK[kind].albedo,
+    /* a real normal map, not `bumpMap` — see `normalFrom` in `deck-faces.js`. The
+       bump path derives its slope from screen-space derivatives, so the carving got
+       vaguer the further away the wheel was, which is exactly the distance it is
+       normally seen from. */
+    normalMap: DECK[kind].normal, normalScale: new THREE.Vector2(1, 1),
     emissiveMap: DECK[kind].emissive,
     emissive: kind === 'sun' ? 0xE08A28 : 0x8FBEDC,
     emissiveIntensity: 0,
     metalness: .18, roughness: kind === 'sun' ? .62 : .68,
   });
-  const plate = new THREE.Mesh(
-    new THREE.CylinderGeometry(WHEEL.r * .88, WHEEL.r * .88, .105, 128, 1), plateMat);
+  /**
+   * The plate carries the **whole** wheel now, reeded rim included, so it runs out
+   * to the ring rather than stopping at .88 of it. The face used to be drawn, and
+   * the drawing stopped short of the edge because the metal ring under it played
+   * the rim; the crop has its own rim, and leaving the old inset would have put one
+   * rim inside another.
+   */
+  /**
+   * The face is turned, not flat.
+   *
+   * A `CylinderGeometry` cap is one plane with one normal, so every part of it takes
+   * the light identically — which is precisely what makes a wheel read as a printed
+   * disc rather than a machined part, however good the texture on it is. Fernando:
+   * *"they don't feel too flat or just a baked texture."*
+   *
+   * `latheDeck` gives it a profile instead: a chamfer round the outer edge, a step
+   * down to the field, and a shallow dish across the face. The chamfer is the part
+   * that pays — it is a ring of surface at a different angle to everything around
+   * it, so it catches a highlight the flat cap could not, and a highlight that
+   * *moves* as the platter turns is the difference between an object and a picture.
+   *
+   * Free, per `docs/realism-budget.md`: triangles cost nothing here and bevels are
+   * named as the largest single realism win available.
+   */
+  const plate = new THREE.Mesh(latheDeck(WHEEL.r * .995), plateMat);
   plate.position.y = .056; plate.userData.ctl = kind; g.add(plate);
 
   /* A real light at the hub, so the wheel throws colour onto the Plate around it
      rather than only glowing in its own texture. */
   const lamp = new THREE.PointLight(kind === 'sun' ? 0xF0A24A : 0x8FBEDC, 0, 2.6, 2);
   lamp.position.set(0, .30, 0); g.add(lamp);
-  const hub = new THREE.Mesh(new THREE.CylinderGeometry(WHEEL.r * .125, WHEEL.r * .125, .13, 48),
-    new THREE.MeshStandardMaterial({ color: kind === 'sun' ? 0x2A2118 : 0x14161A, metalness: .9, roughness: .25 }));
-  hub.position.y = .075; g.add(hub);
-  /* `spin` is the platter's angular velocity in rad/s — the drag feeds it and the
-     frame loop bleeds it off against friction. See the Deck block in `frame`. */
-  return { group: g, ring, plate, mat: plateMat, lamp, spin: 0 };
+  /* No hub mesh. The reference draws the boss — an amber cabochon on the Sun, an
+     obsidian bead on the Moon — and a metal cylinder standing proud of the face
+     would have sat on top of the one it already has. */
+  /**
+   * Three numbers make the wheel feel like a wheel. See the Deck block in `frame`.
+   *
+   *   `turn`   where the platter actually is, in radians — drift, drag and coast all
+   *            add to this and nothing else writes `group.rotation.y`
+   *   `carry`  how far past the last detent the *selection* has come. Only the hand
+   *            and the coast feed it; the idle drift must not, or the Unit would
+   *            slowly select its way through a Module while nobody touched it
+   *   `spin`   angular velocity in rad/s, so letting go of a thrown wheel does not
+   *            stop it dead
+   */
+  return { group: g, ring, plate, mat: plateMat, lamp, turn: 0, carry: 0, spin: 0 };
 }
 const moon = deck(-WHEEL.x, 'moon');
 const sun = deck(WHEEL.x, 'sun');
@@ -1458,18 +1655,26 @@ const deckMats = [moon.plate.material, sun.plate.material];
  * control, not a nightclub.
  */
 /**
- * The Pad's face is drawn, not tinted.
+ * The Pad's face is drawn, not tinted, and every Pad wears the same one.
  *
- * `color` is white-ish so the map reads true — it is a multiplier now, and the
- * hover works by moving it rather than by replacing a flat fill. The selected Pad
- * swaps to the bone map outright: on this Plate the difference between "on" and
- * "off" has to survive being seen at 40px across a dark room, and a change of
- * material does that where a change of brightness does not.
+ * `color` is white-ish so the map reads true — it is a multiplier, and the hover
+ * works by moving it rather than by replacing a flat fill.
+ *
+ * The selected Pad used to swap to a bone map outright, on the argument that a
+ * change of *material* survives being seen at 40px where a change of brightness
+ * does not. Fernando's call, and the right one: the keys stay black, all six of
+ * them, and **the LED says which one you are on**. That is the only part of a real
+ * pad that ever changes. It survives the distance by changing hue — cold ember to
+ * hot gold — not just by getting brighter, which is the failure mode that made the
+ * bone face look necessary in the first place.
  */
 const PADMAP = padMaps(PAD.size);
+/** The lamp's two ends. Idle is a dark ember; the one you are on burns gold. */
+const LED_IDLE = new THREE.Color(0xC0301A);
+const LED_ON = new THREE.Color(0xFFB443);
 const padMat = () => new THREE.MeshStandardMaterial({
-  color: 0xC6C6C6, map: PADMAP.dark,
-  emissiveMap: PADMAP.lamp, emissive: new THREE.Color(0xC4601C), emissiveIntensity: .55,
+  color: 0xC6C6C6, map: PADMAP.face,
+  emissiveMap: PADMAP.lamp, emissive: LED_IDLE.clone(), emissiveIntensity: .55,
   metalness: .16, roughness: .74,
 });
 /* the well the Pad sits in — darker, and rougher, so the two never read as one part */
@@ -1478,23 +1683,26 @@ const padWellMat = new THREE.MeshStandardMaterial({
 });
 const lampMats = [];
 const padMeshes = [];
+/* kept so the Screen's wash can be opted in on them — see the `glow` block below */
+const padRings = [];
+const padWells = [];
 for (let i = 0; i < 6; i++) {
   const px = PAD_X0 + i * PAD.pitch;
 
   /* the milled well */
   const well = new THREE.Mesh(slab(PAD.size * 1.20, PAD.size * 1.20, .045, .026), padWellMat);
-  well.position.set(px, .332, PAD.z); unit.add(well);
+  well.position.set(px, .332, PAD.z); unit.add(well); padWells.push(well);
 
   /* the light in the gap, under the Pad's edge */
   const lm = new THREE.MeshStandardMaterial({
     color: 0x1A0906,
-    emissive: new THREE.Color(i === 0 ? 0xC4281C : 0x160603),
-    emissiveIntensity: i === 0 ? 2.6 : 0.25,
+    emissive: (i === 0 ? LED_ON : LED_IDLE).clone().multiplyScalar(i === 0 ? .78 : .16),
+    emissiveIntensity: i === 0 ? 1.55 : 0.25,
     roughness: .5, metalness: 0,
   });
   lampMats.push(lm);
   const ring = new THREE.Mesh(slab(PAD.size * 1.10, PAD.size * 1.10, .030, .022), lm);
-  ring.position.set(px, .352, PAD.z); unit.add(ring);
+  ring.position.set(px, .352, PAD.z); unit.add(ring); padRings.push(ring);
 
   /* the pad itself, standing proud of the ring so the light escapes round it */
   const p = new THREE.Mesh(slab(PAD.size, PAD.size, .085, .034), padMat());
@@ -1544,25 +1752,53 @@ function updatePads(dt) {
 
     /* hover: immediate, and big enough to read on a near-black pad */
     const hot = padHover === i;
-    /* the selected Pad is bone, the rest are graphite — a material change, not a
-       brightness one, so the row can be read at a glance */
-    const face = i === curPage ? PADMAP.lit : PADMAP.dark;
-    if (p.material.map !== face) p.material.map = face;
+    /* the face never changes — not on hover, not on select. Only the light does. */
     p.material.color.setHex(hot ? 0xFFFFFF : 0xC6C6C6);
     if (e > 0.001) p.material.color.offsetHSL(0, 0, -e * .06);
-    /* the LED in the head: low on the bone Pad, where its recess is already
-       painted hot, and brightest under the pointer */
-    p.material.emissiveIntensity = i === curPage ? .18 : (hot ? 1.5 : .55);
 
-    /* the ember, eased in and out */
-    const m = lampMats[i];
-    const want = i === curPage ? 2.6 : (hot ? 0.85 : 0.25);
+    /**
+     * `on` is how far this Pad's lamp has travelled toward gold, 0..1, eased.
+     *
+     * One number drives both lamps — the bar in the head and the ring under the
+     * edge — because they are one lamp: the LED is behind the key and what escapes
+     * round its foot is the same light. Driving them separately is what let the
+     * head go *dim* on the selected Pad while its ring went bright, which only ever
+     * made sense while the face was carrying the state instead.
+     */
     const kl = 1 - Math.pow(EASE_LAMP, dt);
-    m.emissiveIntensity += (want - m.emissiveIntensity) * kl;
-    /* colour follows the same curve, so a warming Pad passes through the ember
-       rather than jumping to it */
-    const f = Math.min(1, Math.max(0, (m.emissiveIntensity - 0.25) / 2.35));
-    m.emissive.setRGB(.086 + f * .68, .024 + f * .134, .012 + f * .098);
+    const want = i === curPage ? 1 : (hot ? .34 : 0);
+    p.userData.on = (p.userData.on ?? (i === curPage ? 1 : 0)) + (want - (p.userData.on ?? 0)) * kl;
+    const on = p.userData.on;
+
+    /**
+     * The lamps come up as the room goes down.
+     *
+     * A lit control is only lit *relative to* what is around it, and at the end of
+     * the rite there is nothing around it — the Candles are out, the sky is gone,
+     * and a Pad burning at its daylight setting reads as one more black square.
+     * Real ones do the opposite: the darker the booth, the more the panel is the
+     * only thing you can see. `NIGHT` is that, and it is why the Pads went
+     * invisible at full Vigil rather than merely dim.
+     */
+    const NIGHT = 1 + vigil * 2.6;
+
+    /* the bar in the head */
+    p.material.emissive.copy(LED_IDLE).lerp(LED_ON, on);
+    p.material.emissiveIntensity = (.55 + on * 2.35) * NIGHT;
+
+    /**
+     * The ember round the foot, on the same curve so the two never disagree — but
+     * deliberately quieter than the bar.
+     *
+     * At the bar's own intensity the ring is a bright cream halo the full width of
+     * the Pad's foot, and a black key inside a pale outline reads as a pale key.
+     * That is the exact effect the bone face was removed for. The bar is what says
+     * which Pad you are on; the ring is the light that bar is throwing onto the
+     * metal, and light thrown is always dimmer than the source.
+     */
+    const m = lampMats[i];
+    m.emissiveIntensity = (.25 + on * 1.30) * NIGHT;
+    m.emissive.copy(LED_IDLE).lerp(LED_ON, on).multiplyScalar(.16 + on * .62);
   });
 }
 
@@ -1572,13 +1808,18 @@ const slot = new THREE.Mesh(slab(FADER.len, .14, .04, .015),
     color: 0xFFFFFF, map: faderSlot(FADER.len, .14), metalness: .5, roughness: .6,
   }));
 slot.position.set(0, .335, FADER.z); unit.add(slot);
+const capMap = faderCap(.13, .26);
+/* The cap carries its own lamp at night. `emissiveMap` is its own face, so the bone
+   lights and the groove down it stays dark — a block that glowed evenly would read
+   as a lamp rather than as a lit handle. */
 const cap = new THREE.Mesh(slab(.13, .26, .11, .03),
   new THREE.MeshStandardMaterial({
-    color: 0xFFFFFF, map: faderCap(.13, .26), metalness: .35, roughness: .42,
+    color: 0xFFFFFF, map: capMap, metalness: .35, roughness: .42,
+    emissiveMap: capMap, emissive: new THREE.Color(0xE8A758), emissiveIntensity: 0,
   }));
 /** Where the cap sits for a given crossfade, 0..1. */
 const capX = v => -FADER.travel / 2 + v * FADER.travel;
-cap.position.set(capX(.18), .35, FADER.z); cap.userData.ctl = 'fader'; unit.add(cap);
+cap.position.set(capX(xfVal), .35, FADER.z); cap.userData.ctl = 'fader'; unit.add(cap);
 /**
  * The light behind the cap.
  *
@@ -1593,7 +1834,122 @@ const capGlow = new THREE.Mesh(slab(.34, .055, .010, .027),
     color: 0x140901, emissive: new THREE.Color(0xD8801E), emissiveIntensity: 2.4,
     roughness: .55, metalness: 0,
   }));
-capGlow.position.set(capX(.18), .346, FADER.z); unit.add(capGlow);
+capGlow.position.set(capX(xfVal), .346, FADER.z); unit.add(capGlow);
+
+/**
+ * The Screen lights the controls, not just the metal round its own aperture.
+ *
+ * `glow` already grew with the Vigil — 2.4 up to 7.6 — but only the Plate, Chassis
+ * and rim had opted into its layer, so all that extra light landed on three
+ * surfaces and the rest of the Unit went black with the room. Fernando: *"on vigil
+ * things are too dark. i feel the display could have some light (projecting to the
+ * cdj)."* He is describing the light that was already there, aimed at almost
+ * nothing.
+ *
+ * Opting the Decks, Pads and Crossfader in costs no new light — `glow` is one point
+ * light that is already in the scene, so the light count and every program key are
+ * unchanged, which after the pre-warm business is the property that matters. It
+ * only changes what the light is allowed to touch.
+ *
+ * The discipline from ADR-0020 still holds: this is confined, and to something
+ * specific. It reaches the Unit's own top surface and nothing else — not the room,
+ * not the Altar, not the Screen or its glass.
+ */
+/**
+ * The Decks' **faces** take the Screen's light. Their rims do not.
+ *
+ * The rims are `metalness: 1, roughness: .18` — a mirror — and the Screen's glow is
+ * phosphor green. Pointing one at the other put a bright green ring round both
+ * wheels, which is physically correct and looks like a fault. A polished ring
+ * reflects a coloured source as *that colour*; a stone face scatters it and just
+ * gets slightly warmer. So the faces opt in and the rims stay out.
+ */
+/**
+ * The Screen lights the controls, which is what it was asked to do.
+ *
+ * This list was cut twice while chasing a green arc round the wheels, on the theory
+ * that the phosphor was staining them. **It was not.** The arc was a chroma-key
+ * background baked into the source artwork; the light was innocent, and removing the
+ * Decks from its layer never once changed the arc. They are back.
+ *
+ * The rims stay out. Those are `metalness: 1, roughness: .18` — a mirror — and a
+ * mirror returns a coloured source as that colour, which is a real effect and not a
+ * flattering one on a green lamp.
+ */
+for (const m of [moon.plate, sun.plate, slot, cap, capGlow,
+                 ...padMeshes, ...padRings, ...padWells]) {
+  m.layers.enable(GLOW_LAYER);
+}
+
+/**
+ * The Crossfader tracks the hand, and the beads take it when it is close.
+ *
+ * The version before this one gave the cap mass — a spring to the pointer, momentum
+ * on release, friction on the rail, a periodic well at the beads. Every part of it
+ * was real physics and the whole of it was wrong, because **a crossfader is not a
+ * free body**. Your fingers are on it the entire time it moves. It cannot lag behind
+ * you, it cannot coast when you stop, and it certainly cannot bounce off the end of
+ * its travel — the thing that makes a good fader feel good is that it is *exactly*
+ * where you put it, with no argument.
+ *
+ * So there are only two behaviours left, and they are the two a real one has:
+ *
+ *   - **it follows the hand 1:1.** The ease is there to absorb pointer jitter and to
+ *     let a snap glide rather than teleport, and it is written as a **time constant**
+ *     because that is the only form of it you can aim. A per-second survival fraction
+ *     reads as though small means fast; 1e-7 sounds instantaneous and is 24% of the
+ *     gap per frame — four frames of lag, which on something under your finger you
+ *     feel. 20ms is about two frames, which you do not.
+ *   - **the beads take it when it gets close.** Inside `SNAP` the cap goes to the
+ *     bead instead of to the pointer, and stays there while you wander around inside
+ *     that radius. That is the magnet you feel on a fader with detents, and it is the
+ *     reason the six beads are drawn in the trough at all.
+ *
+ * Let go and it stays where it is. That is not the absence of physics; on a damped
+ * fader that is the physics.
+ */
+const BEADS = 6;
+/** How near a bead has to be, in fractions of the travel, before it takes the cap. */
+const SNAP = 0.045;
+/** How long the cap takes to close most of the gap to where it is being asked for. */
+const FOLLOW_TAU = 0.020;   // seconds
+/** Where the hand is asking for, or null when nothing is holding the cap. */
+let xfHand = null;
+
+function updateFader(dt) {
+  let target = xfHand !== null ? xfHand : xfVal;
+  const near = Math.round(target * (BEADS - 1)) / (BEADS - 1);
+  if (Math.abs(target - near) < SNAP) target = near;
+
+  xfVal += (target - xfVal) * (1 - Math.exp(-dt / FOLLOW_TAU));
+  if (Math.abs(target - xfVal) < 1e-5) xfVal = target;
+
+  cap.position.x = capX(xfVal);
+  capGlow.position.x = cap.position.x;
+  /**
+   * **The Crossfader is the light.**
+   *
+   * It used to set one Module's thesis blend, and the Decks used to set the Vigil
+   * by being turned. Both were swapped on 2026-08-28: NIGHT at the left, DAY at the
+   * right, TWILIGHT at the centre detent — which is why the trough has a bead there
+   * in the first place. Freeing the wheels is what let them take different jobs, and
+   * freeing NOW/NEXT is what let both its lists be on screen at once.
+   *
+   * `1 - xfVal` because the Vigil counts *darkness*: full Vigil is the last candle
+   * out. Left is night, so left is Vigil 1.
+   */
+  const wantVigil = 1 - xfVal;
+  if (Math.abs(wantVigil - vigil) > 1e-4) {
+    setVigil(wantVigil);
+    if (active === 'fader') flashLcd('LUZ · ' + lightName(xfVal) + ' · ' + Math.round(xfVal * 100) + '%', 900);
+  }
+  watchLight();
+  /* the lamp under the cap, and the cap itself, rise with the night — same reason
+     the Pads' do: a lit control is only lit relative to what is around it */
+  capGlow.material.emissiveIntensity = 2.4 * (1 + vigil * 2.4);
+  cap.material.emissiveIntensity = vigil * 0.75;
+  setScreenCrossfade(xfVal);
+}
 
 /* ---------- the altar ----------
    Baroque, not satanic: polished veined marble, an embroidered cloth, turned gilt
@@ -1763,7 +2119,12 @@ function candlestick(x, z, height) {
      Lower number, far larger share — it went from 2% of the Altar to 54%. */
   const light = new THREE.PointLight(0xFFB162, 3.6, 15, 2);
   light.position.copy(flame.position); g.add(light);
-  return { group: g, flame, halo, light, base: { flame: 1, light: 3.6, halo: .3 } };
+  return {
+    group: g, flame, halo, light,
+    /* `x`/`y`/`z` are the flame's rest position, so the sway has something to be
+       relative to — offsetting from wherever it happens to be would drift */
+    base: { flame: 1, light: 3.6, halo: .3, x: flame.position.x, y: flame.position.y, z: flame.position.z },
+  };
 }
 
 /* A triangle, as the rite's hearse is a triangle. Ordered as they go out. */
@@ -2276,7 +2637,21 @@ function applyVigil() {
    * mean 53 against the reference's 21. Tenebrism does not survive a floor under
    * the ambient: the whole effect is that there is *nothing* between the pools.
    */
-  scene.environmentIntensity = ENV0 * (1 - vigil);
+  /**
+   * A floor under the ambient, and it is a deliberate softening of the tenebrism.
+   *
+   * This was `ENV0 * (1 - vigil)`, linear to **zero**, and the note above it argued
+   * for that: tenebrism does not survive a floor, the whole effect being that there
+   * is nothing between the pools of light. That reasoning still holds for the
+   * *room* — and the brief asks for a readability and contrast floor at full night,
+   * because this is a portfolio before it is a painting and a visitor who drags the
+   * fader to the end must still be able to read the Plate.
+   *
+   * 6% is the smallest value that keeps the printed Pad labels legible against the
+   * lacquer. The room past the Unit still goes to nothing, because `skyLight` and
+   * `wallWash` have their own curves and neither of them is this one.
+   */
+  scene.environmentIntensity = ENV0 * (0.06 + 0.94 * (1 - vigil));
 
   /* The wheels show whose hand is winning. Light comes through their tracery: the
      Sun's holds while the room is lit and is out by the time the last Candle is;
@@ -2296,8 +2671,19 @@ function applyVigil() {
      * The number is a consequence of the geometry change, not a taste adjustment.
      */
     const glow = deckGlow(vigil);
-    sun.mat.emissiveIntensity = glow.sun * .55;
-    moon.mat.emissiveIntensity = glow.moon * .55;
+    /**
+     * Back up to 2.4, and for the mirror of the reason it came down.
+     *
+     * It was 1.5 when the wheels were drawn with a course of piercings; it dropped
+     * to 0.55 when the polarity was corrected and the lit area quadrupled. The face
+     * is now a photograph with a saturation-gated emissive, and only about **1.4%**
+     * of it is strongly lit — the glass between the petals, and nothing else. Ten
+     * times less lit area is ten times less light at the same intensity, so the
+     * Sun went out. Same wheel, same amount of light, redistributed again; the
+     * number tracks the area every time and has never been a taste adjustment.
+     */
+    sun.mat.emissiveIntensity = glow.sun * 2.4;
+    moon.mat.emissiveIntensity = glow.moon * 1.2;
     dim(sun.lamp, glow.sun * 1.1);
     dim(moon.lamp, glow.moon * 1.1);
   }
@@ -2327,17 +2713,53 @@ function applyVigil() {
   dim(wallWash, .07 * (1 - vigil) + .04 * vigil);
   wallWash.color.setRGB(.784 - vigil * .22, .718 - vigil * .08, .604 + vigil * .16);
 
-  /* the screen takes over the room */
-  glow.intensity = 2.4 + vigil * 5.2;
-  glow.distance = 3.4 + vigil * 2.6;
+  /**
+   * The Screen takes over the room, and it has to take it over properly.
+   *
+   * It now reaches the Decks, the Pads and the Crossfader as well as the Plate — see
+   * the `glow` layer block — so at full Vigil it is doing the job the Candles used
+   * to and needs the range for it. The Decks sit about two units either side of the
+   * aperture, which the old `distance` of 6 only just reached and only at the very
+   * edge of its falloff.
+   */
+  /**
+   * 2.2 + 5.6·v — between the two numbers this has worn.
+   *
+   * It was 2.4 + 5.2, went to 3.0 + 9.0 when the night was too dark, then to
+   * 1.3 + 3.4 while a green arc was wrongly blamed on it. The night was actually
+   * fixed elsewhere, by making the Plate's painting phosphorescent, so the big raise
+   * was never needed; and the cut was answering a problem that did not exist.
+   */
+  glow.intensity = 2.2 + vigil * 5.6;
+  glow.distance = 4.0 + vigil * 3.4;
   dim(rake, Math.max(0, (vigil - .42) / .58) * 3.1);
 
   /* the phosphorescent Print charges under light and burns without it */
-  faceMat.emissiveIntensity = Math.pow(vigil, 1.4) * 1.15;
+  /* 1.15 -> 1.6: the glow map now carries the painting as well as the Print, and the
+     painting is the darker half of it — the Print was already reading at 1.15 and
+     the artwork under it needed the headroom to arrive at all. */
+  faceMat.emissiveIntensity = Math.pow(vigil, 1.4) * 1.6;
 
-  /* Nightwork: the engraving deepens as the light gets meaner */
+  /* Nightwork: the engraving deepens as the light gets meaner. In art mode the
+     mask is empty and the normal map is flat, so this scales nothing — it is here
+     for the engraved band, which is what comes back when the painting is off. */
   faceMat.normalScale.set(1 + vigil * 1.6, 1 + vigil * 1.6);
-  deckMats.forEach(m => { m.bumpScale = 4 + vigil * 5; });
+  /**
+   * `normalScale`, not `bumpScale` — and this was silently dead for a while.
+   *
+   * The line predates the Decks being photographs, was written for a drawn height
+   * map, and then kept writing `bumpScale` after the material moved to a real
+   * normal map. Setting a property a material does not read costs nothing and
+   * reports nothing, so the Vigil quietly stopped deepening the carving at all.
+   *
+   * 0.75 → 1.5. The engraving getting meaner as the light does is the point, and
+   * the range is smaller than the old one because a Sobel normal map already
+   * carries far more slope than three's screen-space bump did.
+   */
+  /* .45 -> .85, down from .75 -> 1.5. The carving is in the albedo already; this
+     only decides how hard it answers the room, and the Vigil still deepens it. */
+  const ns = .45 + vigil * .40;
+  deckMats.forEach(m => { m.normalScale.set(ns, ns); });
 }
 
 /* ---------- interaction: everything on the unit is clickable ---------- */
@@ -2346,6 +2768,72 @@ const ndc = new THREE.Vector2();
 const el = renderer.domElement;
 /* The Unit does not move. It is a heavy object on a table, not a thing that follows a cursor. */
 let active = null, px = 0, py = 0, startVal = 0, jogAcc = 0, jogLast = 0;
+/**
+ * One detent, in radians of platter rotation — about 20 degrees.
+ *
+ * Fitted to the hand rather than to the list: a full turn is eighteen notches, so
+ * stepping a six-item list end to end is a third of a revolution, which is a
+ * gesture rather than a wind. `jogCarry` holds the part of a turn that has not yet
+ * bought a step, so a slow drag steps once per notch instead of quantising jitter.
+ */
+/**
+ * 0.50, up from 0.35 — *"a jog deve ter o feeling de ser mais pesada pro usuário não
+ * remar tanto."*
+ *
+ * Those two halves pull opposite ways if you read `NOTCH` alone: a bigger detent is
+ * a heavier wheel and *more* rowing. The rowing is fixed on the other side — each
+ * notch now moves the text twice as far. So the wheel gained weight and the hand
+ * lost work, which is what a heavy flywheel actually feels like.
+ */
+const NOTCH = 0.38;
+/**
+ * The SUN's detent is nearly twice the MOON's, because they no longer move
+ * comparable amounts.
+ *
+ * They used to: one MOON notch was one item, one SUN notch was 46px of a scrolling
+ * column. Now one SUN notch is a **whole page**, and at 0.38 rad a casual 45° of
+ * wrist threw two pages past the reader. A control should cost about what it moves,
+ * so the wheel that moves more asks for more hand — which is also the *"jog mais
+ * pesada"* Fernando asked for, arriving as weight rather than as friction.
+ */
+const SUN_NOTCH = 0.68;
+const notchOf = kind => (kind === 'sun' && !focus.active ? SUN_NOTCH : NOTCH);
+
+/**
+ * How the wheels feel, in four numbers.
+ *
+ * `PULL` is the detent itself. The platter shows its `turn` minus this fraction of
+ * the carry, so between two notches the wheel lags the hand and then catches up the
+ * moment the notch is spent — which is the small snap Fernando asked for. At 0 the
+ * wheel tracks the hand exactly and the detents are invisible; at 1 it would refuse
+ * to move at all until it jumped.
+ *
+ * `FRICTION` is what the spin retains per second once the hand is off, so a thrown
+ * wheel keeps selecting instead of stopping dead. At 0.08 a full-strength flick runs
+ * about 2.4 radians past the release — six MOON detents, three or four SUN pages —
+ * and takes a bit over a second doing it. `SPIN_MIN` is where the coast is declared
+ * over and the platter settles onto its detent, and `SPIN_MAX` caps a violent flick:
+ * a wheel is allowed to run on, not to run away through a whole Module.
+ */
+const JOG = { PULL: 0.38, FRICTION: 0.08, SPIN_MIN: 0.30, SPIN_MAX: 6.0 };
+
+/**
+ * Spend whatever whole detents a Deck has accumulated.
+ *
+ * Called from the hand and from the coast, so a thrown wheel keeps stepping as it
+ * slows — the difference between a control that has weight and one that merely
+ * animates after you let go.
+ */
+function spendNotches(d0, kind) {
+  const notch = notchOf(kind);
+  while (Math.abs(d0.carry) >= notch) {
+    const step = Math.sign(d0.carry);
+    d0.carry -= step * notch;
+    if (focus.active) { if (kind === 'moon') focus.step(step); }
+    else if (kind === 'moon') moveSelection(step);
+    else scrollBody(step);
+  }
+}
 
 function pick(e) {
   const r = el.getBoundingClientRect();
@@ -2353,9 +2841,20 @@ function pick(e) {
   ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
   ray.setFromCamera(ndc, camera);
   const hits = ray.intersectObjects(unit.children, true);
-  for (const h of hits) { if (h.object.userData.ctl) return h.object; }
+  for (const h of hits) { if (h.object.userData.ctl) { lastPick = h; return h.object; } }
+  lastPick = null;
   return null;
 }
+/**
+ * The whole intersection from the last `pick`, not just the mesh it landed on.
+ *
+ * `pick` returns the object because every caller but one only wants to know *what*
+ * was hit. The Deck hubs want to know **where** — the hub is a radius on the face,
+ * not a mesh — and reaching for `hit.object.worldToLocal` on a value that is
+ * already the object threw on every wheel press and killed the drag before it
+ * started. One field, set where the answer is still in hand.
+ */
+let lastPick = null;
 /**
  * Which Work row a pointer event is over, or -1.
  *
@@ -2366,7 +2865,9 @@ function pick(e) {
  * be clickable somewhere it is not painted.
  */
 function screenRowAt(e) {
-  if (MODULES[curPage].id !== 'project-001') return -1;
+  /* any Module with items has rows; this used to name one Module by an id that no
+     longer exists, which silently made the whole Screen unclickable */
+  if (!MODULES[curPage].items?.length) return -1;
   const r = el.getBoundingClientRect();
   ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
   ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
@@ -2376,6 +2877,19 @@ function screenRowAt(e) {
   return workRowAt(hit.uv.x * SCREEN_W, (1 - hit.uv.y) * SCREEN_H);
 }
 
+/**
+ * The navigation, in one place.
+ *
+ *     Pads choose the Module. Moon chooses the Item. Sun explores the Item.
+ *     Crossfader changes the light. LCD explains the action.
+ *
+ * Everything below is that sentence. The Decks used to drive the Vigil and the
+ * Crossfader used to drive one Module's thesis; both were swapped on 2026-08-28,
+ * and the swap is the reason the two wheels can now have *different* jobs — while
+ * they were a matched pair pushing one number in opposite directions, "Moon selects
+ * and Sun opens" had nowhere to live.
+ */
+
 function setPage(n) {
   curPage = (n + MODULES.length) % MODULES.length;
   /* The lamps are eased toward their target in `updatePads`, so nothing is set
@@ -2383,6 +2897,392 @@ function setPage(n) {
   setScreenModule(curPage);
   drawScreen();
 }
+
+/** The Module the visitor is in. */
+const mod = () => MODULES[curPage];
+const itemsOf = () => mod().items || [];
+
+/**
+ * Move the Moon by whole items, and never past the ends.
+ *
+ * **Clamped, not wrapped.** A wheel that wraps has no edges, and a list with no
+ * edges cannot be counted — the footer says `PROJECT 06/06` and the next notch
+ * would say `01/06` without the visitor having asked to start again. The brief
+ * asks for direction to be respected and for no overshoot; a hard stop at both
+ * ends is the honest reading of that.
+ */
+function moveSelection(step) {
+  const items = itemsOf();
+  if (!items.length) { flashLcd('A LUA NÃO SELECIONA AQUI'); return; }
+  const from = selectionOf(curPage);
+  /**
+   * One position past the end, and only once the six have been seen.
+   *
+   * The seventh detent is not a seventh item — it is the end of the track with
+   * somewhere to go, which is why it can exist without breaking ADR-0001. Before the
+   * constellation is complete the list simply stops where it always did.
+   */
+  const last = items.length - 1;
+  const to = Math.max(0, Math.min(last, from + step));
+  if (to === from) return;
+  setSelection(curPage, to);
+  if (to > items.length - 1) { flashLcd('· · · SINAL 07'); drawScreen(); return; }
+  flashLcd(`LUA · ${mod().unit} ${pad2(to + 1)}/${pad2(items.length)} · ${items[to].label}`);
+  drawScreen();
+}
+
+/**
+ * Move the Sun through the selected Item's **pages**. Clamped, for the same reason.
+ *
+ * Page 0 is the index — the lead and the item list. Pages 1..n are the sections, one
+ * to a screen. So the Sun's first turn is what leaves the list and enters the case,
+ * and its last turn back is what returns to it; there is no separate "go back to the
+ * list" control to learn, because turning back past the first section *is* that.
+ */
+function moveSection(step) {
+  const items = itemsOf();
+  const it = items[selectionOf(curPage)];
+  /* the seventh detent has no sections; the Sun turns nothing there */
+  if (!it) { flashLcd('O SOL NÃO EXPLORA NADA AQUI'); return; }
+  /* `pageRange()` and not `it.sections.length` — the renderer flows long sections
+     over more than one page, so only it knows how many there are. It is written by
+     the last draw, which is why this is safe to read here: the Screen has painted
+     this Module at least once before any control can reach it. */
+  const n = pageRange();
+  /* PROJETOS keeps its cases in the overlay rather than on the Screen, so its items
+     have no pages at all. Turning the SUN there is not a mistake, it is someone
+     reaching for the case — so it says where the case actually is. */
+  if (!n) { flashLcd(it.act?.kind === 'work' ? 'APERTE O CENTRO DO SOL PARA ABRIR' : 'SEM PÁGINAS AQUI'); return; }
+  const from = sectionOf(curPage);
+  const to = Math.max(0, Math.min(n, from + step));
+  if (to === from) {
+    flashLcd(step > 0 ? 'ÚLTIMA PÁGINA' : 'ÍNDICE', 700);
+    return;
+  }
+  setSection(curPage, to);
+  if (to === 0) flashLcd(`SOL · ÍNDICE · ${it.label}`);
+  else flashLcd(`SOL · PÁGINA ${pad2(to)}/${pad2(n)}`);
+  drawScreen();
+}
+
+const pad2 = n => String(n).padStart(2, '0');
+
+/**
+ * Turn a page — the one place all three inputs meet.
+ *
+ * The brief asked for three ways to move through a case: *"scroll normal do usuário,
+ * scroll das wheels girando c mouse e usar scroll c mouse em cima do jog também."*
+ * They are the same intent arriving from different hardware, so they are the same
+ * function and cannot drift from each other. What changed under them is only *what a
+ * notch moves*: it used to be 46px of a clipped column and is now a whole page
+ * (ADR-0024, amended) — the gestures, and this junction, are untouched.
+ */
+function scrollBody(dir) {
+  moveSection(dir > 0 ? 1 : -1);
+}
+
+/**
+ * What to call the light at a given fader position.
+ *
+ * Three names for a continuous value, because the brief asks for NIGHT · TWILIGHT ·
+ * DAY — in Portuguese on the Screen, since everything else the Unit says is — and the
+ * fader interpolates between them without stopping. The bands are wide
+ * around the middle so that `TWILIGHT` covers the whole centre detent rather than a
+ * single position nobody can hold.
+ */
+const lightName = v => (v < .28 ? 'NOITE' : v > .72 ? 'DIA' : 'CREPÚSCULO');
+
+/**
+ * Sun centre — open, enter, activate.
+ *
+ * An `act` is data, not a branch the caller has to know about: `modules.ts` says
+ * what a route *is* and this decides what pressing it does. A route with no `act`
+ * is the LinkedIn row, which has no address; it says so rather than doing nothing,
+ * because a control that silently declines is indistinguishable from a broken one.
+ */
+function sunEnter() {
+  const items = itemsOf();
+  if (!items.length) { flashLcd('O SOL NÃO ABRE NADA AQUI'); return; }
+  const it = items[selectionOf(curPage)];
+  const act = it.act;
+  if (!act) { flashLcd(`SEM ROTA · ${it.label}`); return; }
+  if (act.kind === 'work') {
+    const w = WORKS.find(x => x.id === act.value);
+    if (w) { flashLcd(`ABRIR · ${w.title}`); focus.enter(w); }
+    return;
+  }
+  /* A mail or a link leaves the page, so it is announced before it happens. */
+  flashLcd(`ABRIR · ${it.meta || it.label}`);
+  window.open(act.kind === 'mail' ? 'mailto:' + act.value : act.value,
+    act.kind === 'mail' ? '_self' : '_blank', 'noopener');
+}
+
+/**
+ * Moon centre — back, one level.
+ *
+ * One level means: out of an open Work first, then out of a section, then out of a
+ * selection. It never leaves the Module, because the Pads own that and a Back that
+ * sometimes changes Module is a Back nobody can predict.
+ */
+/**
+ * Open the seventh state, from whichever wheel asked.
+ *
+ * The two Faces carry the **same content and the same purpose** — this is one
+ * screen, not two — and differ only in which body is overhead. That is the whole
+ * point of having both: the visitor chose a hand, and the object answers in the
+ * language of the hand they chose.
+ */
+function openEclipse(face) {
+  eclipse.open = true;
+  eclipse.answered = true;
+  eclipse.face = face;
+  setEclipseOpen(true, eclipse.claimEnabled, face);
+  flashLcd(face === 'moon' ? 'ECLIPSE · LUA' : 'ECLIPSE · SOL', 2400);
+  drawScreen();
+}
+
+function moonBack() {
+  /**
+   * ECLIPSE closes first, and closing it is now the whole of the story.
+   *
+   * It used to have to step the cursor **off** the seventh detent as well, because
+   * the detent that opened it was the same position Back landed on — so closing it
+   * left the cursor somewhere that reopened it, and there appeared to be no way out:
+   * *"não consigo voltar da eclipse."* The detent is gone (the light is the key now),
+   * which takes the trap with it.
+   */
+  if (eclipse.open) {
+    eclipse.open = false;
+    setEclipseOpen(false, eclipse.claimEnabled, eclipse.face);
+    flashLcd('VOLTAR · ' + mod().title);
+    drawScreen();
+    return;
+  }
+  if (focus.active) { flashLcd('VOLTAR · ÍNDICE DE ' + mod().title.replace(' / ', '/')); focus.exit(); return; }
+  if (sectionOf(curPage) > 0) {
+    setSection(curPage, 0);
+    flashLcd('VOLTAR · ' + (itemsOf()[selectionOf(curPage)]?.label || mod().title));
+    drawScreen(); return;
+  }
+  if (selectionOf(curPage) > 0) {
+    setSelection(curPage, 0);
+    flashLcd('VOLTAR · ÍNDICE DE ' + mod().title.replace(' / ', '/'));
+    drawScreen(); return;
+  }
+  flashLcd('JÁ ESTÁ NO TOPO');
+}
+
+/* ---------- ECLIPSE — the seventh state ---------- */
+
+/**
+ * Seven lamps under the panel, and the seventh is in the middle.
+ *
+ * The unlock had no *object* — the state existed and nothing on the Plate said so.
+ * Fernando: *"eu sinto que falta algum indicador. talvez se tivéssemos 7 ledzinhos
+ * embaixo do painel que acendessem e se mantessem quando o usuário navega nos
+ * módulos."*
+ *
+ * Six of them are the Modules, in slot order, and they **latch**: once lit they stay
+ * lit, because the thing being counted is *having been somewhere*, and a lamp that
+ * went out again would be counting where you are instead. The seventh sits at the
+ * centre of the row rather than at its end — flanked, not appended — because it is
+ * not a seventh Module and a row that ended in it would read as one.
+ *
+ * It is dark until all six latch, then it **pulses**, and it stops the moment either
+ * wheel is pressed. A pulse is a request; once answered it has no business
+ * continuing.
+ */
+/**
+ * A star, cut the way `slab` cuts a rounded rectangle.
+ *
+ * Same construction so it inherits the same conventions: built in shape XY, extruded
+ * along shape z, then rotated so shape +y is world -z (up the Plate) and the extrusion
+ * stands up out of it. The first point is at shape +y, so every star points up the
+ * Plate toward the Screen rather than at the viewer.
+ *
+ * **Four points, not five.** Five was the wrong reading of the Plate: the artwork's
+ * own stars are four-pointed sparks, and a pentagram in a row of them reads as a
+ * different symbol rather than a smaller version of the same one. Four also has the
+ * deeper notches, which is what lets a 4mm lamp still read as a star.
+ *
+ * The bevel has to stay under the *inner* radius, not the outer one — a bevel wider
+ * than the notch between two points eats the notch and the star comes out a diamond.
+ */
+function starGeom(outer, inner, h, points = 4) {
+  const s = new THREE.Shape();
+  const n = points * 2;
+  for (let i = 0; i < n; i++) {
+    const r = i % 2 ? inner : outer;
+    const a = Math.PI / 2 + (i * Math.PI) / points;
+    const x = Math.cos(a) * r, y = Math.sin(a) * r;
+    if (i === 0) s.moveTo(x, y); else s.lineTo(x, y);
+  }
+  s.closePath();
+  const g = new THREE.ExtrudeGeometry(s, {
+    depth: h, bevelEnabled: true, bevelThickness: .0035, bevelSize: .0025,
+    bevelSegments: 2, curveSegments: 1,
+  });
+  g.rotateX(-Math.PI / 2); g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * Where the row sits, and why it moved.
+ *
+ * It was at `z: 1.46` — in front of the fader, at the very lip of the Plate, which
+ * is the one place on the object nobody looks at while reading. *"Sobre os ledzinhos
+ * da eclipse, eles podem ser levemente menores, em formatinho de estrela pra combinar
+ * e ficar abaixo do display e acima dos botões."*
+ *
+ * The band between the two is narrower than it looks: the Screen's rim ends near
+ * `z = 0.09` and the Pad *labels* — not the Pads — start around `z = 0.30`, so the
+ * row goes at `0.20` and the stars are cut small enough to clear both. Sizing them by
+ * the gap rather than the gap by them is what keeps the labels legible.
+ */
+const ledMats = [];
+const ledMeshes = [];
+{
+  /* index 3 is the middle of seven, which is where ECLIPSE goes; the six Modules
+     take the places either side of it */
+  const ECL = 3;
+  const geo = starGeom(LED.r, LED.r * .30, .012);
+  for (let i = 0; i < 7; i++) {
+    const m = new THREE.MeshStandardMaterial({
+      color: 0x0B0C0E,
+      emissive: new THREE.Color(i === ECL ? 0xC9BE96 : 0xC0301A),
+      emissiveIntensity: 0.06,
+      roughness: .45, metalness: 0,
+    });
+    const mesh = new THREE.Mesh(geo, m);
+    mesh.position.set((i - 3) * LED.pitch, LED.y, LED.z);
+    unit.add(mesh);
+    ledMats.push(m); ledMeshes.push(mesh);
+  }
+}
+/** Which lamp belongs to Module `i` — the six skip the middle. */
+const ledOf = i => (i < 3 ? i : i + 1);
+
+function updateLeds(t) {
+  const night = 1 + vigil * 2.2;
+  for (let i = 0; i < 6; i++) {
+    const on = eclipse.seen.has(i);
+    ledMats[ledOf(i)].emissiveIntensity = (on ? 1.15 : 0.06) * night;
+  }
+  const e = ledMats[3];
+  if (!eclipse.unlocked) { e.emissiveIntensity = 0.05 * night; return; }
+  /* pulsing until it has been answered, steady afterwards */
+  e.emissiveIntensity = (eclipse.answered ? 1.4 : (0.35 + 1.25 * (0.5 + 0.5 * Math.sin(t * 0.006)))) * night;
+}
+
+/**
+ * ECLIPSE is a **state of the instrument**, not a seventh Module.
+ *
+ * ADR-0001 says there are six and there is no seventh, and that stands: the Pads
+ * still address six, the array still has six, and nothing here adds one. What this
+ * adds is a position the MOON can reach *after* all six have been seen — a detent
+ * past the end of the list, which is why it can exist without becoming a Module.
+ *
+ * The visited set lives for the session and nothing else. The brief is explicit that
+ * persistence must never decide a winner, and the front half of this feature does
+ * not decide anything at all: the claim is built and **disabled**, because there is
+ * no server to arbitrate it and a prize promised without one is a promise nobody can
+ * keep. `eclipse.claimEnabled` is the single switch that changes when there is.
+ */
+const eclipse = {
+  seen: new Set([0]),
+  unlocked: false,
+  open: false,
+  /* set once the light has answered the pulse — a request that keeps asking after it
+     is answered is a nag */
+  answered: false,
+  /**
+   * The last end of the light the fader actually reached, `'night'` or `'day'`.
+   *
+   * `null` until it has been at one end, so a Unit that boots at twilight is not
+   * holding a direction it never travelled. The middle of the fader does not count
+   * as a band at all — crossing it is not arriving anywhere.
+   */
+  band: null,
+  /** Which wheel opened it: the two Faces carry the same content and a different sky. */
+  face: 'moon',
+  /* No endpoint exists yet. Until one does this stays false and the UI says so
+     rather than collecting a handle it cannot honour. */
+  claimEnabled: false,
+};
+
+function markSeen(i) {
+  if (eclipse.unlocked || eclipse.seen.has(i)) return;
+  eclipse.seen.add(i);
+  setEclipseSeen(eclipse.seen.size);
+  if (eclipse.seen.size >= MODULES.length) {
+    eclipse.unlocked = true;
+    setEclipseUnlocked(true);
+    flashLcd('SEIS SINAIS ALINHADOS', 2600);
+  } else {
+    flashLcd(`SINAL ${pad2(eclipse.seen.size)}/06`, 900);
+  }
+}
+
+/**
+ * The light is the key, once the six lamps are lit.
+ *
+ * The old trigger was a seventh detent past the end of the MOON's list — a position
+ * with nothing under it, that you had to already know was there. Fernando could not
+ * find it: *"não consegui fazer o eclipse funcionar."* A control nobody can discover
+ * is not a secret, it is a bug with a story attached.
+ *
+ * So the six lamps only **arm** it, and what fires it is the one gesture the object
+ * has been teaching since the first Module: taking the light all the way across.
+ * The direction chooses the face, which is the part that makes it worth doing twice
+ * — walk the light from night into day and the SUN answers; bring the day back down
+ * into night and the MOON does.
+ *
+ * The middle of the fader is not a band, so drifting around twilight cannot trip it.
+ * Only actually arriving at an end counts, and only a *change* of end fires.
+ */
+const bandOf = v => (v < .28 ? 'night' : v > .72 ? 'day' : null);
+
+function watchLight() {
+  const band = bandOf(xfVal);
+  if (!band || band === eclipse.band) return;
+  const from = eclipse.band;
+  eclipse.band = band;
+  if (!eclipse.unlocked || eclipse.open || from === null) return;
+  openEclipse(band === 'day' ? 'sun' : 'moon');
+}
+
+/** Force the seventh state without walking the six — workbench only. */
+function forceEclipse() {
+  for (let i = 0; i < MODULES.length; i++) eclipse.seen.add(i);
+  eclipse.unlocked = true;
+  setEclipseSeen(eclipse.seen.size);
+  setEclipseUnlocked(true);
+  flashLcd('ECLIPSE LIBERADO · DEBUG', 1800);
+}
+
+/** Press a Pad: open its Module, or reset it if it is already open. */
+function pressPad(i) {
+  if (i === curPage) {
+    resetPlace(curPage);
+    if (focus.active) focus.exit();
+    flashLcd('REINÍCIO · VISÃO GERAL DE ' + mod().title.replace(' / ', '/'));
+    drawScreen();
+    return;
+  }
+  if (focus.active) focus.exit();
+  setPage(i);
+  markSeen(i);
+  flashLcd(MODULES[i].title.replace(' / ', '/'));
+}
+
+/**
+ * Anything deliberate restarts LYRA's clock.
+ *
+ * Routed through the one function every control already calls to say what it did,
+ * rather than sprinkled across nine handlers — a reset that has to be remembered in
+ * each new control is a reset that will be forgotten in the tenth.
+ */
+const flashLcd = (text, ms) => { touchLyra(); setFlash(text, ms); drawScreen(); };
 function setVigil(v) {
   vigil = Math.max(0, Math.min(1, v));
   applyVigil();
@@ -2392,6 +3292,20 @@ function setVigil(v) {
   vslider.value = String(Math.round(vigil * 100));
   document.getElementById('vv').textContent = String(Math.round(vigil * 100)).padStart(2, '0');
 }
+/**
+ * The Decks have no button in them any more.
+ *
+ * `deckHubHit` used to make the painted boss a target: Moon-centre was Back and
+ * Sun-centre opened. It went at Fernando's word — *"remova a necessidade de clique
+ * das jogs por enquanto e quaisquer menções"* — and the reason is that a control
+ * doing two unrelated jobs by radius is a control you have to be taught. Turning is
+ * the whole of a wheel now.
+ *
+ * What replaced each job: Back is `Esc`, the touch row's back arrow, and a click
+ * anywhere on the Unit while a Work is open. Opening is a click on the row in the
+ * Screen, `Enter` on the focused SUN, and the touch row's open button.
+ */
+
 function deckAngle(e, g) {
   const r = el.getBoundingClientRect();
   const p = new THREE.Vector3().setFromMatrixPosition(g.matrixWorld).project(camera);
@@ -2400,36 +3314,66 @@ function deckAngle(e, g) {
 }
 
 el.addEventListener('pointerdown', e => {
+  /**
+   * The Unit is inert while a Work is open.
+   *
+   * The brief asks for the underlying hardware to be disabled, and it has to be
+   * more than a visual matter: the overlay covers the canvas but the canvas still
+   * receives what falls through, so without this a click near the edge of the panel
+   * would land on a Pad nobody could see and change the Module underneath. The one
+   * exception is the Deck hubs, because Moon-centre is Back and taking away the way
+   * out is not the same as disabling the controls.
+   */
+  if (focus.active) {
+    /* A click anywhere on the Unit sends the Work back. It used to be Moon-centre
+       only, which was the one hub press that could not be given up without leaving
+       the overlay with no way out under the mouse. */
+    if (pick(e)) focus.exit();
+    return;
+  }
   const hit = pick(e);
   px = e.clientX; py = e.clientY;
   if (hit) {
     const c = hit.userData.ctl;
-    if (c === 'pad') { padPress[hit.userData.i] = 1; setPage(hit.userData.i); return; }
+    /* the whole Pad is the target, not its lamp — `userData.ctl` is on the mesh */
+    if (c === 'pad') { padPress[hit.userData.i] = 1; pressPad(hit.userData.i); return; }
     if (c === 'screen') {
-      /* while a Work is up, the Screen is the way back — anywhere on it */
-      if (rite.phase === 'rising' || rite.phase === 'held') { banish(); return; }
       if (focus.active) { focus.exit(); return; }
       const row = screenRowAt(e);
-      /* The plinth is still there and still works — `summonWork(row)` — but this
-         is the move being tried instead: fly the camera in until the Screen fills
-         the frame, then hand the Work to real HTML (ADR-0017 reversal, prototyped
-         in `focus.js`). */
-      if (row >= 0) { focus.enter(WORKS[row] || WORKS[0]); return; }
+      /**
+       * The Screen is still a way in.
+       *
+       * The first pass at this made a click *select* and left opening to the Sun,
+       * on the reading that a Work should open only from a deliberate selection.
+       * Clicking a named project on a screen **is** a deliberate selection — it is
+       * more specific than turning a wheel to it — and taking the click away left
+       * the most obvious control on the object doing almost nothing. So it lands the
+       * cursor and opens, in that order, which also keeps the Moon in step with what
+       * the visitor just did rather than pointing somewhere else when they come back.
+       */
+      if (row >= 0) {
+        setSelection(curPage, row);
+        const it = itemsOf()[row];
+        if (it?.act) sunEnter(); else flashLcd(`${mod().unit} ${pad2(row + 1)}/${pad2(itemsOf().length)} · ${it?.label || ''}`);
+        return;
+      }
       /* not on a row: fall through, so the Screen is still somewhere you can grab
          the view from the way every other dead area of the Unit is */
     }
-    if (c === 'fader') { active = 'fader'; startVal = xfVal; el.setPointerCapture(e.pointerId); setPage(1); return; }
+    if (c === 'fader') {
+      active = 'fader'; startVal = xfVal; xfHand = xfVal;
+      el.setPointerCapture(e.pointerId); return;
+    }
     if (c === 'sun' || c === 'moon') {
-      /* Light is what dispels her work. Touching the Sun while something is on the
-         plinth sends it back and hands the Vigil to the visitor, rather than
-         fighting the rite for control of the same number. */
-      if (c === 'sun' && rite.phase !== 'idle') { banish(); return; }
-      active = c; jogLast = deckAngle(e, c === 'sun' ? sun.group : moon.group);
+      /* The whole platter is the wheel — centre included. Grabbing it also kills any
+         coast still running, the way a hand on a turntable does. */
+      const d0 = c === 'sun' ? sun : moon;
+      active = c; jogLast = deckAngle(e, d0.group); d0.spin = 0;
       el.setPointerCapture(e.pointerId); return;
     }
   }
   /* nothing on the Unit: the drag moves the view instead */
-  if (!ORBIT) { intro.skip(); return; }
+  if (!freeLook()) { intro.skip(); return; }
   active = 'cam'; el.setPointerCapture(e.pointerId); el.style.cursor = 'grabbing';
 });
 
@@ -2439,56 +3383,160 @@ el.addEventListener('pointermove', e => {
     const ctl = hit && hit.userData.ctl;
     /* A row only lamps while it is actually callable — not while a Work is
        already up, when the whole Screen means "send it back" instead. */
+    const wasHover = padHover;
     padHover = ctl === 'pad' ? hit.userData.i : -1;
-    const row = (ctl === 'screen' && rite.phase === 'idle') ? screenRowAt(e) : -1;
+    /**
+     * A hovered Pad explains itself in the footer, and changes nothing else.
+     *
+     * The brief is firm that hover must not navigate or replace the active
+     * Module's content, so this only writes the hint — the Module underneath is
+     * untouched, and a pointer leaving restores its own line by clearing it.
+     */
+    if (padHover !== wasHover) {
+      setHint(padHover >= 0 ? MODULES[padHover].hint : '');
+      drawScreen();
+    }
+    const row = ctl === 'screen' ? screenRowAt(e) : -1;
     if (row !== hoverWork) { hoverWork = row; setHoverWork(row); drawScreen(); }
     el.style.cursor = ctl === 'pad' ? 'pointer'
       : ctl === 'fader' ? 'ew-resize'
-      : ctl === 'screen' && (row >= 0 || rite.phase !== 'idle') ? 'pointer'
-      : ORBIT ? 'grab' : 'default';
+      : ctl === 'sun' || ctl === 'moon' ? 'grab'
+      : ctl === 'screen' && row >= 0 ? 'pointer'
+      : freeLook() ? 'grab' : 'default';
     return;
   }
   if (active === 'cam') {
     const cl = (v, [lo, hi]) => Math.max(lo, Math.min(hi, v));
-    CAM.tilt = cl(CAM.tilt + (e.clientY - py) * .16, CAM_LIMITS.tilt);
-    CAM.yaw  = cl(CAM.yaw  - (e.clientX - px) * .16, CAM_LIMITS.yaw);
+    const dx = e.clientX - px, dy = e.clientY - py;
+    if (FREECAM && e.shiftKey) {
+      /* pan the pivot, in the camera's own basis so it tracks the hand rather than
+         the world axes — the yaw is the only rotation that matters for that */
+      const y = CAM.yaw * Math.PI / 180, k = CAM.dist * .0016;
+      CAM.pan.x -= Math.cos(y) * dx * k;
+      CAM.pan.z += Math.sin(y) * dx * k;
+      CAM.pan.y += dy * k;
+    } else {
+      CAM.tilt = cl(CAM.tilt + dy * .16, camLimits().tilt);
+      CAM.yaw  = cl(CAM.yaw  - dx * .16, camLimits().yaw);
+    }
     px = e.clientX; py = e.clientY;
     placeCamera();
+    if (FREECAM) showFreecam();
     const t = document.getElementById('tilt'), d = document.getElementById('tiltv');
     if (t) { t.value = String(Math.round(CAM.tilt)); d.textContent = Math.round(CAM.tilt) + '\u00B0'; }
     return;
   }
   if (active === 'fader') {
-    xfVal = Math.max(0, Math.min(1, startVal + (e.clientX - px) / 300));
-    cap.position.x = capX(xfVal);
-    capGlow.position.x = cap.position.x;
-    setScreenCrossfade(xfVal);
-    drawScreen();
+    /* the hand sets a target; `updateFader` is what actually moves the cap */
+    xfHand = Math.max(0, Math.min(1, startVal + (e.clientX - px) / 300));
   } else if (active === 'sun' || active === 'moon') {
+    /**
+     * A Deck is a **detented selector** now, not a flywheel.
+     *
+     * It used to hand its momentum to `spin` and coast against friction, and to
+     * push the Vigil by the *magnitude* of the turn in a fixed direction — so a
+     * wheel kept moving after the hand stopped, and turning it either way did the
+     * same thing. Both are wrong for a control that chooses an item: the brief asks
+     * for one notch to be one item, for direction to be respected, and for nothing
+     * to overshoot. Coasting is overshoot by another name.
+     *
+     * So the turn accumulates into `jogCarry` and spends itself a notch at a time.
+     * `NOTCH` is the angle of one detent; the carry keeps the remainder, so a slow
+     * continuous turn still steps exactly once per notch instead of quantising the
+     * hand's jitter into double steps.
+     */
     const d0 = active === 'sun' ? sun : moon;
     const a = deckAngle(e, d0.group); let d = a - jogLast;
     if (d > Math.PI) d -= 6.2832; if (d < -Math.PI) d += 6.2832;
-    jogLast = a; d0.group.rotation.y -= d;
-    /* Remember how fast the hand is moving, so letting go can hand the wheel its
-       own momentum. Blended rather than replaced: one jittery sample should not
-       decide how far a heavy platter coasts. */
-    d0.spin = d0.spin * .55 + (-d / Math.max(dtNow, 1 / 120)) * .45;
-    /* Sun brings the light up, Moon puts it out — whichever way you turn it. */
-    setVigil(vigil + (active === 'moon' ? 1 : -1) * Math.abs(d) * .34);
+    jogLast = a;
+    /* the platter follows the hand one to one; `carry` is the same travel measured
+       against the detents, and the two are fed from the same number so the wheel can
+       never be showing one thing while the selection does another */
+    d0.turn -= d;
+    d0.carry -= d;
+    /* the hand's own speed, so letting go hands the wheel its momentum rather than
+       an invented one. `dtNow` can be zero on the first move of a frame. */
+    d0.spin = -d / Math.max(dtNow, 1 / 240);
+    d0.spin = Math.max(-JOG.SPIN_MAX, Math.min(JOG.SPIN_MAX, d0.spin));
+    spendNotches(d0, active);
   }
 });
 
 el.addEventListener('pointerup', () => {
+  /* letting go leaves the cap exactly where the hand left it — a damped fader does
+     not coast, and the only thing that may still move it is a bead it is sitting in */
+  if (active === 'fader') xfHand = null;
   active = null; el.style.cursor = 'default';
   /* every Pad comes back up — release anywhere, not only over the one pressed */
   padPress.fill(0);
 });
 
 /* keyboard + screen-reader layer */
+/* ---------- the semantic layer, and the keyboard ---------- */
+
 document.querySelectorAll('[data-act]').forEach(b => {
-  b.addEventListener('click', () => {
-    setPage(+b.dataset.act);
-  });
+  b.addEventListener('click', () => pressPad(+b.dataset.act));
+  /* focus explains a Pad the same way hover does — the brief asks for both, and a
+     keyboard user who cannot hover would otherwise never see the hint at all */
+  b.addEventListener('focus', () => { setHint(MODULES[+b.dataset.act].hint); drawScreen(); });
+  b.addEventListener('blur', () => { setHint(''); drawScreen(); });
+});
+
+document.querySelectorAll('[data-nav]').forEach(b => {
+  const act = {
+    prev: () => moveSelection(-1), next: () => moveSelection(1),
+    open: () => sunEnter(), back: () => moonBack(),
+  }[b.dataset.nav];
+  b.addEventListener('click', act);
+});
+
+/** Move the light, from a key or a touch, and say so. */
+function setLightTo(v) {
+  xfVal = Math.max(0, Math.min(1, v));
+  xfHand = null;
+  cap.position.x = capX(xfVal);
+  capGlow.position.x = cap.position.x;
+  setVigil(1 - xfVal);
+  flashLcd('LUZ · ' + lightName(xfVal) + ' · ' + Math.round(xfVal * 100) + '%', 900);
+}
+
+/**
+ * The keyboard, which is the whole instrument again in twelve keys.
+ *
+ * Two rules keep it predictable. **Arrows follow focus** — they turn whichever
+ * wheel or fader is focused, so the same key does different things only when the
+ * visitor has said which control they mean. And **1–6 and Escape are global**,
+ * because choosing a Module and going back are the two moves that must work from
+ * anywhere; they are the keyboard's Pads and its Moon-centre.
+ */
+addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+  if (e.key >= '1' && e.key <= '6') { pressPad(+e.key - 1); e.preventDefault(); return; }
+  if (e.key === 'Escape') { moonBack(); e.preventDefault(); return; }
+
+  const on = document.activeElement?.dataset || {};
+  const wheel = on.wheel;
+  const fader = on.fader !== undefined;
+
+  if (e.key === 'Home' && fader) { setLightTo(0); e.preventDefault(); return; }
+  if (e.key === 'End' && fader) { setLightTo(1); e.preventDefault(); return; }
+
+  const dir = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1
+    : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1 : 0;
+  if (dir) {
+    if (fader) { setLightTo(xfVal + dir * 0.05); e.preventDefault(); return; }
+    if (wheel === 'moon') { moveSelection(dir); e.preventDefault(); return; }
+    if (wheel === 'sun') { moveSection(dir); e.preventDefault(); return; }
+    return;
+  }
+
+  if (e.key === 'Enter' || e.key === ' ') {
+    if (wheel === 'moon') { moonBack(); e.preventDefault(); return; }
+    if (wheel === 'sun') { sunEnter(); e.preventDefault(); return; }
+  }
 });
 /* Workbench: run the opening again without a reload. */
 document.getElementById('replay')?.addEventListener('click', () => intro.replay());
@@ -2547,6 +3595,105 @@ const camDial = (id, key, fmt) => {
 };
 camDial('tilt', 'tilt', v => v + '\u00B0');
 camDial('dist', 'dist', v => v.toFixed(1));
+
+/**
+ * The freecam toggle.
+ *
+ * The readout is the point as much as the movement is: the reason to fly the camera
+ * around in here is almost always to *find* an angle, and an angle you cannot read
+ * off is one you have to find again next session. It prints something that can be
+ * pasted straight back in as `__unit.setCam({...})`.
+ */
+const freecamBtn = document.getElementById('freecam');
+const freecamOut = document.getElementById('freecamv');
+function showFreecam() {
+  if (!FREECAM) { freecamOut.textContent = 'off'; return; }
+  const p = CAM.pan;
+  const pan = (p.x || p.y || p.z)
+    ? `, pan:{x:${p.x.toFixed(2)},y:${p.y.toFixed(2)},z:${p.z.toFixed(2)}}` : '';
+  freecamOut.textContent =
+    `tilt:${CAM.tilt.toFixed(1)}, yaw:${CAM.yaw.toFixed(1)}, dist:${CAM.dist.toFixed(2)}${pan}`;
+  /* keep the two sliders honest, or they lie about where the camera is */
+  const t = document.getElementById('tilt'), tv = document.getElementById('tiltv');
+  if (t) { t.value = String(Math.round(CAM.tilt)); tv.textContent = Math.round(CAM.tilt) + '\u00B0'; }
+  const d = document.getElementById('dist'), dv = document.getElementById('distv');
+  if (d) { d.value = String(Math.round(CAM.dist * 10)); dv.textContent = CAM.dist.toFixed(1); }
+}
+freecamBtn?.addEventListener('click', () => {
+  FREECAM = !FREECAM;
+  freecamBtn.textContent = FREECAM ? 'FREECAM ON' : 'FREECAM';
+  if (FREECAM) {
+    /* the opening drives the camera itself, and two things steering one transform
+       is not a camera, it is a fight */
+    intro.skip();
+    freecamWas = { ...CAM, pan: { ...(CAM.pan || { x: 0, y: 0, z: 0 }) } };
+    CAM.pan = CAM.pan || { x: 0, y: 0, z: 0 };
+  } else if (freecamWas) {
+    Object.assign(CAM, freecamWas, { pan: { ...freecamWas.pan } });
+    freecamWas = null;
+    placeCamera();
+  }
+  showFreecam();
+});
+
+/**
+ * Unlock ECLIPSE without walking the six — workbench only.
+ *
+ * Reaching the seventh state legitimately means visiting every Module, which is the
+ * right cost for a visitor and an absurd one for anyone testing the screen it opens.
+ * The button sets exactly the flag the six visits would have set, so what it reveals
+ * is the real state and not a preview of it — and it cannot forge a claim, because
+ * the claim is gated on a server that does not exist rather than on this flag.
+ */
+const eclipseBtn = document.getElementById('eclipse');
+eclipseBtn?.addEventListener('click', () => {
+  forceEclipse();
+  const out = document.getElementById('eclipsev');
+  if (out) out.textContent = 'liberado · a LUA tem 7 posições';
+});
+
+/**
+ * The wheel dollies, and only while freecam is on.
+ *
+ * `passive: false` because it has to `preventDefault()` — without that the page
+ * scrolls behind the canvas, which on a one-screen no-scroll object is not
+ * something the visitor should ever discover. The clamp keeps the near plane out of
+ * the Plate at one end and the Unit bigger than a speck at the other.
+ */
+/**
+ * The mouse wheel, and what is under it decides what it does.
+ *
+ * Three behaviours, one listener, in the order a hand would expect:
+ *
+ *   - **over the MOON** — step the selection, which is what turning the Moon does;
+ *   - **over the SUN, or anywhere else on the object** — scroll the body, which is
+ *     what turning the Sun does;
+ *   - **freecam on** — dolly, because then the wheel belongs to the camera.
+ *
+ * The last two are deliberately the same gesture: *"scroll normal do usuário"* and
+ * *"usar scroll c mouse em cima do jog"* are the same intent arriving from different
+ * places, and making the wheel mean something different a few pixels apart is how a
+ * control becomes unpredictable.
+ *
+ * `passive: false` because it has to `preventDefault()` — without it the page
+ * scrolls behind the canvas, which on a one-screen object nobody should discover.
+ */
+renderer.domElement.addEventListener('wheel', e => {
+  if (FREECAM) {
+    e.preventDefault();
+    CAM.dist = Math.max(0.6, Math.min(40, CAM.dist * (1 + Math.sign(e.deltaY) * 0.08)));
+    placeCamera();
+    showFreecam();
+    return;
+  }
+  if (focus.active) return;          /* the overlay owns its own scrolling */
+  e.preventDefault();
+  const over = pick(e);
+  const ctl = over && over.userData.ctl;
+  const dir = Math.sign(e.deltaY) || 1;
+  if (ctl === 'moon') moveSelection(dir);
+  else scrollBody(dir);
+}, { passive: false });
 /**
  * Load the Plate's assets, then rebuild it **once**.
  *
@@ -2675,7 +3822,58 @@ function castOnly(...roots) {
 groundShadows(scene);
 castOnly(unit, altar, summoning.group);
 
+/**
+ * The renderer, on the debug handle.
+ *
+ * Not for the workbench — for **measuring**. `renderer.info.programs.length` is the
+ * only way to see a shader recompile from outside three, and a recompile is the
+ * most expensive thing this scene can do to itself. Nothing reads it in production.
+ */
+window.__renderer = renderer;
 window.__unit = {
+  /**
+   * Run the light-configuration pre-warm to completion by hand.
+   *
+   * It normally rides the frame loop, one configuration per frame during the
+   * opening — and the frame loop does not exist in an automated tab, where
+   * `requestAnimationFrame` fires zero times per second. Same reason `render()` and
+   * `introStep()` are here: anything that only happens on a frame needs a way to be
+   * made to happen without one, or it cannot be measured.
+   */
+  /**
+   * Run one frame by hand, at a time you choose.
+   *
+   * The general form of `render()`, `prewarm()` and `paintScreen()`, all of which
+   * exist for the same reason: `requestAnimationFrame` fires **zero** times per
+   * second in an automated tab, so anything that only happens on a frame cannot
+   * otherwise be made to happen — or measured. Passing `t` rather than reading the
+   * clock is the point: the Candles' guttering is a function of time, and checking
+   * that it actually gutters means stepping time forward without waiting for it.
+   */
+  step(t) { frame(t); },
+  /** What the opening is doing right now: the power-on level and the live Module. */
+  get boot() { return bootLevel(); },
+
+  /**
+   * Repaint the Screen by hand.
+   *
+   * Same reason `render()` and `prewarm()` are here: the Screen is repainted from
+   * the frame loop, the frame loop is `requestAnimationFrame`, and rAF fires zero
+   * times per second in an automated tab. Without this the only way to inspect the
+   * Screen from outside is to import `render.js` again — which gets a *second*
+   * module instance with its own selection state, and reads it while the scene
+   * drives the first. That produced a confident, entirely wrong answer once.
+   */
+  paintScreen() {
+    renderScreen(performance.now() / 1000, SCREEN_STEP);
+    display.paint();
+    screenTex.needsUpdate = true;
+  },
+  prewarm() {
+    prewarmStep(performance.now() / 1000);
+    while (prewarmAt < prewarmMarks.length) prewarmStep(performance.now() / 1000);
+    return prewarmMarks.slice();
+  },
   /** rAF is throttled in a background tab, so never trust the last frame's matrices. */
   render() { camera.updateMatrixWorld(true); scene.updateMatrixWorld(true); post.render(performance.now() / 1000); },
   screenOf(o) {
@@ -2684,6 +3882,15 @@ window.__unit = {
     return [(v.x * .5 + .5) * W(), (-v.y * .5 + .5) * H()];
   },
   pads: () => padMeshes,
+  /**
+   * Where the navigation currently stands.
+   *
+   * rAF does not run in an automated tab, so a check that drives the Unit has to be
+   * able to *read* it as well as poke it — and until this existed the only way to
+   * tell whether a jog had moved the selection was to squint at a 320x180 texture in
+   * a screenshot. That is how a dead Moon wheel survived a session.
+   */
+  nav: () => ({ page: curPage, sel: selectionOf(curPage), sec: sectionOf(curPage), pages: pageRange() }),
   /** Swap the Plate's display face and redraw the Print. */
   setTitle(t) { TITLE = t; regenFace(); },
   /** Tune the engraving: band width, wave count along the top run, line weight.
@@ -2916,7 +4123,9 @@ window.__unit = {
   },
   get eng() { return ENG; },
   get cam() { return { ...CAM, pos: camera.position.toArray().map(n => +n.toFixed(2)) }; },
-  setCam(c) { Object.assign(CAM, c); placeCamera(); },
+  /* `showFreecam()` so the console path and the button agree about where the
+     camera is — a readout that only updates when you drag is a readout that lies */
+  setCam(c) { Object.assign(CAM, c); placeCamera(); if (FREECAM) showFreecam(); },
   parts: () => ({ cap, sun: sun.ring, moon: moon.ring, faceMat, face }),
   get title() { return TITLE; },
   get page() { return curPage; },
@@ -3165,47 +4374,198 @@ function tickFps(dt) {
 }
 
 let t0 = 0;
+/**
+ * Compile every light configuration before the visitor can reach one.
+ *
+ * The Vigil putting a Candle out is not a change of *intensity* to three — `dim()`
+ * clears `visible` once a light is dark, which is ADR-0019 and is worth keeping,
+ * because a light left visible at zero is still evaluated by every lit fragment.
+ * But the number of visible lights is part of a material's **program key**. Change
+ * it and every material in the scene is recompiled, and the first time that happens
+ * it is not cheap.
+ *
+ * Measured, on a cold cache, sweeping the Vigil end to end:
+ *
+ *     mean 55.6ms/frame, worst **963ms**, five rebuilds, 46 → 100 programs
+ *
+ * Those are the stalls Fernando hit — *"the performance on the vigil (going to
+ * night) is affected a lot when one turns the jog"* — because turning a Deck drives
+ * the Vigil, and driving the Vigil walks straight through every one of them.
+ *
+ * They are also **one-time**. Programs are cached by that key, so a second sweep
+ * adds nothing and runs at mean 10ms. The whole problem is *when* the bill arrives,
+ * not that it arrives — and paid deliberately, back to back, the same six
+ * configurations cost about 140ms each, 800ms in total, because none of them is
+ * serialised against a frame's GPU work.
+ *
+ * So: pay it during the opening, one configuration per frame.
+ *
+ * It has to be a **real render through `post`**, not `renderer.compile()`. That was
+ * the first attempt and it looked like it worked — 128ms, program count up to 98 —
+ * and the sweep afterwards still added 82 programs and stalled for 4.2 seconds.
+ * `compile()` walks the scene against the default framebuffer; the frame does not.
+ * It goes through the composer, into a render target with its own colour space and
+ * tone mapping, and those are part of the program key too. Warming the wrong path
+ * warms the wrong programs.
+ *
+ * Rendering at a Vigil the visitor did not ask for is safe because it never reaches
+ * the screen: this runs inside the same `frame()` that draws the real one a few
+ * lines later, and the browser composites once per frame, so only the last draw is
+ * ever seen. The Vigil is set, drawn and put back before anything else looks at it.
+ *
+ * The marks are **found, not guessed**. An even grid of twelve was the second
+ * attempt and it left two stalls behind — 875ms at Vigil .55 and 110ms at .94 —
+ * because the thresholds a Candle actually crosses fall between grid points, and
+ * warming .545 does not warm .55. So before warming anything, walk the Vigil in
+ * fine steps with `applyVigil()` alone, which only writes light properties and
+ * draws nothing, and record every *distinct set of visible lights* with one Vigil
+ * that produces it. That is the exact list of program keys the rite can reach, it
+ * stays correct if `RAMPS` moves, and it is usually six or seven entries.
+ */
+let prewarmMarks = null;
+let prewarmAt = 0;
+
+function findPrewarmMarks() {
+  const lights = [];
+  scene.traverse(o => { if (o.isLight) lights.push(o); });
+  const was = vigil;
+  const seen = new Map();
+  for (let i = 0; i <= 400; i++) {
+    vigil = i / 400;
+    applyVigil();
+    const key = lights.map(l => (l.visible ? '1' : '0')).join('');
+    if (!seen.has(key)) seen.set(key, vigil);
+  }
+  vigil = was;
+  applyVigil();
+  return [...seen.values()];
+}
+
+function prewarmStep(t) {
+  if (prewarmMarks === null) prewarmMarks = findPrewarmMarks();
+  if (prewarmAt >= prewarmMarks.length) return;
+  const was = vigil;
+  vigil = prewarmMarks[prewarmAt];
+  applyVigil();
+  camera.updateMatrixWorld(true); scene.updateMatrixWorld(true);
+  post.render(t);
+  vigil = was;
+  applyVigil();
+  prewarmAt++;
+}
+
 function frame(t) {
-  const dt = Math.min(.05, (t - t0) / 1000); t0 = t;
+  /* clamped at both ends. The cap stops a stall from teleporting everything a
+     second forward; the floor stops a clock that goes *backwards* from raising
+     every `Math.pow(k, dt)` ease to a negative power, which turns the fader, the
+     Pads and the candle lag into ±1e76 in one frame. rAF is monotonic so this
+     cannot happen in a real session — but `__unit.step()` is not, and a debug hook
+     that can silently destroy the scene is worse than no debug hook. */
+  const dt = Math.max(0, Math.min(.05, (t - t0) / 1000)); t0 = t;
   dtNow = dt;
   const w0 = perfSample ? performance.now() : 0;
   /* the decks keep turning very slowly, opposite ways, so the Unit never looks frozen */
   /**
-   * The platters have weight.
+   * The platters, and the three things that can be moving them.
    *
-   * They used to be driven directly by the pointer and otherwise creep at a fixed
-   * rate, so letting go stopped them dead — which is the one thing a heavy wheel
-   * never does. Each Deck now carries a `spin` in radians per second: the drag
-   * feeds it, and it bleeds off against a drag coefficient instead of being
-   * cleared.
+   * **They both drift.** They used to drift *against the Vigil* — the Sun at
+   * `-.04 * (1 - vigil)` and the Moon at `.04 * vigil` — a nice idea that meant the
+   * Moon stood perfectly still all day, which is exactly what Fernando saw: *"devem
+   * girar sozinhos (sol está certo mas lua não)."* Both turn now; the Vigil only
+   * decides which one leads.
    *
-   * `Math.pow(FRICTION, dt)` rather than a per-frame multiply, so the coast lasts
-   * the same wall-clock time at 24fps as at 120.
+   * **They coast.** A wheel thrown by the hand keeps its `spin` and bleeds it off
+   * against friction, and it goes on spending detents the whole way down — so a
+   * flick runs several items on and slows into place instead of stopping the instant
+   * the finger lifts. `Math.pow(FRICTION, dt)` rather than a per-frame multiply, so
+   * the coast lasts the same wall-clock time at 24fps as at 120.
    *
-   * The idle creep is still there underneath — the wheel whose hand is winning
-   * turns slowly on its own — but it is added to the momentum rather than
-   * replacing it, so a spun Deck settles back into its drift instead of snapping
-   * to it.
+   * **They settle.** Once the coast is spent, the leftover `carry` eases to zero,
+   * which walks the platter the last few degrees onto its detent. Nothing else has
+   * to know about it: the displayed angle is `turn - PULL * carry`, so draining the
+   * carry *is* the snap.
+   *
+   * Note the drift feeds `turn` and never `carry`. A drift that selected would have
+   * the Unit quietly walking through a Module with nobody touching it.
    */
-  const FRICTION = 0.12;                       // per second; lower is heavier
-  for (const [d0, drift] of [[sun, -.04 * (1 - vigil)], [moon, .04 * vigil]]) {
-    if (Math.abs(d0.spin) > 0.0004) {
-      d0.group.rotation.y += d0.spin * dt;
-      d0.spin *= Math.pow(FRICTION, dt);
-      /* a spun Deck keeps working the Vigil as it coasts, the way it does under
-         the hand — otherwise the throw stops mattering the moment you let go */
-      setVigil(vigil + (d0 === moon ? 1 : -1) * Math.abs(d0.spin * dt) * .34);
-    } else {
-      d0.spin = 0;
-      d0.group.rotation.y += drift * dt;
+  for (const [d0, kind, drift] of [
+    [sun, 'sun', -(.018 + .030 * (1 - vigil))],
+    [moon, 'moon', +(.018 + .030 * vigil)],
+  ]) {
+    d0.turn += drift * dt;
+
+    if (active !== kind && d0.spin) {
+      const step = d0.spin * dt;
+      d0.turn += step;
+      d0.carry += step;
+      spendNotches(d0, kind);
+      d0.spin *= Math.pow(JOG.FRICTION, dt);
+      if (Math.abs(d0.spin) < JOG.SPIN_MIN) d0.spin = 0;
     }
+
+    /* the settle. Under the hand the carry is the reader's, not ours. */
+    if (active !== kind && !d0.spin && d0.carry) {
+      const k = 1 - Math.pow(.0008, dt);
+      d0.carry -= d0.carry * k;
+      if (Math.abs(d0.carry) < 1e-4) d0.carry = 0;
+    }
+
+    d0.group.rotation.y = d0.turn - JOG.PULL * d0.carry;
   }
-  /* candlelight is never steady */
+  /**
+   * Candlelight is never steady — and it is never a sine wave either.
+   *
+   * The old flicker was `.86 + .14 · sin · sin`: smooth, periodic, symmetric, and
+   * the same shape on all three with only a phase offset. It reads as a slow pulse,
+   * which is the one thing a candle never does. A real flame is **mostly still**,
+   * and then gutters: brief, asymmetric, and much more often *down* than up.
+   *
+   * `gust` is that shape. Two slow sines multiplied and clamped at zero spend most
+   * of their time at zero and occasionally rise — so the flame is quiet, quiet,
+   * flutters, quiet. The fast wobble is *gated* by it rather than always running,
+   * which is the whole difference between guttering and pulsing.
+   *
+   * **Measured first.** At the shipped framing the flames are not in frame at all —
+   * they sit above the top edge until about 46 degrees of tilt, and the rig stops
+   * the visitor at 6. So everything here is aimed at the only part of a candle the
+   * visitor can actually see: **the light it throws**. That is why the light moves
+   * with the flame rather than merely dimming — the Plate has a clearcoat, and a
+   * source that drifts a few millimetres drags its highlight across the lacquer,
+   * which is visible from the resting view where a better-shaped flame would not be.
+   */
   CANDLES.forEach((c, i) => {
     if (!c.live) return;
-    const f = .86 + .14 * Math.sin(t * .0043 + i * 2.1) * Math.sin(t * .0111 + i * 5.7);
-    dim(c.light, c.base.light * c.live * f);
-    c.flame.scale.x = c.flame.scale.z = (.55 + c.live * .45) * (.94 + f * .08);
+    const p = i * 2.399;                       // golden-angle phases: never in step
+    const gust = Math.max(0, Math.sin(t * .00037 + p) * Math.sin(t * .00011 + p * 1.7));
+    const wob = Math.sin(t * .0113 + p * 3) * .6 + Math.sin(t * .0197 + p * 5) * .4;
+    const breathe = .5 + .5 * Math.sin(t * .0021 + p);
+    /**
+     * Floored at .35, and that floor is structural rather than cosmetic.
+     *
+     * `dim()` clears `visible` under .0005, and the number of visible lights is part
+     * of every material's program key — a flicker that dipped through the threshold
+     * would rebuild every shader in the scene mid-gutter, which is the 700ms stall
+     * the pre-warm exists to prevent. A candle going out is a Vigil configuration
+     * and is pre-warmed; a candle *flickering* out is not one and never should be.
+     */
+    const f = Math.max(.35, 1 - gust * (.30 + .22 * wob) - .045 * breathe);
+
+    /* the light lags the flame: a flame changes shape before the room notices */
+    c.lit = (c.lit ?? f) + (f - (c.lit ?? f)) * (1 - Math.pow(.02, dt));
+    dim(c.light, c.base.light * c.live * c.lit);
+
+    /* the sway — a flame leans, and the light leans with it */
+    const sx = gust * .014 * Math.sin(t * .0091 + p);
+    const sz = gust * .011 * Math.sin(t * .0077 + p * 2);
+    c.flame.position.set(c.base.x + sx, c.base.y, c.base.z + sz);
+    c.halo.position.copy(c.flame.position);
+    c.light.position.copy(c.flame.position);
+    c.flame.rotation.z = -sx * 9;
+    c.flame.rotation.x = sz * 9;
+
+    /* guttering makes a flame shorter and fatter, not merely dimmer */
+    const w = (.55 + c.live * .45) * (1 + (1 - f) * .55);
+    c.flame.scale.set(w, 2.1 * (.6 + c.live * .4) * (.72 + f * .34), w);
   });
   stepRite(dt);
   /**
@@ -3231,7 +4591,26 @@ function frame(t) {
   summoning.update(smooth(rite.k), t / 1000);
   portrait.update(vigil);
   tickFps(dt);
+  /**
+   * **Not during the opening.**
+   *
+   * Each pre-warm step is a full extra draw whose whole purpose is to compile
+   * shaders, so it costs 100–140ms — and there are eight of them. Run from the first
+   * frame, that is the better part of a second of stalled frames landing inside a
+   * 5.2s boot animation, which does not read as "loading slowly". It reads as the
+   * opening playing, freezing, and starting again: *"the intro is loading the first
+   * module then snaps to the loading then to the first module again."*
+   *
+   * It waits for the opening to finish. Nothing is lost by that — the pre-warm
+   * exists to keep the Crossfader smooth, the Crossfader is the only thing that
+   * reaches those light configurations, and a click during the opening skips it
+   * anyway. The eight frames land while the visitor is still reading the first
+   * Module, which is the cheapest moment in the session.
+   */
+  if (!intro.running) prewarmStep(t / 1000);
   updatePads(dt);
+  updateFader(dt);
+  updateLeds(t);
   if (intro.running && !focus.active) intro.update(dt);
   focus.update(dt);
   post.render(t / 1000);

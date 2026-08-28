@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { caseOf } from '../src/content/modules.ts'
 
 /**
  * Zoom to the Screen, then hand the Work to the DOM.
@@ -101,9 +102,11 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
         <h2 class="work-title"></h2>
         <p class="work-meta"></p>
         <div class="work-blurb"></div>
+        <div class="work-case"></div>
+        <p class="work-more"></p>
       </div>
     </div>
-    <p class="work-hint">click anywhere to return &middot; &larr; &rarr; to browse</p>`
+    <p class="work-hint">clique em qualquer lugar para voltar &middot; &larr; &rarr; para navegar</p>`
   mount.appendChild(panel)
 
   const style = document.createElement('style')
@@ -116,8 +119,15 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
       background:linear-gradient(180deg, rgba(6,5,5,.55), rgba(6,5,5,.86));
       font:13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color:#C9C2B0; }
     .work-panel[data-open="1"] { opacity:1; pointer-events:auto; }
-    .work-body { display:flex; gap:40px; align-items:center;
-      width:min(1180px, 86vw); }
+    .work-body { display:flex; gap:40px; align-items:flex-start;
+      width:min(1180px, 86vw); max-height:86vh; }
+    /* the text column scrolls on its own; the image stays put */
+    .work-text { overflow:auto; max-height:86vh; padding-right:12px; }
+    .work-case h3 { margin:18px 0 4px; font-size:11px; letter-spacing:.18em;
+      color:#C9BE96; font-weight:600; }
+    .work-case p { margin:0 0 4px; color:#A9A292; }
+    .work-more { margin-top:20px; padding-top:12px; border-top:1px solid #2A2620;
+      color:#8A8470; font-size:12px; letter-spacing:.06em; }
     .work-plate { position:relative; flex:0 0 58%; aspect-ratio:16/10; border:1px solid #3A322A;
       background:#14110F center/contain no-repeat; box-shadow:0 24px 70px rgba(0,0,0,.6); }
     .work-plate[data-many="1"] { cursor:pointer; }
@@ -178,6 +188,27 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
       [work.client, work.kind, work.year].filter(Boolean).join('  ·  ')
     panel.querySelector('.work-blurb').innerHTML =
       (work.blurb || []).map(l => `<p>${l}</p>`).join('')
+
+    /**
+     * The case lives **here**, and only here.
+     *
+     * It used to be drawn on the Screen too, under the project list, where a 320x180
+     * buffer had to carry five sections of prose at 12px and the reader met the case
+     * before choosing the project. Fernando: *"o texto explicativo do projeto deve
+     * apenas aparecer quando o usuário clica e a tela da zoom."* Right — this panel
+     * is real HTML at real size, which is the one place the case is comfortable, and
+     * the Screen goes back to being an index.
+     */
+    const secs = caseOf(work.id) || []
+    panel.querySelector('.work-case').innerHTML = secs
+      .filter(sec => sec.lines.length)
+      .map(sec => `<h3>${sec.heading}</h3>` + sec.lines.map(l => `<p>${l}</p>`).join(''))
+      .join('')
+    /* A slot, not a link. The long write-up does not exist yet, and a button that
+       goes nowhere is worse than a line saying it is coming. */
+    panel.querySelector('.work-more').textContent =
+      work.empty ? '' : 'Confira o case com mais detalhes — em breve.'
+
     shot = 0
     paintPlate()
   }
@@ -190,15 +221,36 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
     onStep?.(work)
   }
 
+  /**
+   * Who had focus before the overlay took it.
+   *
+   * Kept so it can be handed back. A dialog that closes and drops focus on `<body>`
+   * sends a keyboard user to the top of the document — they were on a project row
+   * and now they are nowhere, with no way back except Tab from the start. Restoring
+   * is the whole difference between an overlay and a trapdoor.
+   */
+  let opener = null
+
+  /** Everything inside the panel a keyboard can land on, in document order. */
+  const focusables = () => [...panel.querySelectorAll(
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter(n => !n.disabled && n.offsetParent !== null)
+
   function enter(work) {
     if (phase === 'in') return
     if (phase === 'held') { show(work); return }
     current = work
     fill(work)
+    /* only remember the opener on the way *in* — stepping between Works must not
+       overwrite it with a button inside the panel */
+    opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
     from.pos.copy(camera.position); from.quat.copy(camera.quaternion)
     to = screenFillPose(camera, screen)
     phase = 'in'; k = 0
     panel.hidden = false
+    /* focus moves in as soon as the panel exists, not when the flight lands: the
+       flight is half a second and a keyboard user should not be stranded for it */
+    focusables()[0]?.focus()
   }
 
   function exit() {
@@ -206,6 +258,9 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
     panel.dataset.open = '0'
     from.pos.copy(camera.position); from.quat.copy(camera.quaternion)
     phase = 'out'; k = 0
+    /* hand focus back before the flight, for the same reason it was taken early */
+    if (opener && document.contains(opener)) opener.focus()
+    opener = null
   }
 
   panel.querySelector('.work-back').addEventListener('click', e => { e.stopPropagation(); exit() })
@@ -223,10 +278,26 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
   panel.querySelector('.work-body').addEventListener('click', e => e.stopPropagation())
   addEventListener('keydown', e => {
     if (!(phase === 'held' || phase === 'in')) return
-    if (e.key === 'Escape') exit()
-    if (e.key === 'ArrowLeft') onStep?.(-1, 'request')
-    if (e.key === 'ArrowRight') onStep?.(1, 'request')
-  })
+    if (e.key === 'Escape') { exit(); e.preventDefault(); return }
+    if (e.key === 'ArrowLeft') { onStep?.(-1, 'request'); e.preventDefault(); return }
+    if (e.key === 'ArrowRight') { onStep?.(1, 'request'); e.preventDefault(); return }
+    /**
+     * The focus trap.
+     *
+     * Tab off either end of the panel comes back round to the other, so focus
+     * cannot walk out into the page behind — which is still there, still has six
+     * Pads and three wheel proxies in it, and would silently become reachable
+     * underneath an overlay that is meant to be modal. Capture is not enough on its
+     * own; the wrap has to be explicit because the elements behind are not hidden.
+     */
+    if (e.key === 'Tab') {
+      const f = focusables()
+      if (!f.length) return
+      const first = f[0], last = f[f.length - 1]
+      if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault() }
+      else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault() }
+    }
+  }, true)
 
   function update(dt) {
     if (phase === 'idle') return
@@ -253,6 +324,8 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
 
   return {
     enter, exit, update, show,
+    /** Browse to the next or previous Work without leaving the overlay. */
+    step(d) { if (phase === 'held' || phase === 'in') onStep?.(d, 'request') },
     get active() { return phase !== 'idle' },
     get holding() { return phase === 'held' },
     get work() { return current },

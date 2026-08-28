@@ -1,590 +1,434 @@
-/**
- * The Deck faces — pierced Gothic tracery, lit from behind.
- *
- * From Fernando's `circle` channel. Three things in it decided this:
- *
- *   - a plate of Gothic oculi: carved stone rings with the tracery *pierced*, so
- *     every roundel is a pattern of bars over a void
- *   - a woodcut pair — a moon swallowed in swirling cloud, a sun as a rayed star
- *   - a crescent whose lit half is built entirely out of quatrefoil piercings
- *
- * The third is the whole design. A wheel that is a stone plate with holes in it
- * answers "the jogs need some kind of light" without gluing a lamp to anything:
- * the light is *behind* the tracery and comes through the holes. Bars stay stone,
- * voids burn.
- *
- * One drawing pass makes a void mask, and three maps come off it — colour, relief
- * and emission — so the hole a bar casts a shadow into is by construction the same
- * hole the light comes out of.
- *
- * The Sun burns while the room is lit and dies as the Candles go out; the Moon is
- * dark at first light and comes up as the room does down. Turning the Sun brings
- * the light up and the Moon puts it out (CONTEXT.md), so each wheel now shows
- * whose hand is winning — the Vigil made visible on the controls that hold it.
- */
-
 import * as THREE from 'three'
 
-const SIZE = 1024, C = SIZE / 2, R = 470
+/**
+ * The Deck faces — **Fernando's own artwork**, cropped out of `cross and jogs.png`
+ * and mapped onto the platters.
+ *
+ * This file used to draw both wheels procedurally: a reeded rim, a medallion band,
+ * a rose window of cusped petals for the Sun and a trefoil of pierced tracery for
+ * the Moon, all struck onto one void mask that three maps came off. It was several
+ * hundred lines and it is gone, because it was answering the wrong question.
+ *
+ * The reference is not a *description* of an ornament — it is the ornament. Every
+ * pass at reproducing it in circle arithmetic got a three-fold figure that was
+ * plainly in the same family and just as plainly not the same drawing; each pass
+ * was closer in some measurable way and no closer at all in the way that counts.
+ * Fernando, after four of them: *"its not similar to the design i gave to you at
+ * all."* Right about the method, not the numbers. Following a reference this
+ * specific means **using** it.
+ *
+ * So there is one image per wheel and the other two maps are derived from it.
+ *
+ * ## Where the maps come from
+ *
+ * - **albedo** — the crop, untouched.
+ * - **height** — its luminance. Bone is the brightest thing in the picture and the
+ *   ground the darkest, so luminance already *is* the relief: it drives `bumpMap`,
+ *   and the candles rake across the carving because of it.
+ * - **emissive** — its **saturation × value**, which is the one that needed
+ *   thought. The Sun's glass is deeply saturated amber and its stone is near-grey
+ *   bone, so saturation separates *lit glass* from *lit stone* in a way brightness
+ *   cannot: the palest pixel on the wheel is bone, which must not glow, and the
+ *   amber behind the tracery must, even where it is darker than the bone beside it.
+ *   The Moon has almost no saturated pixel anywhere, which is correct, and is the
+ *   difference between the two wheels — the Moon is told apart by having no light
+ *   behind it, not by being a different colour.
+ *
+ * ## The crop
+ *
+ * Each is square and centred on its wheel, with the half-size set to the rim
+ * radius, so the image's **inscribed circle is exactly the platter**. The plate is
+ * a `CylinderGeometry` cap, whose UVs inscribe the disc in the 0..1 square, so a
+ * crop with margin renders the wheel undersized inside a ring of stray Plate
+ * ornament, and a tight crop shaves the reeding.
+ *
+ * **The centre has to be found, not eyeballed.** The first cut was placed by eye
+ * and the Moon's was 20px out — 8% of the radius — which is invisible in a still
+ * and unmistakable the moment the platter turns: *"the arts are not centered on the
+ * circle of the jogs, causing them do wobble."* Reading the edge off a screenshot
+ * cannot do better than that, and edge-detection is worse — it locks onto the
+ * Plate's own ornament outside the wheel.
+ *
+ * What works is to minimise the thing being complained about. Every ring on a wheel
+ * — the reeding, the rules either side of the medallion band, the dotted course,
+ * the field edge — is rotationally symmetric about the true centre, so about that
+ * point the picture barely changes when you spin it, and about any other point the
+ * rings sweep across each other. Searching for the centre that minimises mean
+ * |I(p) − I(rot(p))| lands on it directly. Both wheels then measure r = 253, the
+ * same to the pixel, which is the check: they are the same object drawn twice, and
+ * any fit that returns two different radii has found something else.
+ *
+ * Source centres: Moon (348, 421), Sun (1420, 422), both r 253, in
+ * `cross and jogs.png` at its native 1774x887.
+ */
 
 /**
- * The wheel read outward, in fractions of R.
- *
- * Fernando's reference builds each Deck as three concentric jobs, not one: a
- * **reeded rim** you could grip, a **medallion band** that says which wheel this
- * is, and only then the **tracery field**. The old face had just the field — it
- * ran the rose out to 0.92 and finished it with three lines and a course of beads,
- * which is why it read as a printed disc rather than as a turned object.
- *
- * The field therefore gets *smaller*, not larger. That is the counter-intuitive
- * part and it is the whole gain: a rose window surrounded by a wide dark annulus
- * reads as set into something, and the two bands outside it are what give the
- * wheel an edge to be turned by.
+ * Deck art is served from `public/`, so it has to resolve through `BASE_URL` — the
+ * same trap the Works hit. A root-absolute `/decks/sun.png` works from a domain
+ * root and 404s from a subdirectory, which is a bug that exists only in a deployed
+ * build and never in the dev server.
  */
-const FIELD = 0.62                 // the tracery ends here
-const BAND = [0.705, 0.872]        // medallions ride this annulus
-const REED = [0.900, 0.996]        // the milled edge
+const url = name => `${import.meta.env?.BASE_URL ?? '/'}decks/${name}.png`.replace(/([^:])\/\//g, '$1/')
 
-/**
- * The rose is authored to fill a 0.94 disc, so it is scaled into the field rather
- * than re-numbered. Every radius in `sunBars`/`moonBars` stays the fraction the
- * mason wrote; only the frame around them changed.
- */
-const FIT = FIELD / 0.94
+const SIZE = 512
 
-/* ---------- tracery vocabulary ---------- */
-
-/** A quatrefoil: four lobes around a centre, the Gothic mason's default hole. */
-function quatrefoil(g, cx, cy, r, rot = 0, lobes = 4) {
-  const lr = r * 0.52
-  g.beginPath()
-  for (let i = 0; i < lobes; i++) {
-    const a = rot + (i / lobes) * Math.PI * 2
-    g.moveTo(cx + Math.cos(a) * (r - lr) + lr, cy + Math.sin(a) * (r - lr))
-    g.arc(cx + Math.cos(a) * (r - lr), cy + Math.sin(a) * (r - lr), lr, 0, 6.2832)
-  }
-  g.fill()
-  /* the square of stone between the lobes reads as a star once pierced */
-  g.beginPath()
-  for (let i = 0; i < lobes; i++) {
-    const a = rot + (i / lobes) * Math.PI * 2
-    const p = [cx + Math.cos(a) * (r - lr) * 1.12, cy + Math.sin(a) * (r - lr) * 1.12]
-    i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])
-  }
-  g.closePath(); g.fill()
-}
-
-/** A lancet: the pointed-arch void, aimed outward from the hub. */
-function lancet(g, cx, cy, a, r0, r1, halfWidth) {
-  const ca = Math.cos(a), sa = Math.sin(a)
-  const px = (r, o) => [cx + Math.cos(a + o) * r, cy + Math.sin(a + o) * r]
-  g.beginPath()
-  const [ax, ay] = px(r0, -halfWidth)
-  g.moveTo(ax, ay)
-  /* up one jamb, into the point, and back down the other */
-  const [bx, by] = px(r1 * 0.82, -halfWidth)
-  g.lineTo(bx, by)
-  g.quadraticCurveTo(cx + ca * r1 * 0.98 - sa * 0, cy + sa * r1 * 0.98,
-                     ...px(r1, 0))
-  const [dx, dy] = px(r1 * 0.82, halfWidth)
-  g.quadraticCurveTo(cx + ca * r1 * 0.98, cy + sa * r1 * 0.98, dx, dy)
-  const [ex, ey] = px(r0, halfWidth)
-  g.lineTo(ex, ey)
-  /* a cusped foot, so it is masonry rather than a slot */
-  g.quadraticCurveTo(cx + ca * r0 * 0.88, cy + sa * r0 * 0.88, ax, ay)
-  g.closePath(); g.fill()
-}
-
-/** A plain round piercing. */
-function eye(g, cx, cy, r) {
-  g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.fill()
-}
-
-/* ---------- the two faces, as voids ---------- */
-
-/**
- * The Sun: everything points outward.
- *
- * A ring of eight lancets driving out from the hub, eight quatrefoils riding the
- * outer band between them, and a course of small eyes close in. Kept to eight and
- * eight because the wheel draws under 200px on the Plate — sixteen of anything
- * turns to mush at that size.
- */
-/**
- * A petal — the shape a rose window is actually made of.
- *
- * Not a lancet and not a lobe: a pointed arch whose flanks are *cusped*, so the
- * void has little points biting into it where the stone tips inward. That cusping
- * is the whole difference between tracery and a slot, and it is what every window
- * in Fernando's reference has.
- *
- * Drawn as a closed path from the hub outward, up one cusped flank, over the head,
- * and back down the other.
- */
-function petal(g, cx, cy, a, r0, r1, halfW, cusps = 2) {
-  const P = (r, o) => [cx + Math.cos(a + o) * r, cy + Math.sin(a + o) * r]
-  g.beginPath()
-  g.moveTo(...P(r0, 0))
-  /* out along one flank, biting a cusp at each step */
-  for (let i = 1; i <= cusps; i++) {
-    const t = i / (cusps + 1)
-    const r = r0 + (r1 - r0) * t
-    g.quadraticCurveTo(...P(r - (r1 - r0) * .08, -halfW * .55 * t), ...P(r, -halfW * t))
-  }
-  /* the head */
-  g.quadraticCurveTo(...P(r1 * .99, -halfW * .78), ...P(r1, 0))
-  g.quadraticCurveTo(...P(r1 * .99, halfW * .78), ...P(r1 - (r1 - r0) / (cusps + 1) * 0, halfW))
-  /* and back down the other */
-  for (let i = cusps; i >= 1; i--) {
-    const t = i / (cusps + 1)
-    const r = r0 + (r1 - r0) * t
-    g.quadraticCurveTo(...P(r - (r1 - r0) * .08, halfW * .55 * t), ...P(r, halfW * t * (i === 1 ? .4 : 1)))
-  }
-  g.closePath()
-  g.fill()
-}
-
-/**
- * A symmetric cusped leaf — the shape the rose is actually built from.
- *
- * `petal()` above is kept because the Moon still wants it, but it cannot draw
- * this: its flanks are offset by a fraction of the half-width that grows with
- * radius, which shears the shape. As a *void* that sheared into something that
- * read as tracery. As a **bar** — which is what the stone is now — eight of them
- * around a hub read as a turbine, because every blade leans the same way.
- *
- * So this one is mirrored about its own axis by construction. The width follows a
- * sine so it is nothing at the base, widest around a third of the way out and
- * nothing again at the tip, and `cusps` bites small notches into each flank, which
- * is the detail that separates tracery from a petal shape cut out of paper.
- *
- * Drawn as a polyline. At 1024px a 24-segment flank is smoother than the curve
- * primitives were, and it is the only way to keep both sides provably identical.
- */
-function leaf(g, cx, cy, a, r0, r1, halfW, cusps = 2) {
-  const P = (r, o) => [cx + Math.cos(a + o) * r, cy + Math.sin(a + o) * r]
-  const span = r1 - r0
-  const N = 24
-  /* half-width at t, with the cusp notches bitten out of the flank */
-  /* `min(t, .9)` is what blunts the head. Run the sine all the way to t=1 and the
-     width goes to zero, which gives a needle; holding it at .9 leaves the tip a
-     fifth of the petal's width and the closing segment reads as a cusped head. */
-  const w = t => halfW * Math.sin(Math.PI * Math.pow(Math.min(t, 0.9), 0.72)) *
-    (1 - 0.20 * Math.pow(Math.sin(Math.PI * t * cusps), 2))
-  g.beginPath()
-  g.moveTo(...P(r0, 0))
-  for (let i = 1; i <= N; i++) g.lineTo(...P(r0 + span * (i / N), w(i / N)))
-  for (let i = N; i >= 1; i--) g.lineTo(...P(r0 + span * (i / N), -w(i / N)))
-  g.closePath(); g.fill()
-}
-
-/**
- * The Sun, as stone: a rose window, everything driving outward from one roundel.
- *
- * Eight petals, not sixteen. The Deck draws under 200px on the Plate and the
- * handoff records the last attempt as "too fine at ~190px" — a rose window that
- * reads at that size has to be built from a few large voids, the way the top-left
- * window in the reference is, not from a lot of small ones.
- *
- * A central eye, eight cusped petals off it, and a course of small eyes riding the
- * spandrels between their heads.
- */
-function sunBars(g) {
-  /**
-   * Eight broad petals and eight narrow lances between them.
-   *
-   * Both numbers come off the reference, and the alternation is the point: the
-   * broad petals carry the shape and the lances fill the spandrels, so the stone
-   * meets itself all the way round and the glass is left as thin wedges rather
-   * than as open ground. Petals of one width, spaced apart, read as a daisy; a
-   * rose window is stone that has been *pierced*, and it has to look as if it
-   * barely got away with it.
-   *
-   * The lances reach further out than the petals — to the field edge, where the
-   * petals stop short of it — which is what gives the rim its scalloped course
-   * instead of a flat ring of heads.
-   */
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * 6.2832 - Math.PI / 2
-    leaf(g, C, C, a, R * 0.24, R * 0.92, 0.235, 2)
-  }
-  for (let i = 0; i < 8; i++) {
-    const a = ((i + 0.5) / 8) * 6.2832 - Math.PI / 2
-    leaf(g, C, C, a, R * 0.20, R * 0.96, 0.075, 1)
-  }
-}
-
-/**
- * The Moon: a triskelion, which is the one place the two wheels stop rhyming.
- *
- * The Sun is a rose window and the Moon used to be a smaller rose window with six
- * lobes instead of eight — the same mason, plainly, but also the same *drawing*,
- * and at 190px on the Plate the pair read as one wheel duplicated. Fernando's
- * reference resolves it by giving the Moon a different figure entirely: three
- * interlocking crescents around a node, no radial symmetry at all.
- *
- * It is drawn as **bands, not as a field with holes in it**. Taking three discs
- * out of a solid disc gives the right silhouette and the wrong material: the wheel
- * comes out as a pale clover, where the reference is dark with bone linework laid
- * over it. Three heavy hoops and an outer course leave the glass as the ground and
- * the stone as the drawing, which is the way round the Sun already works.
- */
-function moonBars(g) {
-  const TAU = 6.2832
-  g.strokeStyle = g.fillStyle
-  const hoop = (cx, cy, r, w) => {
-    g.lineWidth = R * w
-    g.beginPath(); g.arc(cx, cy, R * r, 0, TAU); g.stroke()
-  }
-  /* the outer course */
-  hoop(C, C, 0.905, 0.055)
-  /**
-   * Three hoops, and they must overlap.
-   *
-   * Adjacent centres are `0.44 * sqrt(3)` = 0.762 apart, so a radius under 0.381
-   * leaves them separate and the figure falls apart into three rings sitting near
-   * each other. At 0.40 they cut through one another, and the crossings are the
-   * whole reason a triskelion reads as *interlocking* rather than as a clover.
-   */
-  for (let i = 0; i < 3; i++) {
-    const a = (i / 3) * TAU - Math.PI / 2
-    hoop(C + Math.cos(a) * R * 0.44, C + Math.sin(a) * R * 0.44, 0.40, 0.07)
-  }
-  /* the node the three arms meet at, under the bead */
-  g.beginPath(); g.arc(C, C, R * 0.17, 0, TAU); g.fill()
-}
-
-/* ---------- the furniture around the field ---------- */
-
-/** A ring line, struck at a fraction of R. */
-function ring(g, k, w, style) {
-  g.strokeStyle = style; g.lineWidth = R * w
-  g.beginPath(); g.arc(C, C, R * k, 0, 6.2832); g.stroke()
-}
-
-/**
- * The milled edge — a coin's reeding, not a moulding.
- *
- * This is the single detail that does most of the work in the reference, and it is
- * the cheapest thing here: a hundred and forty radial teeth around the rim. It
- * reads as *machined* rather than drawn, and it is the only part of the wheel that
- * says the thing is meant to be gripped and turned.
- */
-function reeding(g, lo, hi, teeth = 184) {
-  g.fillStyle = lo
-  g.beginPath()
-  g.arc(C, C, R * REED[1], 0, 6.2832)
-  g.arc(C, C, R * REED[0], 6.2832, 0, true)
-  g.fill()
-  g.fillStyle = hi
-  for (let i = 0; i < teeth; i++) {
-    const a0 = (i / teeth) * 6.2832, a1 = a0 + (0.52 / teeth) * 6.2832
-    g.beginPath()
-    g.arc(C, C, R * REED[1], a0, a1)
-    g.arc(C, C, R * REED[0], a1, a0, true)
-    g.closePath(); g.fill()
-  }
-}
-
-/** A four-pointed star with concave flanks — the Sun's marker on the band. */
-function star4(g, cx, cy, r, rot = 0) {
-  const P = (a, rr) => [cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]
-  g.beginPath()
-  g.moveTo(...P(rot, r))
-  for (let i = 0; i < 4; i++) {
-    const a = rot + i * Math.PI / 2
-    g.quadraticCurveTo(...P(a + Math.PI / 4, r * 0.20), ...P(a + Math.PI / 2, r))
-  }
-  g.closePath(); g.fill()
-}
-
-/**
- * One moon phase, as a disc that is part bone and part shadow.
- *
- * `p` runs 0 (new) → 0.5 (full) → 1 (new). The lit side is a half-disc with an
- * ellipse either added or removed at the terminator: at the quarters the ellipse
- * has no width and the disc is exactly half; past them it widens and its fill
- * flips, which is what turns a crescent into a gibbous without a second path.
- */
-function phaseDisc(g, cx, cy, r, p, bone, dark) {
-  g.save()
-  g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.clip()
-  g.fillStyle = bone; g.fillRect(cx - r, cy - r, r * 2, r * 2)
-  const k = Math.cos(p * 6.2832)          // +1 new, -1 full, 0 at the quarters
-  g.fillStyle = dark
-  g.beginPath()
-  /* the unlit half: left while waxing, right while waning */
-  if (p < 0.5) g.rect(cx - r, cy - r, r, r * 2)
-  else g.rect(cx, cy - r, r, r * 2)
-  g.fill()
-  g.beginPath()
-  g.ellipse(cx, cy, r * Math.abs(k), r, 0, 0, 6.2832)
-  g.fillStyle = k > 0 ? dark : bone
-  g.fill()
-  g.restore()
-}
-
-/**
- * Everything outside the tracery, struck onto one map.
- *
- * Same shape as the old `moulding`: the caller supplies the inks, so colour and
- * relief are drawn by the *same* code and a bead can never sit on one and not the
- * other. `dots` is optional — only the emissive map wants the amber course lit.
- */
-function furniture(g, kind, P) {
-  reeding(g, P.reedLo, P.reedHi)
-  /* the band's dark ground */
-  if (P.band) {
-    g.fillStyle = P.band
-    g.beginPath()
-    g.arc(C, C, R * BAND[1], 0, 6.2832)
-    g.arc(C, C, R * BAND[0], 6.2832, 0, true)
-    g.fill()
-  }
-  /* the lines that separate the three jobs */
-  if (P.line) {
-    ring(g, REED[0], 0.008, P.line)
-    ring(g, BAND[1], 0.010, P.line)
-    ring(g, BAND[0], 0.010, P.line)
-    ring(g, FIELD + 0.022, 0.007, P.line)
-  }
-  /* the fine dotted course, just inside the band */
-  if (P.dot) {
-    g.fillStyle = P.dot
-    for (let i = 0; i < 60; i++) {
-      const a = (i / 60) * 6.2832
-      g.beginPath()
-      g.arc(C + Math.cos(a) * R * 0.673, C + Math.sin(a) * R * 0.673, R * 0.0085, 0, 6.2832)
-      g.fill()
-    }
-  }
-  /* the medallions: the Sun counts in stars, the Moon counts in phases */
-  const rb = R * (BAND[0] + BAND[1]) / 2
-  if (P.medal) {
-    if (kind === 'sun') {
-      g.fillStyle = P.medal
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * 6.2832 - Math.PI / 2
-        star4(g, C + Math.cos(a) * rb, C + Math.sin(a) * rb, R * 0.052, a)
-      }
-    } else {
-      for (let i = 0; i < 12; i++) {
-        const a = (i / 12) * 6.2832 - Math.PI / 2
-        phaseDisc(g, C + Math.cos(a) * rb, C + Math.sin(a) * rb, R * 0.044,
-          i / 12, P.medal, P.medalDark || P.band || '#000')
-      }
-    }
-  }
-}
-
-/**
- * The boss at the hub — amber cabochon on the Sun, obsidian bead on the Moon.
- *
- * Both wheels end in a domed stone in the reference, and they are deliberately
- * opposite: the Sun's is lit from inside and the Moon's only catches the room. It
- * is the smallest element on the wheel and the one that makes it read as an object
- * rather than a pattern, because it is the only part with a specular highlight.
- */
-function boss(g, kind, P) {
-  const r = R * 0.115
-  if (P.socket) {
-    g.fillStyle = P.socket
-    g.beginPath(); g.arc(C, C, r * 1.42, 0, 6.2832); g.fill()
-  }
-  if (P.ringInk) ring(g, 0.152, 0.014, P.ringInk)
-  if (!P.stone) return
-  const grd = g.createRadialGradient(C - r * 0.34, C - r * 0.38, r * 0.06, C, C, r)
-  grd.addColorStop(0, P.stone[0])
-  grd.addColorStop(0.55, P.stone[1])
-  grd.addColorStop(1, P.stone[2])
-  g.fillStyle = grd
-  g.beginPath(); g.arc(C, C, r, 0, 6.2832); g.fill()
-  if (P.spec) {
-    g.fillStyle = P.spec
-    g.beginPath()
-    g.ellipse(C - r * 0.34, C - r * 0.40, r * 0.30, r * 0.20, -0.7, 0, 6.2832)
-    g.fill()
-  }
-}
-
-/* ---------- maps ---------- */
-
-/** White where the plate is pierced, transparent where it is stone. */
-function voidMask(kind) {
-  const c = document.createElement('canvas'); c.width = c.height = SIZE
-  const g = c.getContext('2d')
-  g.fillStyle = '#fff'
-  /**
-   * Both wheels are cut whole.
-   *
-   * The Moon used to have its phase clipped out of the stone — the piercings laid
-   * across the disc and then a terminator applied, so the dark limb was unpierced.
-   * It is a lovely idea and it does not survive contact with a 190px wheel: the
-   * clip lands mid-petal and leaves fragments, and a rose window in fragments reads
-   * as damage, not as a phase.
-   *
-   * The phase is carried by the **light** instead, which the object already had a
-   * mechanism for: `deckGlow(vigil)` decides how hard each wheel's piercings burn,
-   * the Sun's holding while the room is lit and the Moon's taking over as it goes.
-   * Same idea — the phase is where the light gets through — expressed in the one
-   * channel that can hold it at this size.
-   */
-  /**
-   * The polarity, which was backwards.
-   *
-   * `sunBars` and `moonBars` draw the rose as a set of *shapes*, and the old code
-   * took those shapes to be the holes — so the wheel came out as a pale disc with
-   * petal-shaped bites out of it. The reference is the other way round and it is
-   * the way a rose window actually works: the petals are the **stone**, and the
-   * light comes through everything around them.
-   *
-   * So the mask is the field with the tracery knocked out of it. Nothing else in
-   * the file changes: the bars are still stone, the voids still burn, and the three
-   * maps still come off one drawing.
-   */
-  const bars = document.createElement('canvas'); bars.width = bars.height = SIZE
-  const bg = bars.getContext('2d')
-  bg.fillStyle = '#fff'
-  bg.save()
-  bg.translate(C, C); bg.scale(FIT, FIT); bg.translate(-C, -C)
-  if (kind === 'sun') sunBars(bg)
-  else moonBars(bg)
-  bg.restore()
-
-  g.beginPath(); g.arc(C, C, R * FIELD, 0, 6.2832); g.fill()
-  g.globalCompositeOperation = 'destination-out'
-  g.drawImage(bars, 0, 0)
-  /* the hub is stone too — it is where the boss is seated */
-  g.beginPath(); g.arc(C, C, R * 0.163, 0, 6.2832); g.fill()
-  g.globalCompositeOperation = 'source-over'
+const canvas = () => {
+  const c = document.createElement('canvas')
+  c.width = c.height = SIZE
   return c
+}
+
+const tex = (c, srgb) => {
+  const t = new THREE.CanvasTexture(c)
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace
+  t.anisotropy = 8
+  return t
+}
+
+/**
+ * How far each wheel's inner figure sits from its own rim, in pixels of the 512 map.
+ *
+ * **Both zero, and measured to be.** The first pair of wheels were cropped out of
+ * `cross and jogs.png`, a wide plate illustration, and the Moon's triskele sat 5px
+ * — 2% of the radius — above the centre its own rim wanted. The two were not
+ * concentric in the drawing, so no crop could satisfy both, and this existed to
+ * slide the inner content back.
+ *
+ * `moonjog.png` and `sunjog.png` (2026-08-28) are rendered square, flat on, one
+ * wheel each, and they do not have the problem: fitting the rim band and the inner
+ * figure separately puts them **1px apart on the Moon and 4px on the Sun**, out of
+ * a 590px radius. The Sun's 4px is a third of a pixel at render size, and
+ * correcting it would cost more in resampling softness than it buys.
+ *
+ * Kept rather than deleted, because it is the fix if a future wheel needs it and
+ * because the numbers above are the reason it is currently doing nothing.
+ */
+const RECENTRE = { moon: [0, 0], sun: [0, 0] }
+
+/**
+ * Slide the inner figure onto the rim's centre, fading to nothing by the rim.
+ *
+ * A flat translation would fix the middle and break the edge — the rim is already
+ * right, and moving it would trade a 5px error in a small figure for a 5px error in
+ * the one ring that has to be perfect. So the shift decays with radius and is zero
+ * from `HOLD` outward, which leaves the reeding and the medallion band exactly where
+ * they were fitted and moves only what is wrong.
+ *
+ * Smoothstep rather than linear: a linear falloff has a corner in its derivative,
+ * and a corner in a displacement field is a visible crease running round the wheel.
+ */
+const HOLD = 0.72
+function recentre(ctx, [dx, dy]) {
+  if (!dx && !dy) return
+  const src = ctx.getImageData(0, 0, SIZE, SIZE)
+  const out = ctx.createImageData(SIZE, SIZE)
+  const C = SIZE / 2
+  const at = (x, y, i) => {
+    const xi = Math.min(SIZE - 1, Math.max(0, x | 0)), yi = Math.min(SIZE - 1, Math.max(0, y | 0))
+    return src.data[(yi * SIZE + xi) * 4 + i]
+  }
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const r = Math.hypot(x - C, y - C) / C
+      const t = Math.min(1, r / HOLD)
+      const k = 1 - t * t * (3 - 2 * t)          // 1 at the hub, 0 from HOLD out
+      const sx = x - dx * k, sy = y - dy * k
+      const o = (y * SIZE + x) * 4
+      for (let i = 0; i < 4; i++) out.data[o + i] = at(sx, sy, i)
+    }
+  }
+  ctx.putImageData(out, 0, 0)
+}
+
+/**
+ * Divide the picture's own lighting back out of it.
+ *
+ * **This is what was making the wheels wobble**, and it is not the crop — the crops
+ * are centred to the pixel and their rims are round to about two. The reference is a
+ * *rendered* illustration: it has a key light from the upper left, a highlight along
+ * that side of the reeding and a cast shadow down the other. Painted into a texture
+ * on a platter, that lighting **turns with the platter**. The light source sweeps
+ * around the wheel once per revolution, and an object whose highlight orbits it does
+ * not read as spinning — it reads as tilting. Fernando, twice: *"the jog designs are
+ * still wobbly."*
+ *
+ * A photograph of a lit thing cannot be spun. So the smooth part of the brightness —
+ * the illumination field — is estimated with a wide blur and divided out, which is
+ * the flat-field correction a telescope does to its own optics. What survives is the
+ * ornament at roughly even brightness; where the light falls is then decided by the
+ * room, through the bump map, which is where it should have been decided all along.
+ *
+ * `STRENGTH` at 1 removes the gradient completely and looks like a scan. A little
+ * short of that keeps some of the modelling the illustration was drawn with, which
+ * still turns, but by then it is far below the level the eye tracks as a direction.
+ *
+ * Three box passes approximate a Gaussian closely enough and stay O(n) per pass,
+ * which matters because the radius is large — a *narrow* blur would follow the
+ * ornament and divide the ornament out along with the light.
+ */
+/**
+ * Back on, and **faded out before the reeding**.
+ *
+ * The correction divides the picture's own baked lighting back out, because a
+ * texture on a platter turns and its painted highlight turns with it — a light
+ * source that orbits the wheel once per revolution reads as the wheel *wobbling*,
+ * not spinning. That was diagnosed on the first pair of wheels and fixed.
+ *
+ * It was then switched off for the new art on a measurement that was real and
+ * answered the wrong question. Correcting the whole image made the **outermost**
+ * ring more lopsided — 0.257 → 0.414 on the Moon — so it looked like a net loss. But
+ * that ring is the reeding: two hundred identical teeth, where a first harmonic is
+ * mostly aliasing and where nothing is legible enough to read as wobble anyway. On
+ * the rings the eye actually tracks, the same pass was a clear win — 0.357 → 0.245
+ * on the Moon at 0.72, 0.627 → 0.526 on the Sun.
+ *
+ * So it applies where it helps and stops where it hurt: full strength through the
+ * ornament, faded to nothing across `FADE`, and the reeding untouched. Optimising a
+ * single number over the whole image is what hid this — the wheel is not one
+ * surface, and the ring that measures loudest is not the ring anyone looks at.
+ */
+const STRENGTH = 0.75
+/** Where the correction begins to fade, and where it has stopped. */
+const FADE = [0.84, 0.96]
+const BLUR_R = 56
+
+function flatten(d) {
+  const n = SIZE * SIZE
+  /* nothing to do, and a full-image blur is not free — skip it outright */
+  if (STRENGTH === 0) return new Float32Array(n).fill(1)
+
+  const f = new Float32Array(n)
+  /**
+   * Outside the wheel, the disc is **extended radially** — each corner pixel takes
+   * the value of the rim pixel at its own angle.
+   *
+   * The crop is square and the wheel is its inscribed circle, so a quarter of the
+   * image is the dark Plate around it, and blurring across that drags the
+   * illumination field toward black exactly where the reeding is. The reeding is
+   * the one band that is perfectly symmetric, so it is where a rotating highlight
+   * shows worst. Two earlier attempts both failed there and for opposite reasons:
+   * leaving the corners alone made the rim's lopsidedness *worse* than uncorrected,
+   * and filling them with a flat average made it **uncorrectable** — a constant
+   * fill dominates a 72px blur that close to the edge, the field flattens to that
+   * constant, and the gain comes out at 1.
+   *
+   * Clamping outward in polar keeps the real angular variation right up to the rim
+   * and past it, which is what the blur there needs to see.
+   */
+  const C = SIZE / 2, RIM = C - 2, R2 = RIM * RIM
+  const raw = new Float32Array(n)
+  let sum = 0, cnt = 0
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const i = y * SIZE + x
+      const l = (d[i * 4] * 299 + d[i * 4 + 1] * 587 + d[i * 4 + 2] * 114) / 1000
+      raw[i] = l
+      const dx = x - C, dy = y - C
+      if (dx * dx + dy * dy <= R2) { sum += l; cnt++ }
+    }
+  }
+  const discMean = sum / cnt
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const i = y * SIZE + x
+      const dx = x - C, dy = y - C
+      const d2 = dx * dx + dy * dy
+      if (d2 <= R2) { f[i] = raw[i]; continue }
+      const k = RIM / Math.sqrt(d2)
+      const sx = Math.round(C + dx * k), sy = Math.round(C + dy * k)
+      f[i] = raw[Math.min(SIZE - 1, Math.max(0, sy)) * SIZE + Math.min(SIZE - 1, Math.max(0, sx))]
+    }
+  }
+  const tmp = new Float32Array(n)
+  const boxH = (src, dst) => {
+    for (let y = 0; y < SIZE; y++) {
+      const o = y * SIZE
+      let acc = 0
+      for (let x = -BLUR_R; x <= BLUR_R; x++) acc += src[o + Math.min(SIZE - 1, Math.max(0, x))]
+      const w = BLUR_R * 2 + 1
+      for (let x = 0; x < SIZE; x++) {
+        dst[o + x] = acc / w
+        acc -= src[o + Math.min(SIZE - 1, Math.max(0, x - BLUR_R))]
+        acc += src[o + Math.min(SIZE - 1, Math.max(0, x + BLUR_R + 1))]
+      }
+    }
+  }
+  const transpose = (src, dst) => {
+    for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) dst[x * SIZE + y] = src[y * SIZE + x]
+  }
+  for (let pass = 0; pass < 3; pass++) {
+    boxH(f, tmp); transpose(tmp, f)
+    boxH(f, tmp); transpose(tmp, f)
+  }
+  /* the gain that takes each pixel back to the picture's own average brightness */
+  const gain = new Float32Array(n)
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const i = y * SIZE + x
+      const r = Math.hypot(x - C, y - C) / C
+      /* smoothstep from full correction to none, so the reeding keeps its own
+         contrast and there is no ring where the treatment stops */
+      const t = Math.min(1, Math.max(0, (r - FADE[0]) / (FADE[1] - FADE[0])))
+      const w = STRENGTH * (1 - t * t * (3 - 2 * t))
+      const k = discMean / Math.max(8, f[i])
+      /* clamped: an unbounded gain turns the darkest corner of the ornament into
+         noise, and noise that rotates is the very thing being removed */
+      gain[i] = Math.min(2.6, Math.max(0.42, 1 + (k - 1) * w))
+    }
+  }
+  return gain
 }
 
 /**
  * Colour, relief and emission for one Deck.
  *
- * `emissive` is the mask blurred a little: light spilling past the edge of a hole
- * is what makes it read as light coming *through* rather than as a hole painted a
- * bright colour.
- *
- * The palette moved to the reference and the change is mostly one decision: **both
- * wheels are bone.** The Moon used to be cool grey (`#BFC2C8`) on the reasoning
- * that a moon is cold, and next to the Sun it read as a different material — two
- * wheels from two machines. In the reference they are cut from the same stone and
- * the Moon is told apart by having *no light behind it*, not by being blue. Bone
- * for both; the Sun burns amber through its glass and the Moon stays dark.
- *
- * That also frees the void colour to do real work. The Sun's holes are deep amber
- * rather than near-black, so they read as lit glass even at low Vigil instead of
- * only existing once the emissive comes up.
+ * Returns the three textures **immediately**, backed by empty canvases, and fills
+ * them when the image arrives. `deckMaps` is called while the module is still
+ * evaluating and the whole scene is built around whatever it hands back, so it
+ * cannot wait; and a texture whose canvas changes later is exactly what
+ * `needsUpdate` is for. Until the image lands the wheels are black, which is a
+ * frame or two in practice and is also what they look like once the Vigil has put
+ * them out.
  */
+/**
+ * Turn the height field into a real tangent-space normal map.
+ *
+ * `bumpMap` was doing this job and doing it softly: three derives a perturbation
+ * per-pixel from screen-space derivatives of the height texture, which is cheap,
+ * resolution-dependent, and gets vaguer the further away the surface is — so the
+ * carving flattened out at exactly the distance the wheel is normally seen from.
+ * A normal map is computed once, at texture resolution, and holds its detail.
+ *
+ * The height is blurred by one pixel before differencing. Without it, the source
+ * being a *photograph* means every bit of sensor grain becomes a facet, and the
+ * wheel comes out looking hammered rather than carved — the same failure as driving
+ * `bumpScale` too hard, arriving by a different road.
+ *
+ * `strength` halved to 1.7 on Fernando's *"two much bevel and depth"*. The
+ * temptation with a normal map is to set it by whether the relief is *visible*,
+ * which lands far too high: these wheels are photographs of carved stone and the
+ * carving is **already in the albedo**. The normal map's job is only to make that
+ * carving answer to the room's light as the platter turns — not to restate depth
+ * the picture has already drawn. Doubling up reads as wax.
+ */
+function normalFrom(h, strength) {
+  const n = SIZE * SIZE
+  const blur = new Float32Array(n)
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      let s = 0
+      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+        const xx = Math.min(SIZE - 1, Math.max(0, x + i)), yy = Math.min(SIZE - 1, Math.max(0, y + j))
+        s += h[yy * SIZE + xx]
+      }
+      blur[y * SIZE + x] = s / 9
+    }
+  }
+  const out = new ImageData(SIZE, SIZE)
+  const at = (x, y) => blur[Math.min(SIZE - 1, Math.max(0, y)) * SIZE + Math.min(SIZE - 1, Math.max(0, x))]
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      /* Sobel, so the slope comes from a 3x3 neighbourhood rather than two pixels —
+         less noise, and a wider, softer wall on each cut, which is what a bevel is */
+      const gx = (at(x+1,y-1) + 2*at(x+1,y) + at(x+1,y+1)) - (at(x-1,y-1) + 2*at(x-1,y) + at(x-1,y+1))
+      const gy = (at(x-1,y+1) + 2*at(x,y+1) + at(x+1,y+1)) - (at(x-1,y-1) + 2*at(x,y-1) + at(x+1,y-1))
+      const nx = -gx / 255 * strength, ny = -gy / 255 * strength
+      const len = Math.hypot(nx, ny, 1)
+      const o = (y * SIZE + x) * 4
+      out.data[o]     = (nx / len * .5 + .5) * 255
+      out.data[o + 1] = (ny / len * .5 + .5) * 255
+      out.data[o + 2] = (1 / len * .5 + .5) * 255
+      out.data[o + 3] = 255
+    }
+  }
+  return out
+}
+
 export function deckMaps(kind) {
-  const mask = voidMask(kind)
-  const sun = kind === 'sun'
-  const stone = '#D6C6AA'
+  const A = canvas(), H = canvas(), E = canvas(), N = canvas()
+  const albedo = tex(A, true), height = tex(H, false), emissive = tex(E, true)
+  const normal = tex(N, false)
 
-  /* ---- albedo ---- */
-  const A = document.createElement('canvas'); A.width = A.height = SIZE
-  const a = A.getContext('2d')
-  /* the ground the whole wheel sits on — dark bronze, so the bands read as
-     annuli cut into a black disc rather than as rings drawn on a pale one */
-  a.fillStyle = '#171310'; a.fillRect(0, 0, SIZE, SIZE)
-  a.fillStyle = stone
-  a.beginPath(); a.arc(C, C, R * (FIELD + 0.02), 0, 6.2832); a.fill()
-  /* a shadow cast into each hole before the hole itself, so the bars have depth */
-  a.save()
-  a.filter = 'blur(9px)'
-  a.globalAlpha = 0.85
-  a.drawImage(mask, R * 0.018, R * 0.024)
-  a.globalCompositeOperation = 'source-atop'
-  a.restore()
-  a.save()
-  a.globalCompositeOperation = 'source-over'
-  a.filter = 'blur(10px)'
-  a.globalAlpha = 0.55
-  a.fillStyle = '#000'
-  a.drawImage(mask, R * 0.02, R * 0.026)
-  a.restore()
-  /* the voids themselves — amber glass on the Sun, a cold hole on the Moon */
-  a.save()
-  a.globalCompositeOperation = 'source-over'
-  const dark = document.createElement('canvas'); dark.width = dark.height = SIZE
-  const dg = dark.getContext('2d')
-  dg.drawImage(mask, 0, 0)
-  dg.globalCompositeOperation = 'source-in'
-  if (sun) {
-    /* hotter toward the hub, the way backlit glass actually falls off */
-    const gl = dg.createRadialGradient(C, C, R * 0.05, C, C, R * FIELD)
-    gl.addColorStop(0, '#8A4A0C'); gl.addColorStop(0.55, '#5E2F08'); gl.addColorStop(1, '#331803')
-    dg.fillStyle = gl
-  } else dg.fillStyle = '#0A0B10'
-  dg.fillRect(0, 0, SIZE, SIZE)
-  a.drawImage(dark, 0, 0)
-  a.restore()
-  furniture(a, kind, {
-    reedLo: '#0D0B09', reedHi: '#3A2E20',
-    band: '#141110', line: 'rgba(196,166,116,.55)',
-    dot: sun ? 'rgba(214,138,44,.75)' : 'rgba(190,172,140,.5)',
-    medal: '#CDBB9C', medalDark: '#15120F',
-  })
-  boss(a, kind, {
-    socket: '#0E0B09', ringInk: 'rgba(196,166,116,.5)',
-    stone: sun ? ['#FFB74A', '#B45C10', '#3A1A04'] : ['#4A4A50', '#17171C', '#050508'],
-    spec: 'rgba(255,244,224,.55)',
-  })
+  const img = new Image()
+  img.onload = () => {
+    const a = A.getContext('2d')
+    a.drawImage(img, 0, 0, SIZE, SIZE)
+    recentre(a, RECENTRE[kind])
+    const src = a.getImageData(0, 0, SIZE, SIZE)
+    const d = src.data
+    const field = flatten(d)
 
-  /* ---- relief: stone high, voids cut away ---- */
-  const H = document.createElement('canvas'); H.width = H.height = SIZE
-  const h = H.getContext('2d')
-  h.fillStyle = '#6E6E6E'; h.fillRect(0, 0, SIZE, SIZE)
-  h.fillStyle = '#b4b4b4'
-  h.beginPath(); h.arc(C, C, R * (FIELD + 0.02), 0, 6.2832); h.fill()
-  const cut = document.createElement('canvas'); cut.width = cut.height = SIZE
-  const cg = cut.getContext('2d')
-  cg.drawImage(mask, 0, 0)
-  cg.globalCompositeOperation = 'source-in'
-  cg.fillStyle = '#0a0a0a'; cg.fillRect(0, 0, SIZE, SIZE)
-  h.drawImage(cut, 0, 0)
-  /* the same furniture, in height: teeth stand, the band sinks, medallions stand */
-  furniture(h, kind, {
-    reedLo: '#585858', reedHi: '#C6C6C6',
-    band: '#4E4E4E', line: '#E4E4E4',
-    dot: '#D0D0D0', medal: '#F4F4F4', medalDark: '#3A3A3A',
-  })
-  boss(h, kind, { socket: '#2E2E2E', ringInk: '#DADADA', stone: ['#FFFFFF', '#D8D8D8', '#8C8C8C'] })
+    const hd = new ImageData(SIZE, SIZE)
+    const ed = new ImageData(SIZE, SIZE)
+    for (let i = 0; i < d.length; i += 4) {
+      /* flat-fielded: the picture's own baked light divided back out */
+      const k0 = field[i >> 2]
+      const r = Math.min(255, d[i] * k0)
+      const g = Math.min(255, d[i + 1] * k0)
+      const b = Math.min(255, d[i + 2] * k0)
+      d[i] = r; d[i + 1] = g; d[i + 2] = b
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b)
 
-  /* ---- emission: the holes, the amber course, and the Sun's own stone ---- */
-  const E = document.createElement('canvas'); E.width = E.height = SIZE
-  const e = E.getContext('2d')
-  e.fillStyle = '#000'; e.fillRect(0, 0, SIZE, SIZE)
-  e.save(); e.filter = 'blur(7px)'; e.globalAlpha = 0.5
-  e.drawImage(mask, 0, 0); e.restore()
-  e.drawImage(mask, 0, 0)
-  /* only the Sun's furniture is lit — the Moon's band is stone that catches the
-     room, which is the whole difference between the two wheels */
-  if (sun) {
-    furniture(e, kind, { reedLo: '#000', reedHi: '#000', band: '#000', dot: '#C87A18' })
-    boss(e, kind, { socket: '#000', stone: ['#FFC96A', '#C2660F', '#4A2205'] })
-  } else {
-    boss(e, kind, { socket: '#000', stone: ['#000', '#000', '#000'] })
+      const lum = (r * 299 + g * 587 + b * 114) / 1000
+      /* relief: luminance straight through */
+      hd.data[i] = hd.data[i + 1] = hd.data[i + 2] = lum
+      hd.data[i + 3] = 255
+
+      /**
+       * Emission, and the two wheels do not derive it the same way, because they
+       * are not lit by the same thing.
+       *
+       * **Sun — saturation gates it, value scales it.** Its glass is deeply
+       * saturated amber and its stone is near-grey bone, so saturation separates
+       * *lit glass* from *lit stone* where brightness cannot: the palest pixel on
+       * the wheel is bone, which must not glow, and the amber behind the tracery
+       * must, even where it is darker than the bone beside it. Squaring keeps the
+       * bone out — bone carries a warm cast, being lit by the same amber, and a
+       * linear gate brought the whole wheel up as a glowing cream disc with the
+       * tracery invisible against it.
+       *
+       * **Moon — luminance, cubed.** The same gate on the Moon returns almost
+       * nothing, because nothing on it is saturated. That is *correct* for the
+       * picture and wrong for the object: `deckGlow` exists so the Moon comes up
+       * as the room goes down, and a Moon with an empty emissive map would simply
+       * have gone out with everything else. Nothing burns behind the Moon — there
+       * is no glass — so what lights is the **stone**, catching what little is
+       * left. Cubing keeps that to the highlights on the carving rather than
+       * washing the whole disc, and the material tints it cold.
+       */
+      let k
+      if (kind === 'sun') {
+        const sat = mx === 0 ? 0 : (mx - mn) / mx
+        k = sat * sat * (mx / 255)
+        ed.data[i] = r * k
+        ed.data[i + 1] = g * k
+        ed.data[i + 2] = b * k
+      } else {
+        k = Math.pow(lum / 255, 3)
+        ed.data[i] = ed.data[i + 1] = ed.data[i + 2] = 255 * k
+      }
+      ed.data[i + 3] = 255
+    }
+    a.putImageData(src, 0, 0)
+    H.getContext('2d').putImageData(hd, 0, 0)
+    E.getContext('2d').putImageData(ed, 0, 0)
+    const hf = new Float32Array(SIZE * SIZE)
+    for (let i = 0; i < hf.length; i++) hf[i] = hd.data[i * 4]
+    N.getContext('2d').putImageData(normalFrom(hf, 1.7), 0, 0)
+    albedo.needsUpdate = height.needsUpdate = emissive.needsUpdate = normal.needsUpdate = true
   }
+  img.src = url(kind)
 
-  const tex = (canvas, srgb) => {
-    const t = new THREE.CanvasTexture(canvas)
-    if (srgb) t.colorSpace = THREE.SRGBColorSpace
-    t.anisotropy = 8
-    return t
-  }
-  return { albedo: tex(A, true), height: tex(H, false), emissive: tex(E, true) }
+  return { albedo, height, emissive, normal }
 }
 
 /**
  * How hard each Deck burns at a given Vigil.
  *
  * The Sun holds while the room is lit and is out by the time the last Candle is;
- * the Moon is dark at first light and takes over as the room goes. They cross
- * near the middle of the rite, so there is a moment where both are alight and
- * neither has won.
+ * the Moon is dark at first light and takes over as the room goes. They cross near
+ * the middle of the rite, so there is a moment where both are alight and neither
+ * has won.
  */
 export function deckGlow(vigil) {
   const v = Math.max(0, Math.min(1, vigil))

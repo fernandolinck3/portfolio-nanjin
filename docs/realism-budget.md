@@ -60,6 +60,33 @@ something you have to opt into by hand, rather than the default that 161 materia
 This is the first thing the measure-every-phase rule caught, and it caught it on the very first
 phase. Keep the rule.
 
+**Phase 0.5 — the Candles, 2026-08-28. Flicker done. Flame model deferred, and measured why.**
+
+Before modelling anything, the flames were measured on screen. **They are never in frame.** They sit
+above the top edge until roughly 46 degrees of tilt, and `CAM_LIMITS` stops the visitor at 74 while
+`ORBIT` stops them at the resting 6 — so on the shipped Unit the visitor sees part of a *candlestick*
+and no flame at all. A teardrop profile, a blue base, a hot core, a wick, drips: all of it would have
+been invisible.
+
+So the whole of a candle's contribution, as shipped, is **the light it throws** — and that is where
+the work went. The old flicker was `.86 + .14 · sin · sin`: smooth, periodic, symmetric, identical on
+all three but phase-shifted, which reads as a slow pulse. A candle is mostly still and then gutters.
+It is now a slow two-sine gate, clamped at zero, which spends most of its time closed and
+occasionally opens onto a faster wobble — quiet, quiet, flutter, quiet. Measured over 60s: mean 3.30,
+range 2.20–3.60, in gutter 11–22% of the time, and the three candles differ in *shape* rather than
+only in phase.
+
+The light also **moves with the flame** now, up to 6.6mm with a 3.4-degree lean. That is the part
+that pays at the shipped framing: the Plate has a clearcoat, and a source that drifts drags its
+highlight across the lacquer where a better-shaped flame would do nothing.
+
+Floored at 0.35 so a gutter can never take a light under `dim()`'s visibility threshold. That is not
+cosmetic — light *count* is part of every program key, so a flicker that crossed it would rebuild
+every shader in the scene mid-gutter.
+
+**Whether to model the flame at all is a framing question, not a modelling one.** It is worth doing
+the moment the candles are brought into view, and worth nothing until then.
+
 **Phase 1 — bevels.** Every box in the room: credenza, records, pedals, monitor cabinets, Altar,
 drawers. Expected cost: near zero. Expected gain: the largest of anything here.
 

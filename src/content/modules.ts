@@ -1,365 +1,631 @@
 /**
- * The six Modules — the single source of the Unit's content.
+ * Os seis Módulos — a única fonte do conteúdo da Unidade.
  *
- * ADR-0002 makes the DOM canonical and the Screen a render of it, which means two
- * consumers need the same strings, which means the strings cannot live inside
- * either one. They live here: data only, no markup and no canvas calls.
+ * ADR-0002 torna o DOM canônico e a Tela uma renderização dele, o que significa que
+ * dois consumidores precisam das mesmas strings, o que significa que as strings não
+ * podem viver dentro de nenhum dos dois. Elas vivem aqui: só dados, sem marcação e
+ * sem chamadas de canvas.
  *
- * There are exactly six Modules and there is no seventh (ADR-0001). Every one
- * fits the Screen exactly, because nothing scrolls and no control browses
- * (ADR-0009) — the caps that keep that true are in `SCREEN_BUDGET` below and are
- * enforced by `modules.test.ts`, not by good intentions.
+ * São exatamente seis Módulos e não há um sétimo (ADR-0001). ECLIPSE não é um sétimo
+ * Módulo — é um estado do instrumento, e mora fora desta lista.
+ *
+ * ## Português, a partir de 2026-08-28
+ *
+ * Todo texto público é PT-BR. A consequência que importa aqui é que **os limites da
+ * Tela foram recortados de novo**: tinham sido ajustados a strings em inglês, e o
+ * português corre mais longo. A Tela não rola (ADR-0009), então o limite é real.
+ *
+ * ## Voz
+ *
+ * Sem primeira pessoa fora de CONTATO. Sem `atuo`/`atua` para apresentar
+ * competências. Nada de clientes, métricas, resultados, prêmios ou tecnologias
+ * inventados — o que não está registrado aparece como lacuna declarada, não como
+ * ausência silenciosa.
  */
 
-/** One end of the Crossfader's thesis. */
-export type Side = { heading: string; lines: string[] }
+/** Uma página de um Item, alcançada girando o SOL. `lines` vazio é uma lacuna registrada. */
+export type Section = { heading: string; lines: readonly string[] }
 
-/** A Rack row: what it is, what kind of thing it is, and when. */
-export type Row = readonly [title: string, type: string, year: string]
+/** Para onde um item leva quando é aberto — pela tela, pelo teclado ou pelo toque. */
+export type Act =
+  | { kind: 'work'; value: string }
+  | { kind: 'mail'; value: string }
+  | { kind: 'url'; value: string }
 
-type Base = {
+/** Uma coisa em que a LUA pode parar. */
+export type Item = {
+  id: string
+  label: string
+  meta?: string
+  sections: readonly Section[]
+  act?: Act
+}
+
+/**
+ * O que LYRA diz em um Módulo.
+ *
+ * Duas falas, nunca em laço: `open` ao entrar, e `idle` depois de seis segundos sem
+ * interação. A segunda é funcional e **nomeia a LUA e o SOL**, porque é a única
+ * instrução que o visitante recebe sem ter de procurar por ela.
+ */
+export type Lyra = { open: readonly string[]; idle: readonly string[] }
+
+export type Module = {
   slot: number
   id: string
   title: string
-  /** Short form printed above the Pad. The Plate has ~96px of pitch per Pad, so a
-      title like "NOW / NEXT" runs into its neighbours; this is what fits. */
-  pad?: string
+  /** Forma curta impressa acima da Tecla. ~96px de passo, daí as abreviações. */
+  pad: string
+  /** A linha que o rodapé da Tela mostra enquanto a Tecla está sob o ponteiro. */
+  hint: string
+  /** A visão geral. **Sempre na tela, nunca atrás de uma roda.** */
+  lead: readonly string[]
+  dim?: readonly string[]
+  /** O que uma marca da LUA percorre, para o rodapé: `LUA · PROJETO 02/03`. */
+  unit?: string
+  items?: readonly Item[]
+  lyra: Lyra
 }
 
-export type Module =
-  | (Base & {
-      kind: 'prose'
-      lines: string[]
-      dim?: string[]
-      mail?: string
-      /** Where else to find him. `url` absent means show the handle, do not link it. */
-      links?: readonly { label: string; handle: string; url?: string }[]
-    })
-  | (Base & { kind: 'thesis'; a: Side; b: Side })
-  | (Base & { kind: 'table'; head: readonly [string, string, string]; rows: readonly Row[] })
-  | (Base & { kind: 'steps'; steps: string[] })
-
 /**
- * What fits on the Screen. The texture is 1024 x 576 and draws around a third of
- * that on the Plate, so these are hard limits — over them a Module either
- * overflows the Screen or goes illegible at render size.
+ * O que cabe na Tela. A textura tem 1024 x 576 e desenha cerca de um terço disso na
+ * Placa, então estes são limites duros.
+ *
+ * Recortados para o português: `lineChars` subiu de 52 para 58 e `labelChars` de 30
+ * para 34. Não por generosidade — a mesma frase em português é mais longa, e
+ * apertá-la produziria uma tradução pior, não uma tela melhor.
  */
 export const SCREEN_BUDGET = {
-  prose: { lines: 4, lineChars: 52, dim: 2, dimChars: 58 },
-  thesis: { lines: 4, lineChars: 52, headingChars: 40 },
-  /* 6 since PATH became the record: at a 16px step six rows land inside the
-     Screen's floor with room for the status line. Verified on the panel, not
-     assumed — five was the cap when the step was 18. */
-  table: { rows: 6, cellChars: 30 },
-  steps: { steps: 6, stepChars: 48 },
+  /**
+   * Um `lead` guarda **frases, não linhas.**
+   *
+   * Guardava linhas: o texto vinha quebrado à mão em 58 caracteres e o Screen
+   * quebrava de novo no que coubesse na coluna. Duas quebras sobre o mesmo texto dão
+   * o que Fernando viu — *"a quebra de linhas também tá um pouco estranha"* — porque
+   * a segunda quebra parte a primeira metade e deixa a segunda começando sozinha:
+   * "Experimentos de ponta a ponta: da / pesquisa à / implementação e ao aprendizado."
+   *
+   * Quem sabe onde a linha cabe é quem mede, e quem mede é o Screen. Aqui ficam as
+   * frases inteiras; `paraChars` é só um teto para que uma delas não vire um parágrafo.
+   */
+  lead: { lines: 5, paraChars: 96 },
+  dim: { lines: 2, lineChars: 62 },
+  items: { max: 6, labelChars: 34, metaChars: 34 },
+  section: { max: 6, lines: 5, lineChars: 58, headingChars: 20 },
+  hintChars: 62,
 } as const
 
-/**
- * What Lyra says, one line per Module, in slot order.
- *
- * She is the Screen's inhabitant, not its salesman. These lines describe what she
- * is doing and what the visitor is looking at; they never make a claim about
- * Fernando's experience, because every such claim has to be checkable against the
- * object (PRODUCT.md) and a line in a speech bubble cannot be.
- *
- * Kept short on purpose — the bubble draws inside a 320x180 Screen beside her.
- */
 export const LYRA_NAME = 'LYRA'
 export const LYRA_BUBBLE_CHARS = 26
 
-export const LYRA_LINES: readonly (readonly string[])[] = [
-  /* 1 IDENT      */ ['The unit is awake.', 'Turn a deck and see.'],
-  /* 2 NOW / NEXT */ ['I hold both ends.', 'The mark does not move.'],
-  /* 3 PROJECT 001*/ ['He built this one first.', 'You are standing in it.'],
-  /* 4 RACK       */ ['Everything here is', 'patched into something.'],
-  /* 5 METHOD     */ ['Six steps. No secrets.', 'The notes are kept.'],
-  /* 6 OUT        */ ['Send the raven.', 'It knows the way.'],
-]
-
-/** Her line for a 0-based Module index. */
-export function lyraAt(index: number): readonly string[] {
-  return LYRA_LINES[((index % LYRA_LINES.length) + LYRA_LINES.length) % LYRA_LINES.length]
-}
+/** Quantos milissegundos LYRA espera antes de trocar a atmosfera pela instrução. */
+export const LYRA_IDLE_MS = 6000
 
 /**
- * A Work — something Fernando made, numbered from this Unit onward.
+ * O que uma Section mostra quando o conteúdo ainda não existe.
  *
- * Kept separate from `MODULES` on purpose. Where these get *shown* is undecided:
- * a website or a poster is an image with real detail in it, and the Screen is a
- * 320x180 four-tone inset seen at an angle, so it physically cannot carry one.
- * Whatever answers that (see ADR-0017 once it is written) will read this list;
- * the list itself does not need to know.
- *
- * `blurb` is what can be said on the Screen. `sheet` is the image that needs
- * somewhere bigger to live.
+ * Uma string, em um lugar, para que toda lacuna leia igual e para que encontrar
+ * todas seja uma busca por um símbolo em vez de por seis formulações.
  */
+export const GAP = 'Ainda não registrado.'
+
+const gap = (heading: string): Section => ({ heading, lines: [] })
+
+/* ---------------- os projetos ---------------- */
+
 export type Work = {
   no: string
   id: string
   title: string
-  kind: 'Unit' | 'Site' | 'Poster' | 'Campaign' | 'Social'
-  year: string
-  /** Who it was for. Absent on self-directed work. */
+  kind: string
+  year?: string
   client?: string
-  blurb: string[]
-  /** Web-sized stills under `public/works/`. The first is the one the panel shows. */
-  images?: string[]
-  sheet?: string
-  /** True while this row is a stand-in and its content is not yet Fernando's. */
-  placeholder?: boolean
+  blurb: readonly string[]
+  images?: readonly string[]
+  /** Verdadeiro enquanto o projeto é um estado vazio honesto, sem obra publicada. */
+  empty?: boolean
 }
 
 /**
- * The series.
+ * Três projetos, e apenas três.
  *
- * 001 is real and checkable — the visitor is standing in it. Everything after it
- * is a PLACEHOLDER holding a shape, and says so in its own row: Fernando has
- * websites and posters to add, and the titles, years and copy below are not them.
- * PRODUCT.md forbids illustrative concepts presented as real work, so these must
- * be replaced before the Unit is published (T-14) rather than quietly kept.
+ * Decisão de Fernando em 2026-08-28. As quatro entradas que saíram — Bandas de
+ * Bollinger, R U MINE?, Rifa Handbanners e Parize — eram trabalho real e checável,
+ * com imagens, e continuam em `public/works/`. Não foram apagadas porque a decisão
+ * foi de **recorte**, não de retratação, e um recorte é a coisa mais fácil de
+ * reverter que existe.
  */
 export const WORKS: readonly Work[] = [
   {
     no: '001',
-    id: 'tenebrae',
-    title: 'Tenebrae',
-    kind: 'Unit',
-    year: '2026',
+    id: 'portfolio',
+    title: 'Portfólio',
+    kind: 'Site interativo',
     blurb: [
-      'The unit you are holding. A single instrument',
-      'rendered in real time, engraved in code.',
+      'Um portfólio concebido como instrumento.',
+      'Seis teclas acessam os módulos, a LUA percorre o',
+      'conteúdo e o SOL aprofunda a seleção.',
     ],
   },
   {
     no: '002',
-    id: 'nelogica-bollinger',
-    title: 'Bandas de Bollinger',
-    kind: 'Campaign',
-    client: 'Nelogica',
-    year: '2025',
-    images: ['/works/nelogica-bollinger.jpg'],
+    id: 'graecus',
+    title: 'Graecus',
+    kind: 'Site institucional + blog',
+    client: 'Graecus',
+    images: ['/works/graecus-mdsale.jpg', '/works/graecus-namorados.jpg'],
     blurb: [
-      'Launch campaign for an eight-week trading',
-      'course. Feed and story, built to be read at',
-      'thumb speed on a dark timeline.',
+      'Site institucional e blog em WordPress com tema',
+      'personalizado, sem page builder.',
     ],
   },
   {
     no: '003',
-    id: 'ru-mine',
-    title: 'R U MINE?',
-    kind: 'Poster',
-    client: 'Classic Reeboks',
-    year: '2023',
-    images: ['/works/ru-mine-a.jpg', '/works/ru-mine-b.jpg'],
+    id: 'miscelanea',
+    title: 'Miscelânea',
+    kind: 'Galeria de artes',
+    empty: true,
     blurb: [
-      'An Arctic Monkeys night in Gravatai. Two',
-      'passes at the same bill \u2014 one all halftone and',
-      'bleed, one cut into hard red blocks.',
-    ],
-  },
-  {
-    no: '004',
-    id: 'rifa-handbanners',
-    title: 'Rifa Handbanners',
-    kind: 'Poster',
-    year: '2025',
-    images: ['/works/rifa-handbanners.jpg'],
-    blurb: [
-      'A fan raffle sheet. Arched niches, engraved',
-      'serif and a single red \u2014 the closest thing here',
-      'to the language the Unit ended up in.',
-    ],
-  },
-  {
-    no: '005',
-    id: 'graecus',
-    title: 'Graecus',
-    kind: 'Social',
-    client: 'Graecus',
-    year: '2026',
-    images: ['/works/graecus-mdsale.jpg', '/works/graecus-namorados.jpg'],
-    blurb: [
-      'Agency social, carousel format. Glass cards',
-      'over photography, one accent, a house grid',
-      'that survives whatever the brief is.',
-    ],
-  },
-  {
-    no: '006',
-    id: 'parize',
-    title: 'Parize Imoveis',
-    kind: 'Social',
-    client: 'Parize Imoveis',
-    year: '2024',
-    images: ['/works/parize-dombosco.jpg', '/works/parize-natal.jpg'],
-    blurb: [
-      'End-to-end marketing for a local estate agent:',
-      'listings, seasonal posts, paid assets and the',
-      'landing pages under them.',
+      'Uma galeria em construção para reunir pôsteres,',
+      'composições e estudos visuais em um mesmo arquivo.',
     ],
   },
 ]
 
-/** How many of the series are real rather than holding a shape. */
-export const REAL_WORKS = WORKS.filter(w => !w.placeholder).length
+/** Quantos dos projetos já têm obra publicada. */
+export const REAL_WORKS = WORKS.filter(w => !w.empty).length
+
+/**
+ * O case de um projeto, como as Sections que o SOL percorre.
+ *
+ * Separado de `WORKS` porque um case é longo e a lista é curta, e porque uma lacuna
+ * declarada — uma Section sem linhas — precisa ser visível como *faltando* em vez de
+ * silenciosamente ausente. Miscelânea não tem case: o estado vazio é o conteúdo
+ * verdadeiro, e inventar títulos, datas ou obras seria a única forma de errar aqui.
+ */
+export function caseOf(id: string): readonly Section[] {
+  if (id === 'portfolio') return [
+    {
+      heading: 'VISÃO GERAL',
+      lines: [
+        'Um portfólio concebido como instrumento. Em vez de',
+        'percorrer páginas convencionais, a navegação acontece',
+        'por meio de um artefato físico virtual.',
+      ],
+    },
+    {
+      heading: 'MOTIVO',
+      lines: [
+        'Como apresentar estratégia, mensagem, design, front-end',
+        'e análise sem reduzir o percurso a uma lista de cargos',
+        'ou ferramentas? A interface passa a ser a resposta.',
+      ],
+    },
+    {
+      heading: 'REFERÊNCIAS',
+      lines: [
+        'Mapas celestes, gravuras esotéricas, mecanismos',
+        'analógicos e terminais monocromáticos, combinados como',
+        'princípios de interação e materialidade.',
+      ],
+    },
+    {
+      heading: 'CONSTRUÇÃO',
+      lines: [
+        'Three.js cuida do objeto, dos materiais e da iluminação.',
+        'Uma camada semântica em HTML mantém textos e controles',
+        'legíveis, testáveis e acessíveis.',
+      ],
+    },
+    {
+      heading: 'INTERAÇÃO',
+      lines: [
+        'A LUA seleciona. O SOL abre. As seis teclas dão acesso',
+        'direto. O enquadramento permanece controlado para',
+        'preservar a legibilidade.',
+      ],
+    },
+  ]
+  if (id === 'graecus') return [
+    {
+      heading: 'VISÃO GERAL',
+      lines: [
+        'Site institucional e blog em WordPress com tema',
+        'personalizado. Conecta posicionamento, oferta, prova,',
+        'conteúdo e contato em uma sequência direta.',
+      ],
+    },
+    {
+      heading: 'CONTEXTO',
+      lines: [
+        'Era preciso explicar uma oferta extensa e',
+        'multidisciplinar sem tornar a experiência densa',
+        'ou fragmentada demais.',
+      ],
+    },
+    {
+      heading: 'CONSTRUÇÃO',
+      lines: [
+        'Tema WordPress próprio, sem page builder. Templates PHP',
+        'para home, institucional, serviços, arquivo, categorias',
+        'e artigos, com componentes reutilizáveis.',
+      ],
+    },
+    {
+      heading: 'BLOG',
+      lines: [
+        'Busca, filtros por categoria, atalhos temáticos e',
+        'paginação. O template de artigo define a hierarquia de',
+        'autoria, data, categorias e tempo de leitura.',
+      ],
+    },
+    {
+      heading: 'RESULTADO',
+      lines: [
+        'Um sistema que permite publicar novos serviços e',
+        'conteúdos sem romper o sistema visual. Não há dados',
+        'públicos de conversão ou tráfego.',
+      ],
+    },
+    /* As capturas do site — hero, serviços, FAQ, arquivo, artigo e mobile — ainda não
+       existem localmente. As duas imagens em `public/works/` são peças de social da
+       Graecus, que é trabalho diferente para o mesmo cliente. */
+    gap('CAPTURAS'),
+  ]
+  return [
+    {
+      heading: 'EM CONSTRUÇÃO',
+      lines: [
+        'Uma galeria em construção para reunir pôsteres,',
+        'composições e estudos visuais em um mesmo arquivo.',
+        'A primeira seleção será publicada em breve.',
+      ],
+    },
+  ]
+}
+
+/* ---------------- os módulos ---------------- */
 
 export const MODULES: readonly Module[] = [
+  /**
+   * 1 — QUEM.
+   *
+   * **Sem itens.** A informação essencial não pode depender de uma roda, e um nome
+   * atrás de um controle rotativo é um nome que ninguém lê. A LUA não faz nada aqui
+   * e o rodapé diz isso, o que é melhor do que inventar algo para ela percorrer.
+   */
   {
     slot: 1,
-    id: 'ident',
-    title: 'IDENT',
-    kind: 'prose',
-    /**
-     * This said "No agency. No client case studies yet." It was true when it was
-     * written and it is not true now: there is four years of client work behind
-     * it — a trading platform, a cruise line, an estate agent, an agency. Copy
-     * that undersells is as inaccurate as copy that oversells, and PRODUCT.md
-     * asks for claims that check out, in both directions.
-     */
-    lines: [
-      'I build interfaces in the browser, and I think',
-      'about who is reading them. Frontend execution',
-      'with a marketing head on it, and a read on',
-      'culture that is mine rather than borrowed.',
+    id: 'identity',
+    title: 'QUEM',
+    pad: 'QUEM',
+    hint: 'QUEM — A perspectiva que ele traz',
+    lead: [
+      'FERNANDO LINCK — GROWTH, CRO E EXPERIÊNCIAS DIGITAIS.',
+      'Estratégia, mensagem, design, front-end e análise.',
+      'Experimentos de ponta a ponta: da pesquisa à implementação e ao aprendizado.',
     ],
-    /* The budget counts *written* lines; the Screen wraps them to its own width,
-       which on this Module is about 33 characters. Two 45-character lines became
-       four rendered ones and the Screen said so: "+1 LINES". */
-    dim: [
-      'Trading platform, cruise line,',
-      'agency. Porto Alegre, Brazil.',
+    dim: ['Porto Alegre, Brasil. Português ou inglês.'],
+    lyra: {
+      open: ['A unidade despertou.', 'Comece aqui.'],
+      idle: ['A LUA escolhe o item.', 'O SOL revela mais.'],
+    },
+  },
+
+  {
+    slot: 2,
+    id: 'projects',
+    title: 'PROJETOS',
+    pad: 'PROJETOS',
+    hint: 'PROJETOS — Trabalhos e o raciocínio por trás deles',
+    lead: [
+      'Gire a LUA para escolher e o SOL para ler.',
+      'Toque no projeto na tela para abrir por inteiro.',
     ],
+    unit: 'PROJETO',
+    items: WORKS.map(w => ({
+      id: w.id,
+      label: w.title.toUpperCase(),
+      meta: w.kind.toUpperCase(),
+      act: { kind: 'work' as const, value: w.id },
+      sections: caseOf(w.id),
+    })),
+    lyra: {
+      open: ['Alguns sinais já chegaram.', 'Outros ainda viajam.'],
+      idle: ['Gire a LUA para escolher.', 'O SOL abre.'],
+    },
   },
 
   /**
-   * The Crossfader carries this Module and nothing else. The B side stays
-   * future-tense at its own extreme — a visitor can drag the fader all the way
-   * over, and PRODUCT.md still has to hold when they do (ADR-0005).
+   * 3 — TRAJETO.
+   *
+   * CAMADAS e CRONOLOGIA ficam em blocos separados, e **empresas aparecem somente na
+   * cronologia**. Misturar as duas é como um currículo passa a alegar que cada
+   * competência foi exercida em cada empresa — uma alegação que ninguém fez e que
+   * não se pode checar.
    */
   {
-    slot: 2,
-    id: 'now-next',
-    title: 'NOW / NEXT',
-    pad: 'NOW·NEXT',
-    kind: 'thesis',
-    a: {
-      heading: 'A — What I can do today.',
-      lines: [
-        'Semantic HTML, modern CSS, TypeScript. Positioning,',
-        'message hierarchy, and the difference between a',
-        'sentence that sounds impressive and one that says',
-        'something.',
-      ],
-    },
-    b: {
-      heading: 'B — What I am building toward.',
-      lines: [
-        'AI for small business, process automation, data',
-        'analytics. A learning direction — not professional',
-        'experience, and not described as such.',
-      ],
-    },
-  },
-
-  {
     slot: 3,
-    id: 'project-001',
-    /* Retitled: this Module renders the series, not one project — `render.js`
-       branches on the id and draws `WORKS` here, so the prose below is unused. */
-    title: 'WORKS',
-    kind: 'prose',
-    /**
-     * Every line here names something the visitor can see on the panel in front
-     * of them. It was corrected when the copy moved out of the prototype: it
-     * still described a rose window and a vigil knob, and the Unit has had
-     * neither since the tracery became a foliate engraving and the knob became
-     * two Decks (ADR-0009). Copy that describes a version of the object that no
-     * longer exists is exactly the claim-without-evidence this Module is here to
-     * refuse.
-     */
-    lines: [
-      'This unit is the project. The plate is engraved in',
-      'code. Two decks put the candles out, one at a time.',
-      'Every control does something real.',
+    id: 'path',
+    title: 'TRAJETO',
+    pad: 'TRAJETO',
+    hint: 'TRAJETO — Onde ele trabalhou e do que cuidou',
+    lead: [
+      'O percurso em camadas, e as datas que as sustentam.',
+      'Gire a LUA para percorrer.',
     ],
-    dim: [
-      'Every claim here points at something visible on',
-      'this panel. That is the only proof I have yet.',
+    unit: 'ETAPA',
+    items: [
+      {
+        id: 'camadas',
+        label: 'CAMADAS',
+        meta: 'O PERCURSO',
+        sections: [
+          {
+            heading: 'ORIGEM',
+            lines: ['O percurso começa no design gráfico e na criação', 'de conteúdo.'],
+          },
+          {
+            heading: 'EDITORIAL',
+            lines: [
+              'A produção editorial acrescenta rigor, consistência',
+              'e experiência com comunicação multilíngue.',
+            ],
+          },
+          {
+            heading: 'EXECUÇÃO',
+            lines: [
+              'Marketing, landing pages, UX/UI e front-end',
+              'aproximam estratégia e execução.',
+            ],
+          },
+          {
+            heading: 'CONEXÃO',
+            lines: ['CRO e experimentação passam a conectar todas', 'essas camadas.'],
+          },
+        ],
+      },
+      {
+        id: 'cronologia',
+        label: 'CRONOLOGIA',
+        meta: '2019 — 2026',
+        sections: [
+          { heading: 'AGÊNCIAS', lines: ['Agências e independente', '2019 — 2022'] },
+          { heading: 'MSC CROCIERE', lines: ['MSC Crociere', '2022 — 2024'] },
+          { heading: 'NELOGICA', lines: ['Nelogica', '2024 — 2026'] },
+        ],
+      },
     ],
+    lyra: {
+      open: ['Nenhuma camada', 'foi descartada.'],
+      idle: ['Gire a LUA para', 'acompanhar a sequência.'],
+    },
   },
 
+  /**
+   * 4 — CRITÉRIOS.
+   *
+   * Um critério por seleção. Comprimir os cinco na Tela ao mesmo tempo os reduziria
+   * a slogans, que é exatamente a forma que um princípio assume quando deixa de ser
+   * defensável.
+   */
   {
     slot: 4,
-    id: 'rack',
-    title: 'PATH',
-    kind: 'table',
-    head: ['WHAT', 'WHERE', ''],
-    /**
-     * Was a PLACEHOLDER list of influences, which T-13 flagged and which blocked
-     * for three sessions. It is the record now, and every row is checkable
-     * against Fernando's CV — which is the bar CONTEXT.md sets for the Rack
-     * ("every entry verifiable") and the reason the influences never met it.
-     *
-     * **Renames the Rack.** CONTEXT.md defines it in the eurorack sense: the set
-     * of modules you own and patch together. A work history is a defensible
-     * reading of that and it is still a change to a glossary term, so it wants
-     * Fernando's word and an entry in CONTEXT.md rather than a silent swap.
-     *
-     * Only what the CV states. Graecus appears in WORKS but not in the CV, so the
-     * nature of that engagement is not recorded here rather than guessed at.
-     */
-    rows: [
-      ['Front-end development', 'Nelogica', ''],
-      ['Web design & landing pages', 'Nelogica', ''],
-      ['AI & automation', 'Independent', ''],
-      ['CRO & growth marketing', 'Nelogica', ''],
-      ['Program publishing', 'MSC Crociere', ''],
-      ['Marketing & design', 'Parize · Graecus', ''],
+    id: 'criteria',
+    title: 'CRITÉRIOS',
+    /* `CRITÉR.` só existe no hardware — a Tela sempre escreve por extenso. */
+    pad: 'CRITÉR.',
+    hint: 'CRITÉRIOS — Como contexto vira trabalho terminado',
+    lead: [
+      'Cinco regras que sobrevivem às ferramentas.',
+      'Gire a LUA para ler a próxima, o SOL para o porquê.',
     ],
+    unit: 'CRITÉRIO',
+    items: [
+      {
+        id: 'dados',
+        label: 'OS DADOS ORIENTAM A DECISÃO',
+        meta: '01',
+        sections: [{
+          heading: 'POR QUÊ',
+          lines: [
+            'As evidências e o comportamento observado definem o',
+            'ponto de partida. A solução precisa melhorar o que',
+            'importa sem abrir mão de clareza, personalidade e',
+            'prazer de uso.',
+          ],
+        }],
+      },
+      {
+        id: 'problema',
+        label: 'O PROBLEMA VEM ANTES',
+        meta: '02',
+        sections: [{
+          heading: 'POR QUÊ',
+          lines: [
+            'Escolher o formato cedo demais pode produzir uma boa',
+            'solução para a pergunta errada.',
+          ],
+        }],
+      },
+      {
+        id: 'sistema',
+        label: 'UM SÓ SISTEMA',
+        meta: '03',
+        sections: [{
+          heading: 'POR QUÊ',
+          lines: [
+            'Mensagem, interface e aquisição formam um só sistema.',
+            'A promessa feita no anúncio precisa continuar',
+            'verdadeira na landing page e no produto.',
+          ],
+        }],
+      },
+      {
+        id: 'experimento',
+        label: 'REDUZIR INCERTEZA',
+        meta: '04',
+        sections: [{
+          heading: 'POR QUÊ',
+          lines: [
+            'Um experimento existe para reduzir incerteza. O',
+            'objetivo não é provar que uma ideia estava certa,',
+            'mas produzir evidência para decidir o próximo passo.',
+          ],
+        }],
+      },
+      {
+        id: 'metrica',
+        label: 'MÉTRICA QUE MUDA DECISÃO',
+        meta: '05',
+        sections: [{
+          heading: 'POR QUÊ',
+          lines: [
+            'Uma métrica só importa quando muda uma decisão. Antes',
+            'da medição, é preciso definir o que faria o trabalho',
+            'avançar, mudar de direção ou parar.',
+          ],
+        }],
+      },
+    ],
+    lyra: {
+      open: ['Algumas regras sobrevivem', 'às ferramentas.'],
+      idle: ['Gire a LUA para o próximo.', 'O SOL explica o porquê.'],
+    },
   },
 
+  /**
+   * 5 — HABILIDADES.
+   *
+   * **Agrupado, e essa é a única liberdade tomada com a lista.** O handoff traz onze
+   * competências e pede a lista sem AGORA/DEPOIS. Onze linhas não cabem: a Tela não
+   * rola (ADR-0009) e o corpo comporta seis. Elas viram quatro grupos, e as onze
+   * aparecem por inteiro dentro deles — nada foi cortado, resumido ou reescrito.
+   *
+   * Nenhuma delas é IA, automação ou análise de dados. Isso não é descuido: o
+   * PRODUCT.md proíbe apresentar essas três como experiência estabelecida, e a lista
+   * aprovada simplesmente não as reivindica. A regra continua valendo por não haver
+   * o que ela precise conter.
+   */
   {
     slot: 5,
-    id: 'method',
-    title: 'METHOD',
-    kind: 'steps',
-    steps: [
-      'Look at the context before deciding.',
-      'Write down what is actually true.',
-      'Choose a direction and commit to it.',
-      'Build deliberately, one stage at a time.',
-      'Check the result against the promise.',
-      'Keep the notes.',
+    id: 'skills',
+    title: 'HABILIDADES',
+    pad: 'HABILID.',
+    hint: 'HABILIDADES — Com o que ele trabalha',
+    lead: [
+      'As ferramentas à mão, agrupadas pelo que fazem.',
+      'Gire a LUA para percorrer a lista.',
     ],
+    unit: 'GRUPO',
+    items: [
+      {
+        id: 'cro',
+        label: 'CRO E EXPERIMENTAÇÃO',
+        sections: [{
+          heading: 'INCLUI',
+          lines: [
+            'CRO e experimentação · Testes A/B',
+            'Pesquisa quantitativa e qualitativa',
+            'Análise de funil',
+          ],
+        }],
+      },
+      {
+        id: 'growth',
+        label: 'GROWTH E AQUISIÇÃO',
+        sections: [{
+          heading: 'INCLUI',
+          lines: ['Growth marketing', 'Landing pages e copy de conversão'],
+        }],
+      },
+      {
+        id: 'design',
+        label: 'DESIGN E INTERFACE',
+        sections: [{
+          heading: 'INCLUI',
+          lines: [
+            'UX/UI e prototipação · Figma',
+            'Sistemas de design e bibliotecas de componentes',
+          ],
+        }],
+      },
+      {
+        id: 'front',
+        label: 'FRONT-END',
+        sections: [{
+          heading: 'INCLUI',
+          lines: ['HTML, CSS e JavaScript', 'WordPress e temas personalizados'],
+        }],
+      },
+    ],
+    lyra: {
+      open: ['Ferramentas à mão.'],
+      idle: ['Gire a LUA para', 'percorrer a lista.'],
+    },
   },
 
+  /**
+   * 6 — CONTATO.
+   *
+   * O único Módulo em primeira pessoa, e o endereço está na tela no instante em que
+   * ele abre. A LUA e o SOL são um segundo caminho até ele, nunca o único.
+   */
   {
     slot: 6,
-    id: 'out',
-    title: 'OUT',
-    kind: 'prose',
-    lines: [
-      'A role, a project, or something odd you need built.',
-      'Write to me directly — no form, no funnel.',
+    id: 'contact',
+    title: 'CONTATO',
+    pad: 'CONTATO',
+    hint: 'CONTATO — Rotas verificadas para chegar até mim',
+    lead: [
+      'Para uma vaga, um projeto ou uma ideia incomum que precise atravessar estratégia e execução:',
+      'fernandolinck@outlook.com',
+      'Escreva diretamente para mim. Sem formulário, sem funil.',
     ],
-    /** Fernando's real address. It ships; it does not go in fixtures or logs. */
-    /* Fernando's real address, chosen by him over the gmail this used to carry.
-       It ships; it does not go in fixtures or logs. */
-    mail: 'fernandolinck@outlook.com',
-    links: [
-      { label: 'IG', handle: '@nan._.jin', url: 'https://instagram.com/nan._.jin' },
-      /* No `url`: the display name is what Fernando gave, and guessing a LinkedIn
-         slug from a name is exactly the kind of invention PRODUCT.md forbids.
-         It renders as text until he supplies the address. */
-      { label: 'IN', handle: 'Fernando Linck' },
+    dim: ['Porto Alegre, Brasil. Português ou inglês.'],
+    unit: 'ROTA',
+    items: [
+      {
+        id: 'mail',
+        label: 'fernandolinck@outlook.com',
+        meta: 'EMAIL',
+        act: { kind: 'mail', value: 'fernandolinck@outlook.com' },
+        sections: [{ heading: 'EMAIL', lines: ['Pressione o SOL para escrever.'] }],
+      },
+      {
+        id: 'ig',
+        label: '@nan._.jin',
+        meta: 'INSTAGRAM',
+        act: { kind: 'url', value: 'https://instagram.com/nan._.jin' },
+        sections: [{ heading: 'INSTAGRAM', lines: ['Pressione o SOL para abrir.'] }],
+      },
+      /* Sem `act`: adivinhar um endereço do LinkedIn a partir de um nome é exatamente
+         a invenção que o PRODUCT.md proíbe. Fica como texto até ele informar. */
+      {
+        id: 'in',
+        label: 'Fernando Linck',
+        meta: 'LINKEDIN',
+        sections: [{ heading: 'LINKEDIN', lines: ['Endereço ainda não informado.'] }],
+      },
     ],
-    /* Was "São Paulo". The CV says Porto Alegre, and so does every role in it. */
-    dim: ['Porto Alegre, Brazil. English or Portuguese.'],
+    lyra: {
+      open: ['Mande o corvo.', 'Ele conhece o caminho.'],
+      idle: ['O canal continua aberto.'],
+    },
   },
 ]
 
-/** The live Module. Slots are 1-based; the state that drives them is 0-based. */
+/** O Módulo vivo. Slots são 1-based; o estado que os move é 0-based. */
 export function moduleAt(index: number): Module {
   return MODULES[((index % MODULES.length) + MODULES.length) % MODULES.length]
+}
+
+/** As falas de LYRA para um índice 0-based. */
+export function lyraAt(index: number): Lyra {
+  return moduleAt(index).lyra
+}
+
+/** Um projeto por id, para a sobreposição. */
+export function workById(id: string): Work | undefined {
+  return WORKS.find(w => w.id === id)
 }

@@ -13,7 +13,7 @@
    than taking it per call because the reaction, the raven and the Cast all need
    continuity between frames.
 */
-import { MODULES, WORKS, LYRA_NAME, lyraAt } from '../../src/content/modules.ts'
+import { MODULES, WORKS, GAP, LYRA_NAME, lyraAt, LYRA_IDLE_MS } from '../../src/content/modules.ts'
 import { EMBLEMS, disc, ring } from './sprites.js'
 import { drawWizard, drawRaven, updateRaven, flush, drawSpell, castHand,
          heldOrbs, heldBook, heldUnit, drawRobe } from './figure.js'
@@ -86,6 +86,8 @@ const DAY  = { ink: '#E9E3D2', mid: '#8A8470', dim: '#5E5A4C', bg: '#0A0B09', go
 const DARK = { ink: '#DCD6C6', mid: '#9C5A4E', dim: '#6E1810', bg: '#08070A', gold: '#F03A22' }
 
 let INK = DAY.ink, MID = DAY.mid, DIM = DAY.dim, BG = DAY.bg, GOLD = DAY.gold
+/** The paragraph's ink: a step from `INK` toward `MID`, so it is not the title. */
+let BODY = DAY.ink
 
 /** Mix two #rrggbb strings. Plain sRGB — these are flat fills, not light. */
 function mix(a, b, k) {
@@ -99,6 +101,7 @@ function mix(a, b, k) {
 function setPalette(d) {
   INK  = mix(DAY.ink,  DARK.ink,  d); MID  = mix(DAY.mid,  DARK.mid,  d)
   DIM  = mix(DAY.dim,  DARK.dim,  d); BG   = mix(DAY.bg,   DARK.bg,   d)
+  BODY = mix(INK, MID, .38)
   GOLD = mix(DAY.gold, DARK.gold, d)
 }
 
@@ -228,7 +231,15 @@ function grimoireChrome(m, t) {
   /* header band: emblem, blackletter title, slot */
   EMBLEMS[mod](g, 12, 10, t, INK, DIM)
   g.font = '17px UnifrakturMaguntia, serif'; g.fillStyle = INK
-  g.fillText(m.title, 52, 32)
+  /**
+   * Sentence case, not caps.
+   *
+   * The header is blackletter, and blackletter capitals are near-illegible in a
+   * run — "CRITÉRIOS" set in UnifrakturMaguntia is a row of shapes. The lowercase
+   * forms are what that face is *for*. The Pads keep their caps: those are silkscreen
+   * on metal, where caps are the convention and the words are short.
+   */
+  g.fillText(sentence(m.title), 52, 32)
   g.font = '8px Silkscreen, monospace'; g.fillStyle = MID
   const slot = 'MOD 0' + m.slot + '/06'
   g.fillText(slot, W - 20 - g.measureText(slot).width, 40)
@@ -251,16 +262,89 @@ function flow(all, x, y, step, colour) {
   return y
 }
 
+/**
+ * The footer — the line that says what just happened, or what a control would do.
+ *
+ * Precedence is deliberate: a **flash** beats a **hint** beats the Module's own
+ * standing line. A hint is a question the visitor is asking with the pointer ("what
+ * is this Pad?"); a flash is the answer to something they already did. An answer
+ * outranks a question.
+ *
+ * The `COLS` and `+N LINES` readouts stay, pushed to the right. They are the
+ * Screen saying out loud when a Module does not fit it, which is the thing that
+ * kept the no-scrolling constraint honest, and losing them to a prettier footer
+ * would mean losing the only place overflow is ever reported.
+ */
 function grimoireStatus() {
   g.font = '8px Silkscreen, monospace'
-  const cols = charsAcross(BODY_W()) + ' COLS'
-  g.fillStyle = DIM
-  g.fillText(cols, W - 20 - g.measureText(cols).width, H - 14)
-  /* the constraint, said out loud rather than clipped silently */
+  const now = performance.now()
+  if (flash && now > flashUntil) flash = ''
+
+  const m = MODULES[mod]
+  const line = flash || hint || standingLine(m)
+
+  /**
+   * The footer gets its own ground.
+   *
+   * LYRA stands to the floor of the panel, so on the four Modules where she is on
+   * the left her robe is *behind* this line, and 8px Silkscreen over a dithered robe
+   * is a smear — `CAMADAS 01/04` came out as a row of broken glyphs. Every other
+   * band on the Screen is cleared before it is written on; this one never was,
+   * because for most of its life nothing stood under it.
+   */
+  g.save()
+  g.globalAlpha = .92
+  g.fillStyle = BG
+  g.fillRect(14, H - 22, W - 28, 16)
+  g.restore()
+
+  g.fillStyle = flash ? GOLD : hint ? INK : DIM
+  g.fillText(line.slice(0, 46).toUpperCase(), 20, H - 14)
+
+  /**
+   * `29 COLS` is gone from the corner.
+   *
+   * It was the Screen reporting its own measurements — useful while the layout was
+   * being fitted, and noise once it was. Fernando wanted the corner for the status
+   * line: *"tem um texto no canto inferior direito dizendo 29 cols — ele pode ser
+   * removido para a mensagem de estado ficar ali."*
+   *
+   * The overflow warning stays, because that one is not a measurement, it is the
+   * Screen saying a Module does not fit — the only place that is ever reported.
+   */
   if (overflow) {
-    const over = '+' + overflow + ' LINES'
-    g.fillStyle = GOLD; g.fillText(over, 20, H - 14)
+    /* left of wherever the page marks end, so the two right-hand readouts never
+       stack on top of each other */
+    const over = '+' + overflow
+    g.fillStyle = GOLD
+    g.fillText(over, W - 26 - markSpan - g.measureText(over).width, H - 14)
   }
+}
+
+/**
+ * What the footer says when nothing is flashing and nothing is hovered.
+ *
+ * The cursor can sit **past the end** — that is the seventh detent, and it is the
+ * one position with no item under it. Reading `items[sel].label` there threw and
+ * took the whole Screen down with it, which is the cost of assuming a selection
+ * always points at something.
+ */
+function standingLine(m) {
+  /* ECLIPSE first, and above the no-items shortcut — QUEM has no items, so opening
+     the seventh state from QUEM left the footer still saying QUEM. */
+  if (eclipseOpen) return 'ECLIPSE'
+  if (!m.items?.length) return m.title.replace(' / ', '/')
+  const p = placeOf(mod)
+  const n = m.items.length
+  if (p.sel >= n) return m.title.replace(' / ', '/')
+  const it = m.items[p.sel]
+  /* on a section page the item is already the heading above; the page number is the
+     thing the reader cannot see, so that is what the footer spends its width on */
+  if (p.sec > 0 && pageMax) {
+    return `${it.label} · ${String(p.sec).padStart(2, '0')}/${String(pageMax).padStart(2, '0')}`
+  }
+  return `${m.unit} ${String(p.sel + 1).padStart(2, '0')}/${String(n).padStart(2, '0')}`
+    + ` · ${it.label}`
 }
 
 /* ---------- the stage ----------
@@ -268,9 +352,23 @@ function grimoireStatus() {
    first and given a panel afterwards. She moves side to side, changes height,
    and changes what is in her hands; the body of the Module takes what is left.
    `fy` is her feet. */
+/**
+ * Where she stands, and what is left for the body.
+ *
+ * `bx`/`bw` is the body's column and `fx` is hers, and the two must not overlap —
+ * which slot 2 did, spectacularly: she stood at `W/2` while the body spanned the
+ * full width, so the list was drawn straight over her. "em projetos, a lyra atrás
+ * tá dificultando a leitura." She moves to the left edge and the body starts after
+ * her, the same arrangement every other Module already used.
+ */
+const CHROME_H = 52
+/* Air under the header. The title's rule and the first line of the paragraph were
+   touching, which made the two read as one block — see `by` below, which is now the
+   rule's baseline plus this rather than a number picked by eye. */
+const TITLE_GAP = 8
 const STAGE = [
-  { fx: W - 50, fy: H - 14, fh: 92, pose: 'present', bx: 20,  bw: W - 118, by: 60 },
-  { fx: W / 2,  fy: H - 10, fh: 66, pose: 'balance', bx: 20,  bw: W - 40,  by: 58 },
+  { fx: W - 50, fy: H - 14, fh: 92, pose: 'present', bx: 20,  bw: W - 118, by: 60 + TITLE_GAP },
+  { fx: 44,     fy: H - 12, fh: 78, pose: 'balance', bx: 92,  bw: W - 114, by: 58 },
   { fx: 46,     fy: H - 14, fh: 86, pose: 'craft',   bx: 96,  bw: W - 118, by: 60 },
   { fx: W - 42, fy: H - 14, fh: 86, pose: 'point',   bx: 20,  bw: W - 104, by: 58 },
   { fx: 42,     fy: H - 14, fh: 86, pose: 'read',    bx: 88,  bw: W - 110, by: 58 },
@@ -304,7 +402,21 @@ function perchOf(st) {
   const brimY = headY - 11 * sc * .55
   return [Math.round(st.fx - 19 * sc), Math.round(brimY)]
 }
-const roamOf = st => ({ lo: 34, hi: W - 34, y: st.by + 24 })
+/**
+ * Where the raven is allowed to land — **the header rule, never the text.**
+ *
+ * `st.by + 24` put it a line and a half *into* the body, so it sat on the copy and
+ * the reader had a bird in the paragraph: *"the raven should never fly to the text.
+ * he can fly to the line that separates the title from the content."*
+ *
+ * That line is real and fixed: `grimoireChrome` strikes it at y = 44, and every
+ * Module hangs its body under it. The bird perches a few pixels above it, on the
+ * rule itself, which is the one horizontal in the layout that belongs to nothing
+ * else. `hi` also stops short of the body's right edge so it cannot drift over the
+ * page marks.
+ */
+const RULE_Y = 44
+const roamOf = st => ({ lo: 34, hi: W - 44, y: RULE_Y - 3 })
 
 /** The hand-drawn sprite placed on the same stage marks as the procedural one. */
 function spriteBox(st) {
@@ -358,10 +470,19 @@ function drawBubble(g, box, lines, ink, mid, bg) {
   const h = NAME_H + fitted.length * LH + PAD * 2
   lines = fitted
 
-  /* Prefer sitting above her; if the Module has pushed her high, sit beside her. */
+  /**
+   * Prefer sitting above her; if the Module has pushed her high, sit beside her —
+   * but never above `CHROME_H`.
+   *
+   * The clamp used to be 4, which is the top of the Screen rather than the top of
+   * the *body*. On QUEM she stands tall and to the right, so the bubble ran up into
+   * the header band and painted over the module counter and the celestial mark:
+   * "o balão de fala da lyra tá ocupando o texto abaixo do sol e lua no canto
+   * superior direito". The chrome is drawn before her and is not hers to cover.
+   */
   let x = Math.round(box.x + (28 * box.scale) / 2 - w / 2)
   let y = box.y - h - 6
-  if (y < 4) y = 4
+  if (y < CHROME_H) y = CHROME_H
   /* keep her entirely inside her own column, not merely on the Screen */
   const lo = onLeft ? 4 : st.bx + st.bw + 4
   const hi = onLeft ? st.bx - 4 - w : W - w - 4
@@ -400,6 +521,9 @@ function reactionBox(st) {
 
 const at = (box, key) =>
   [box.x + ANCHOR[key][0] * box.scale, box.y + ANCHOR[key][1] * box.scale]
+/** `CRITÉRIOS` → `Critérios`. Locale-aware, so the accents survive. */
+const sentence = t => t.charAt(0).toLocaleUpperCase('pt-BR') + t.slice(1).toLocaleLowerCase('pt-BR')
+
 const BODY_W = () => (figure === 'none' ? W - 40 : stage().bw)
 const BODY_X = () => (figure === 'none' ? 20 : stage().bx)
 
@@ -508,6 +632,23 @@ function drawWorks(x0, bodyW, top) {
   g.fillText('MORE SOON', x0, endY + 4)
 }
 
+/**
+ * The page ground — a near-solid sheet laid over LYRA so the body can use the width.
+ *
+ * Solid rather than a dither, because a dithered veil is a checkerboard and 13px
+ * VT323 on one is unreadable: the glyph stems and the pattern are the same width.
+ * At .93 she stays a ghost behind the paper, which is the effect wanted, and the
+ * dithered top edge keeps it from reading as a rectangle pasted on.
+ */
+function pageScrim() {
+  g.save()
+  g.globalAlpha = .93
+  g.fillStyle = BG
+  g.fillRect(14, RULE_Y + 6, W - 28, FLOOR - RULE_Y - 2)
+  g.restore()
+  tone(14, RULE_Y + 3, W - 28, 3, .5, BG)
+}
+
 function grimoire(m, t) {
   overflow = 0
   grimoireChrome(m, t)
@@ -516,6 +657,33 @@ function grimoire(m, t) {
   const cast = castP()
   const casting = figure !== 'none' && cast > 0 && cast < 1
   let hands = null
+
+  /**
+   * Is this a page of the case rather than the index?
+   *
+   * Needed *here*, above the figure, because a page draws a scrim over her and her
+   * speech bubble is the one thing a scrim cannot save: bubble text at 12% behind
+   * body text at 100% is two paragraphs in the same place, which is exactly the
+   * complaint that started this — *"a lyra atrás tá dificultando a leitura."* She
+   * still holds the page; she just stops talking over it. What she has to say is
+   * about the index anyway, which is one turn of the SUN away.
+   */
+  /**
+   * Does this Module's body take the whole panel?
+   *
+   * Two cases, and they want the same thing. A **page of a case** does, because prose
+   * needs the width. And a Module with **no items** does, because the strip beside
+   * LYRA exists to leave room for a list, and where there is no list it is 120px of
+   * panel spent on nothing — which is why QUEM, the one Module without items, was
+   * both the tightest column on the object and the only one overflowing it.
+   *
+   * Needed above the figure, because the full width means drawing over her, and her
+   * speech bubble is the one thing a scrim cannot rescue: bubble text at 7% under
+   * body text at 100% is two paragraphs in the same place. In QUEM the bubble was
+   * also lying — *"A LUA escolhe o item"* in the Module that has none.
+   */
+  const wide = !(m.items || []).length || (placeOf(mod).sec || 0) > 0
+  const onPage = wide
 
   if (figure === 'drawn') {
     const box = spriteBox(st)
@@ -544,7 +712,7 @@ function grimoire(m, t) {
     if (!casting) {
       const c = [Math.round((hands.leftHand[0] + hands.rightHand[0]) / 2),
                  Math.round((hands.leftHand[1] + hands.rightHand[1]) / 2)]
-      if (m.kind === 'thesis') heldOrbs(g, hands.leftHand, hands.rightHand, xf, INK, DIM, t)
+      if (m.id === 'now-next') heldOrbs(g, hands.leftHand, hands.rightHand, .5, INK, DIM, t)
       else if (st.pose === 'read') heldBook(g, c, c, INK, DIM, BG, t)
       else if (st.pose === 'craft') heldUnit(g, c, c, INK, DIM, BG, t)
     }
@@ -555,13 +723,13 @@ function grimoire(m, t) {
     niche(st, { x: box.x, w: REACTION_W * box.scale }, dusk(vigil), INK, MID, DIM, BG)
     drawSprite(g, REACTION_FRAMES[reaction.frameAt()], box.x, box.y, box.scale, INK, MID, DIM, BG)
     /* she speaks once the Cast has handed the Module over */
-    if (!casting) drawBubble(g, box, lyraAt(mod), INK, MID, BG)
+    if (!casting && !onPage) drawBubble(g, box, lyraLines(), INK, MID, BG)
   } else if (figure !== 'none') {
     const fig = { x: st.fx, y: st.fy, h: st.fh }
     hands = drawWizard(g, fig, st.pose, t, INK, DIM, BG, casting && cast < .55 ? 1 : 0)
     /* what she is holding is what makes the pose an action rather than a shape */
     if (!casting) {
-      if (m.kind === 'thesis') heldOrbs(g, hands.leftHand, hands.rightHand, xf, INK, DIM, t)
+      if (m.id === 'now-next') heldOrbs(g, hands.leftHand, hands.rightHand, .5, INK, DIM, t)
       else if (st.pose === 'read') heldBook(g, hands.leftHand, hands.rightHand, INK, DIM, BG, t)
       else if (st.pose === 'craft') heldUnit(g, hands.leftHand, hands.rightHand, INK, DIM, BG, t)
     }
@@ -572,122 +740,173 @@ function grimoire(m, t) {
   const typed = clamp01((since() - CAST_MS * .5) / .8)
   g.font = '13px VT323, monospace'
 
-  if (m.id === 'project-001') {
-    /* the series, not the prose — this Module lists things */
-    drawWorks(x0, bodyW, y)
+  /**
+   * One Module, two kinds of page — and **nothing scrolls** (ADR-0024, amended).
+   *
+   * Scrolling was tried for one round and gave the reader a 98px window onto a
+   * column, which is a worse cramped than the one it replaced: *"não estou gostando
+   * de como o texto está ficando dentro do painel, ele tá em um espaço muito
+   * enclausurado."* A small screen does not want a long column moved through a slot.
+   * It wants **fewer words, laid out properly, one page at a time.**
+   *
+   *   page 0    the lead and the item list — the index, and where the Moon works
+   *   page 1..n one section of the selected item, alone, in the whole body
+   *
+   * The Sun turns pages. That is the same control doing the same job as before; it
+   * just moves a whole screen instead of twenty-two pixels. And because a section
+   * page has the body to itself, it gets real leading and real margins rather than
+   * whatever was left under a list.
+   */
+  const p = placeOf(mod)
+  const items = m.items || []
+  const past = items.length > 0 && p.sel >= items.length
+  const sel = items.length && !past ? Math.min(p.sel, items.length - 1) : -1
+  const item = sel >= 0 ? items[sel] : null
+  const sections = (item && m.id !== 'projects') ? item.sections : []
 
-  } else if (m.kind === 'thesis') {
-    /* She is the fader made flesh: an orb in each hand, the heavier one lit.
-       The columns flank her, so the gutter is hers. */
-    const gutter = figure === 'none' ? 14 : 54
-    const colW = (bodyW - gutter) / 2
-    const FL = H - 30
-    ;[[m.a, x0, 1 - xf], [m.b, x0 + colW + gutter, xf]].forEach(([side, cx, weight]) => {
-      const lead = weight >= .5
-      g.font = '8px Silkscreen, monospace'
-      g.fillStyle = lead ? GOLD : DIM
-      g.fillText(side.heading.slice(0, 1), cx, y)
-      g.font = '11px VT323, monospace'
-      let yy = y + 11
-      g.fillStyle = lead ? INK : DIM
-      wrap(side.heading.slice(4), colW).forEach(l => { g.fillText(l, cx, yy); yy += 10 })
-      if (lead) {
-        yy += 4
-        g.fillStyle = MID
-        for (const l of wrap(side.lines.join(' '), colW)) {
-          if (yy > FL) { overflow++; continue }
-          g.fillText(l, cx, yy); yy += 10
-        }
-      } else {
-        yy += 5
-        tone(cx, yy, colW, 1, .3, INK)
-        g.font = '8px Silkscreen, monospace'; g.fillStyle = DIM
-        g.fillText(side.lines.join(' ').length + ' CHARS', cx, yy + 11)
+  /**
+   * **The renderer paginates, because only the renderer can measure.**
+   *
+   * One section is not one page. A section is up to five 58-character lines, and a
+   * full-width page holds six *rendered* lines — at 13px VT323 a 58-character line
+   * wraps to two, so a five-line section is ten lines and would silently overflow.
+   * The alternative was cutting the writing down to what fits a slide, which is the
+   * budget solving a layout problem by deleting content.
+   *
+   * So sections flow into as many pages as their wrapped length needs, and a new
+   * section always starts a new page — a heading is a break, and running two of them
+   * onto one screen would put a title halfway down a page of the previous one. A
+   * section continuing onto a second page repeats its heading with a `·` so the
+   * reader knows they have not arrived somewhere new.
+   *
+   * `pageMax` is then written out for the controller to clamp against, the same
+   * contract the scroll offset used: the draw is the only thing that knows.
+   */
+  const PAGE_LINES = 6
+  const pages = []
+  if (sections.length) {
+    g.font = '13px VT323, monospace'
+    for (const sec of sections) {
+      const src = sec.lines.length ? sec.lines : [GAP]
+      const flat = []
+      for (const l of src) flat.push(...wrap(l, W - 40))
+      for (let i = 0; i < flat.length; i += PAGE_LINES) {
+        pages.push({
+          heading: sec.heading, cont: i > 0,
+          gap: !sec.lines.length, lines: flat.slice(i, i + PAGE_LINES),
+        })
       }
-    })
-
-  } else if (m.kind === 'table') {
-    /* She points at it, so it is a shelf she is showing you rather than a table */
-    m.rows.forEach((r, i) => {
-      if (i / m.rows.length > typed) return
-      g.fillStyle = i === 0 ? GOLD : DIM
-      if (i === 0) disc(g, x0 + 3, y + 4, 3); else ring(g, x0 + 3, y + 4, 3, 1)
-      g.font = '13px VT323, monospace'; g.fillStyle = i === 0 ? INK : MID
-      g.fillText(r[0], x0 + 12, y + 8)
-      const tw = g.measureText(r[0]).width
-      g.font = '8px Silkscreen, monospace'
-      /* The middle column was never drawn — only [0] and [2] ever reached the
-         Screen, so a row's "where" was invisible. Fernando dropped the years, so
-         the right-hand slot shows the third column when there is one and falls
-         back to the second, which is where the "where" now lives. */
-      const yr = r[2] || r[1], yw = g.measureText(yr).width
-      leader(x0 + 16 + tw, y + 7, Math.max(4, bodyW - 20 - tw - yw), DIM)
-      g.fillStyle = i === 0 ? GOLD : DIM
-      g.fillText(yr, x0 + bodyW - yw, y + 8)
-      y += 16
-    })
-
-  } else if (m.kind === 'steps') {
-    /* The steps come off the book in her hands */
-    const top = y - 2, span = m.steps.length * 16
-    tone(x0 - 8, top, 1, span, .3, INK)
-    g.fillStyle = MID; g.fillRect(x0 - 8, top, 1, Math.round(span * typed))
-    m.steps.forEach((s, i) => {
-      if (i / m.steps.length > typed) return
-      g.fillStyle = INK; disc(g, x0 - 8, y + 4, 2)
-      g.font = '8px Silkscreen, monospace'; g.fillStyle = DIM
-      g.fillText('0' + (i + 1), x0, y + 7)
-      g.font = '12px VT323, monospace'; g.fillStyle = MID
-      g.fillText(s, x0 + 17, y + 8)
-      y += 16
-    })
-
-  } else {
-    const all = wrap(m.lines.join(' '), bodyW)
-    const shown = Math.max(1, Math.floor(all.length * typed + .0001))
-    y = flow(all.slice(0, shown), x0, y, 13, INK)
-    if (m.mail) {
-      y += 6
-      g.fillStyle = GOLD
-      g.fillRect(x0, y - 10, bodyW, 1); g.fillRect(x0, y + 6, bodyW, 1)
-      g.fillRect(x0, y - 10, 1, 17); g.fillRect(x0 + bodyW - 1, y - 10, 1, 17)
-      g.font = '8px Silkscreen, monospace'
-      g.fillText(m.mail, x0 + 6, y + 1)
-      g.font = '13px VT323, monospace'
-      y += 18
     }
+  }
+  pageMax = pages.length
+  markSpan = pages.length * 7
+  const page = Math.max(0, Math.min(pages.length, p.sec || 0))
+
+  if (page === 0) {
     /**
-     * Where else to find him.
+     * The lead, as paragraphs with air between them.
      *
-     * Boxed like the address above, one row, so OUT reads as a set of routes
-     * rather than an address with footnotes. A link without a `url` is drawn the
-     * same but not treated as clickable — `modules.ts` withholds the LinkedIn
-     * address rather than guessing a slug from a name.
+     * It used to be one undifferentiated run of lines, so the name ran straight into
+     * the sentence under it: *"precisa-se adicionar um espaço entre o título do
+     * módulo quem e o parágrafo."* `m.lead` has always been a list of separate
+     * statements; this stops flattening it into one.
      */
-    if (m.links?.length) {
-      g.font = '8px Silkscreen, monospace'
-      let lx = x0
-      for (const l of m.links) {
-        const label = l.label + ' ' + l.handle
-        const w = Math.ceil(g.measureText(label).width) + 10
-        if (lx + w > x0 + bodyW) break
-        g.fillStyle = DIM
-        g.fillRect(lx, y - 9, w, 1); g.fillRect(lx, y + 4, w, 1)
-        g.fillRect(lx, y - 9, 1, 14); g.fillRect(lx + w - 1, y - 9, 1, 14)
-        g.fillStyle = l.url ? MID : DIM
-        g.fillText(label, lx + 5, y)
-        lx += w + 6
-      }
-      g.font = '13px VT323, monospace'
-      y += 16
+    const lx = wide ? 20 : x0, lw = wide ? W - 40 : bodyW
+    if (wide) { pageScrim(); y = RULE_Y + 20 }
+
+    const paras = m.lead.map(l => wrap(l, lw))
+    const total = paras.reduce((n, q) => n + q.length, 0)
+    let budget = Math.max(1, Math.floor(total * typed + .0001))
+    for (const q of paras) {
+      if (budget <= 0) break
+      y = flow(q.slice(0, budget), lx, y, 14, BODY)
+      budget -= q.length
+      y += 7
+    }
+
+    workRows = []
+    if (items.length) {
+      y += 6
+      const top = y - 8, span = items.length * 13
+      tone(x0 - 8, top, 1, span, .3, INK)
+      items.forEach((it, i) => {
+        if (i / items.length > typed) return
+        workRows.push({ i, x: x0 - 8, y: y - 10, w: bodyW + 12, h: 13 })
+        const on = i === sel
+        if (i === hoverWork && !on) { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(x0 - 8, y - 10, bodyW + 12, 13) }
+        g.fillStyle = on ? GOLD : DIM
+        if (on) disc(g, x0 - 8, y - 3, 3); else ring(g, x0 - 8, y - 3, 2, 1)
+        g.font = '12px VT323, monospace'
+        g.fillStyle = on ? INK : MID
+        g.fillText(it.label, x0 + 4, y)
+        if (it.meta) {
+          g.font = '8px Silkscreen, monospace'
+          const mw = g.measureText(it.meta).width
+          g.fillStyle = on ? GOLD : DIM
+          g.fillText(it.meta, x0 + bodyW - mw, y - 1)
+        }
+        y += 13
+      })
     }
     const dimAll = []
-    for (const l of (m.dim || [])) dimAll.push(...wrap(l, bodyW))
-    y = flow(dimAll, x0, y, 12, DIM)
-    if (y <= FLOOR && Math.floor(t * 2) % 2) { g.fillStyle = INK; g.fillRect(x0, y - 9, 5, 8) }
+    for (const l of (m.dim || [])) dimAll.push(...wrap(l, lw))
+    if (dimAll.length) { y += 2; y = flow(dimAll, lx, y, 12, DIM) }
+
+  } else {
+    /**
+     * A page of the case — **the whole panel, not the column left over.**
+     *
+     * *"Não estou gostando de como o texto está ficando dentro do painel, ele tá em
+     * um espaço muito enclausurado."* He was right, and the cause was structural: the
+     * body has always been the strip beside LYRA, ~200px of a 320px screen, because
+     * every Module until now drew a list next to her. A page of prose in that strip
+     * wraps every sentence twice and stacks into a brick.
+     *
+     * So a page takes the full width and hangs from the header rule. She is still
+     * there — this is her book — but she goes **behind a scrim**, which is the lesson
+     * from PROJETOS: *"a lyra atrás tá dificultando a leitura."* Drawing her behind
+     * text without one is what made that unreadable; with one, the full width is
+     * available and she is still visibly holding the page.
+     */
+    const pg = pages[page - 1]
+    const sx = 20, sw = W - 40
+    pageScrim()
+
+    g.font = '8px Silkscreen, monospace'
+    g.fillStyle = GOLD
+    g.fillText(pg.cont ? pg.heading + ' ·' : pg.heading, sx, RULE_Y + 14)
+    tone(sx, RULE_Y + 19, sw, 1, .3, INK)
+
+    g.font = '13px VT323, monospace'
+    g.fillStyle = pg.gap ? DIM : BODY
+    let cy = RULE_Y + 34
+    for (const l of pg.lines) { g.fillText(l, sx, cy); cy += 15 }
+    y = cy
   }
 
+  /**
+   * The page marks, bottom right.
+   *
+   * Dots rather than a scrollbar, because there is nothing continuous left to report
+   * — a reader on page 2 of 5 wants to know there are five, not what fraction of a
+   * column is showing. Filled is where you are; the first mark is the index, which is
+   * why there is always one more than there are pages of text.
+   */
+  if (eclipseOpen) drawEclipse(g, t, W, H, INK, MID, DIM, GOLD, BG)
   grimoireStatus()
+
+  /* Drawn after the status, and on its row, because the status clears its own band
+     and would otherwise wipe them. The marks and the footer line are the same piece
+     of information anyway — where you are — so they belong on the same rule. */
+  if (pages.length) {
+    const n = pages.length + 1
+    const dx = 7, x1 = W - 20 - (n - 1) * dx
+    for (let i = 0; i < n; i++) {
+      g.fillStyle = i === page ? GOLD : DIM
+      if (i === page) disc(g, x1 + i * dx, H - 17, 2.2)
+      else ring(g, x1 + i * dx, H - 17, 2, 1)
+    }
+  }
 
   /* The raven, then the spell over everything.
      This used to be gated on `hands`, which only the procedural and drawn figures
@@ -730,9 +949,9 @@ function cracktro(m, t) {
 
   /* logo, with the Module's emblem riding beside it on a sine */
   g.font = '22px UnifrakturMaguntia, serif'
-  const tw = g.measureText('Tenebrae').width
-  g.fillStyle = '#08070A'; g.fillText('Tenebrae', W / 2 - tw / 2 + 1, 33)
-  g.fillStyle = BONE; g.fillText('Tenebrae', W / 2 - tw / 2, 32)
+  const tw = g.measureText(WORDMARK).width
+  g.fillStyle = '#08070A'; g.fillText(WORDMARK, W / 2 - tw / 2 + 1, 33)
+  g.fillStyle = BONE; g.fillText(WORDMARK, W / 2 - tw / 2, 32)
   const bob = Math.round(Math.sin(t * 2.3) * 3)
   EMBLEMS[mod](g, W / 2 - tw / 2 - 40, 6 + bob, t, BONE, DEEP)
   EMBLEMS[mod](g, W / 2 + tw / 2 + 8, 6 - bob, t, BONE, DEEP)
@@ -750,37 +969,38 @@ function cracktro(m, t) {
     g.fillText(txt, W / 2 - g.measureText(txt).width / 2, y); y += step
   }
 
-  if (m.kind === 'table') {
-    /* credits-roll layout: name left, year right, leader between (ref 02) */
-    const boxW = 210, x0 = (W - boxW) / 2
-    m.rows.forEach((r, i) => {
-      g.font = '13px VT323, monospace'; g.fillStyle = i === 0 ? EMBER : BONE
-      g.fillText(r[0], x0, y)
-      const tw2 = g.measureText(r[0]).width
+  /**
+   * Cracktro reads the same shape, and reads it flatter.
+   *
+   * This Face is unwired — the Unit is pinned to Grimoire — but it is intact and
+   * kept side by side while its future is decided, which means it cannot be left
+   * branching on `kind`s that no longer exist. It shows the lead, then the item
+   * list with the Moon's cursor on it, and skips sections: a centred credits roll
+   * is the wrong furniture for a section pager, and inventing one for a Face
+   * nothing currently renders would be work spent on a coin toss.
+   */
+  const p = placeOf(mod)
+  const items = m.items || []
+  const sel = items.length ? Math.min(p.sel, items.length - 1) : -1
+
+  wrap(m.lead.join(' '), W - 60).forEach(l => centre(l, BONE, '13px VT323, monospace', 13))
+
+  if (items.length) {
+    y += 6
+    const boxW = 210, bx = (W - boxW) / 2
+    items.forEach((it, i) => {
+      g.font = '13px VT323, monospace'
+      g.fillStyle = i === sel ? EMBER : BONE
+      g.fillText(it.label, bx, y)
+      const tw2 = g.measureText(it.label).width
       g.font = '8px Silkscreen, monospace'
-      const yw = g.measureText(r[2]).width
-      leader(x0 + tw2 + 4, y - 3, boxW - tw2 - yw - 8, DEEP)
-      g.fillStyle = RED; g.fillText(r[2], x0 + boxW - yw, y)
+      const meta = it.meta || ''
+      const mw = g.measureText(meta).width
+      leader(bx + tw2 + 4, y - 3, Math.max(4, boxW - tw2 - mw - 8), DEEP)
+      g.fillStyle = i === sel ? RED : DEEP
+      g.fillText(meta, bx + boxW - mw, y)
       y += 15
     })
-  } else if (m.kind === 'steps') {
-    m.steps.forEach((s, i) =>
-      centre(String(i + 1).padStart(2, '0') + '. ' + s, i % 2 ? BONE : EMBER, '13px VT323, monospace', 14))
-  } else {
-    const src = m.kind === 'thesis' ? (xf > .5 ? m.b : m.a) : m
-    if (m.kind === 'thesis') {
-      centre(src.heading, RED, '8px Silkscreen, monospace', 14)
-      /* the fader as a bar of blocks, cracktro-style */
-      const bw = 160, bx = (W - bw) / 2
-      for (let i = 0; i < 32; i++) {
-        g.fillStyle = i / 32 < xf ? EMBER : DEEP
-        g.fillRect(bx + i * 5, y - 6, 4, 4)
-      }
-      y += 10
-    }
-    g.font = '13px VT323, monospace'
-    wrap(src.lines.join(' '), W - 60).forEach(l => centre(l, BONE, '13px VT323, monospace', 13))
-    if (m.mail) { y += 4; centre(m.mail, '#5FE08A', '8px Silkscreen, monospace', 12) }
   }
 
   /* the scroller. A cracktro without one is just a picture. */
@@ -806,7 +1026,7 @@ function cracktro(m, t) {
       const box = reactionBox(st)
       drawSprite(g, REACTION_FRAMES[reaction.frameAt()], box.x, box.y, box.scale,
                  BONE, DEEP, DEEP, '#08070A')
-      if (!casting) drawBubble(g, box, lyraAt(mod), BONE, DEEP, '#08070A')
+      if (!casting) drawBubble(g, box, lyraLines(), BONE, DEEP, '#08070A')
     } else {
       drawWizard(g, st, st.pose, t, BONE, DEEP, '#08070A', casting && cast < .55 ? 1 : 0)
     }
@@ -857,6 +1077,22 @@ function curtain() {
 let faceOverride = null
 
 /** The 320x180 buffer. Upload it as a texture, or blit it — do not draw into it. */
+/**
+ * What the Screen calls itself.
+ *
+ * "Portfolio", not "Tenebrae", at Fernando's ask. The two are not the same thing and
+ * conflating them was the mistake: **Tenebrae is the name of the object**, and the
+ * object is Project 001 in `WORKS` — a real, checkable entry that a visitor can open
+ * and read. Printing that name across the Screen's own chrome made the whole site
+ * look like it was titled after one of its own exhibits. The chrome should say what
+ * this *is*.
+ *
+ * One constant, because it is drawn by two Faces and the boot, and a wordmark that
+ * disagrees with itself in one of three places is the kind of thing nobody notices
+ * until it ships.
+ */
+const WORDMARK = 'Portfolio'
+
 export const buffer = buf
 export const SCREEN_W = W, SCREEN_H = H
 
@@ -864,6 +1100,8 @@ export const SCREEN_W = W, SCREEN_H = H
 export function setModule(i) {
   if (i === mod) return
   mod = i
+  /* a new Module means a new atmosphere line, so her clock starts over with it */
+  lyraSince = performance.now()
   switchedAt = performance.now()
   if (figure !== 'none') flush(performance.now() / 1000)
 }
@@ -875,6 +1113,194 @@ export function setVigil(v) {
 }
 
 export function setCrossfade(v) { xf = v }
+
+/* ---------- selection, depth, and what the footer is saying ---------- */
+
+/**
+ * Where the Moon is standing, and how deep the Sun has gone.
+ *
+ * Both are **per Module**, kept in a map rather than as two numbers, because the
+ * brief says pressing the active Pad again resets *that* Module to its overview —
+ * which is only meaningful if leaving a Module and coming back does not. One pair
+ * of globals would have made every Pad press a reset, silently.
+ */
+const place = new Map()
+const placeOf = i => {
+  let p = place.get(i)
+  if (!p) place.set(i, (p = { sel: 0, sec: 0 }))
+  return p
+}
+export const selectionOf = i => placeOf(i).sel
+export const sectionOf = i => placeOf(i).sec
+export function setSelection(i, sel) { placeOf(i).sel = sel; placeOf(i).sec = 0 }
+export function setSection(i, sec) { placeOf(i).sec = sec }
+
+/**
+ * How many pages of text the current Module's selection has.
+ *
+ * Written by the draw, because pagination depends on measured text and the draw is
+ * the only thing holding a canvas. The controller clamps against it rather than
+ * against `sections.length`, which is no longer the same number.
+ */
+let pageMax = 0
+export const pageRange = () => pageMax
+/** Pixels the page marks occupy on the footer row, so the overflow warning clears them. */
+let markSpan = 0
+export function resetPlace(i) { place.set(i, { sel: 0, sec: 0 }) }
+
+
+/**
+ * The footer, and the two things that can speak through it.
+ *
+ * `flash` is what a control just did — `MOON · PROJECT 03/06 · GRAECUS`. It is
+ * transient and it expires on its own clock, because the brief asks for the module
+ * footer to come *back*, and a caller that has to remember to clear it will
+ * eventually not.
+ *
+ * `hint` is a Pad describing itself under the pointer. It is **not** transient: it
+ * lasts exactly as long as the hover, so it is set and unset rather than timed.
+ * They are separate fields on purpose — a hover arriving during a flash must not
+ * cancel the flash's timer, and a flash must not be wiped by a pointer leaving.
+ */
+let flash = '', flashUntil = 0, hint = ''
+export function setFlash(text, ms = 1600) {
+  flash = text
+  flashUntil = performance.now() + ms
+}
+export function setHint(text) { hint = text || '' }
+
+/* ---------- ECLIPSE, as the Screen sees it ---------- */
+
+/**
+ * The Screen holds none of ECLIPSE's logic and all of its appearance.
+ *
+ * `scene.js` decides what has been seen and what is unlocked; this only draws it.
+ * Keeping the rule and the picture apart is what lets the workbench force the state
+ * without also forging a claim — the button flips the flag, and everything here
+ * follows from the flag rather than from how it came to be set.
+ */
+let eclipseSeen = 1, eclipseUnlocked = false, eclipseOpen = false, eclipseClaim = false
+let eclipseFace = 'moon'
+export function setEclipseSeen(n) { eclipseSeen = n }
+export function setEclipseUnlocked(v) { eclipseUnlocked = !!v }
+export function setEclipseOpen(v, claimEnabled, face) {
+  eclipseOpen = !!v; eclipseClaim = !!claimEnabled
+  if (face) eclipseFace = face
+}
+export const eclipseIsOpen = () => eclipseOpen
+
+/**
+ * The secret screen.
+ *
+ * Drawn over everything, and it says **exactly what is true**: the claim exists, and
+ * it is not open, because there is no server to decide who was first. The brief is
+ * blunt about this — the browser cannot decide a winner, and a prize announced
+ * before the endpoint exists is a promise nobody can keep. So the field is visible,
+ * disabled, and labelled, rather than absent or — far worse — accepting a handle it
+ * would quietly drop.
+ */
+function drawEclipse(g, t, W, H, INK, MID, DIM, GOLD, BG) {
+  g.fillStyle = BG; g.fillRect(0, 0, W, H)
+  /* the constellation, complete */
+  /**
+   * The same screen under a different sky.
+   *
+   * Whichever wheel was pressed decides what hangs over the constellation — a disc
+   * with a bite out of it for the MOON, a rayed one for the SUN. The words, the
+   * count and the claim are identical, because they are the same state reached two
+   * ways, and giving them different *content* would make them two secrets instead
+   * of one with two doors.
+   */
+  const CY = 44
+  {
+    const cx = W / 2, cy = 22, r = 9
+    g.fillStyle = GOLD
+    if (eclipseFace === 'sun') {
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * 6.2832 + t * .2
+        g.fillRect(cx + Math.cos(a) * (r + 3) - .5, cy + Math.sin(a) * (r + 3) - .5, 1.6, 1.6)
+      }
+      g.beginPath(); g.arc(cx, cy, r * .62, 0, 6.2832); g.fill()
+    } else {
+      g.beginPath(); g.arc(cx, cy, r * .8, 0, 6.2832); g.fill()
+      g.fillStyle = BG
+      g.beginPath(); g.arc(cx + r * .42, cy - r * .22, r * .74, 0, 6.2832); g.fill()
+    }
+  }
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * 6.2832 - Math.PI / 2
+    const x = W / 2 + Math.cos(a) * 42, y = CY + Math.sin(a) * 20
+    g.fillStyle = GOLD
+    g.beginPath(); g.arc(x, y, 1.6, 0, 6.2832); g.fill()
+    const nx = W / 2 + Math.cos(a + 1.047) * 42, ny = CY + Math.sin(a + 1.047) * 20
+    g.strokeStyle = 'rgba(214,170,90,.30)'; g.lineWidth = 1
+    g.beginPath(); g.moveTo(x, y); g.lineTo(nx, ny); g.stroke()
+  }
+  const pulse = .55 + .45 * Math.sin(t * 2)
+  g.fillStyle = GOLD
+  g.globalAlpha = pulse
+  g.beginPath(); g.arc(W / 2, CY, 4.5, 0, 6.2832); g.fill()
+  g.globalAlpha = 1
+
+  g.font = '8px Silkscreen, monospace'; g.fillStyle = GOLD
+  /* `SINAL 07` named the seventh detent, which no longer exists — the light is the
+     key now. `SEXTO PARA SÉTIMO` names what actually happened to get here. */
+  const tag = 'ECLIPSE / SEXTO PARA SÉTIMO'
+  g.fillText(tag, W / 2 - g.measureText(tag).width / 2, 82)
+
+  g.font = '12px VT323, monospace'; g.fillStyle = INK
+  let y = 98
+  for (const l of ['Seis sinais alinhados.', 'Um ficou fora do índice.']) {
+    g.fillText(l, W / 2 - g.measureText(l).width / 2, y); y += 12
+  }
+
+  y += 4
+  g.font = '8px Silkscreen, monospace'
+  g.fillStyle = eclipseClaim ? MID : DIM
+  const label = eclipseClaim ? '@ DO INSTAGRAM' : 'TRANSMISSÃO AINDA NÃO ABERTA'
+  g.fillText(label, W / 2 - g.measureText(label).width / 2, y)
+  y += 10
+  /* the field, drawn as a real control and plainly inert */
+  const fw = 150, fx = W / 2 - fw / 2
+  g.strokeStyle = eclipseClaim ? MID : DIM
+  g.lineWidth = 1
+  g.strokeRect(fx + .5, y + .5, fw, 14)
+  if (!eclipseClaim) {
+    g.fillStyle = DIM
+    g.font = '8px Silkscreen, monospace'
+    const off = 'SEM SERVIDOR'
+    g.fillText(off, W / 2 - g.measureText(off).width / 2, y + 10)
+  }
+  y += 22
+  g.fillStyle = DIM
+  /* Not `LUA · VOLTAR` any more: the wheels have no button in them. Esc is the way
+     out everywhere on the object, so it is the one to name. */
+  const back = 'ESC · VOLTAR'
+  g.fillText(back, W / 2 - g.measureText(back).width / 2, y)
+}
+
+/**
+ * LYRA says two things, and only ever two.
+ *
+ * `open` when the Module arrives — atmosphere, the line that belongs to *this*
+ * Module. Then, after six seconds with nobody touching anything, `idle`: the
+ * functional one, which names the MOON and the SUN because it is the only
+ * instruction a visitor gets without going looking for it.
+ *
+ * **It never loops.** Once she has said the useful thing she keeps saying it, until
+ * the visitor does something — at which point the clock restarts and the atmosphere
+ * comes back. A bubble that alternates on a timer is a bubble nobody reads, because
+ * the eye learns it will change again on its own and stops treating it as a message.
+ *
+ * The clock lives here rather than in `scene.js` because the bubble is drawn here
+ * and this is the only place that knows when it is actually on screen. `touch()` is
+ * what the hardware calls; everything the hand can do routes through it.
+ */
+let lyraSince = performance.now()
+export function touchLyra() { lyraSince = performance.now() }
+/** Which of the two lines is live right now — exposed so the tests can be about time. */
+export const lyraPhase = () => (performance.now() - lyraSince >= LYRA_IDLE_MS ? 'idle' : 'open')
+const lyraLines = () => lyraAt(mod)[lyraPhase()]
 
 /** Which row the pointer is over, or -1. Lamps it. */
 export function setHoverWork(i) { hoverWork = i }
@@ -902,6 +1328,8 @@ export function disposeReaction() { reaction.dispose() }
 /** Which Face is live right now, override included. */
 export const currentFace = () => faceOverride || faceFor(vigil)
 export const moduleIndex = () => mod
+/** The power-on level, 0..1. Exposed so the opening can be *watched*, not guessed at. */
+export const bootLevel = () => boot
 
 /**
  * Paint one frame into the buffer and hand it back.
@@ -917,7 +1345,21 @@ export const moduleIndex = () => mod
  * the move rather than after it. Held at 1 for the rest of the session — this is
  * an arrival, not an effect the Unit does again.
  */
-let boot = 1
+/**
+ * **Dark from the first byte.**
+ *
+ * This defaulted to 1 — a Screen already on — because the workbench page wants one
+ * without an opening to wait for. That default was also a window: between this
+ * module evaluating and `scene.js` calling `setBoot(0)` a few hundred lines later,
+ * `boot` was 1, and anything that painted in between showed the Module before the
+ * power-on. Fernando saw it twice: *"o primeiro módulo aparece brevemente antes da
+ * tela de loading."*
+ *
+ * Closing the window by moving the call earlier only makes it smaller. Starting at
+ * 0 removes it: there is no instant at which this file believes the Screen is on
+ * before something has said so. `screen/screen.js` says so for itself.
+ */
+let boot = 0
 export function setBoot(k) { boot = clamp01(k) }
 
 /**
@@ -971,9 +1413,30 @@ function powerOn(t) {
    * dots the Rack runs between a row and its value. The slot readout becomes the
    * boot percentage, in the place a Module says MOD 03/06.
    */
+  /**
+   * **The panel is up from the first frame, not from `typeIn`.**
+   *
+   * This is the flash Fernando reported three times: *"o primeiro módulo aparece
+   * brevemente antes da tela de loading."* Two guesses at it were wrong — the
+   * default value of `boot`, then the order of the setter — and both were wrong in
+   * the same way, because the module was never being shown *instead of* the boot.
+   * It was being shown **through** it.
+   *
+   * `powerOn` draws over the finished Module frame, and the aperture opens on
+   * `k / 0.38`. The panel used to be gated on `typeIn`, which does not start until
+   * `k = 0.14` — by which point the eased aperture is already **three quarters of
+   * the Screen tall**. So for the first tenth of the boot there was a widening
+   * window with the live Module behind it and nothing drawn on top, and then the
+   * panel faded in and covered it. Module, then loading, exactly as described.
+   *
+   * The panel now stands the whole time and only the *typing* is timed. Nothing
+   * else changes: `typeIn` still runs the name, `typeOut` still clears it, and the
+   * aperture still opens on its own curve — it just opens onto the boot rather than
+   * onto the Module.
+   */
   const typeIn = clamp01((k - 0.14) / 0.34)
   const typeOut = clamp01((k - 0.86) / 0.14)
-  const show = typeIn > 0 ? (1 - typeOut) : 0
+  const show = 1 - typeOut
   if (show > 0.01) {
     g.save()
     g.globalAlpha = show
@@ -991,7 +1454,7 @@ function powerOn(t) {
     /* header band, in the Module's own places */
     g.font = '17px UnifrakturMaguntia, serif'
     g.fillStyle = INK
-    g.fillText('Tenebrae', 20, 32)
+    g.fillText(WORDMARK, 20, 32)
     g.font = '8px Silkscreen, monospace'
     g.fillStyle = MID
     const pct = String(Math.round(clamp01(k / 0.86) * 100)).padStart(3, ' ') + '%'

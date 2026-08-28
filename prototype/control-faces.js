@@ -7,11 +7,16 @@ import * as THREE from 'three'
  * *shape*; what the reference has and the object did not is the small machined
  * detail that says a control is a made part rather than a coloured box:
  *
- *   - an **amber LED bar** let into the head of every Pad, lit or dark
+ *   - an **LED bar** let into the head of every Pad, lit or dark
  *   - **corner brackets** at each Pad's feet, the way a real one is registered
- *   - a Pad that goes **bone** when it is the one you are on, instead of merely
- *     glowing a bit harder
  *   - a Crossfader that is a **milled trough with detent beads**, not a slot
+ *
+ * The Pads themselves are **all one colour, always**. An earlier version swapped
+ * the selected one to a bone face — a material change, on the theory that it reads
+ * further across a dark room than a brightness change does. It reads, and it is
+ * wrong: a key does not change what it is made of when you press it. The state
+ * lives in the **lamp**, which is the only part of a real one that ever changes,
+ * and it changes **hue** rather than merely brightness so it still carries at 40px.
  *
  * All of it is drawn, not modelled. Six Pads and a fader are the wrong place to
  * spend geometry — the whole row is under 200px on screen — and this project has
@@ -89,36 +94,30 @@ const PAD_PX = 256
 const LED = { y: 0.155, w: 0.30, h: 0.052 }
 
 /**
- * One Pad face.
- *
- * `bone` is the selected state. It is a *material* change, not a brightness one —
- * the reference's active Pad is parchment where the others are graphite — and that
- * is what makes the row readable at a glance: you are looking for the pale one,
- * not for the slightly-less-dark one. The old version moved lightness by five
- * hundredths on a near-black face, which is the same mistake the hover made.
+ * The Pad face. There is one, and every Pad wears it in every state.
  */
-function padFace(bone) {
+function padFace() {
   const S = PAD_PX
   const c = canvas(S, S)
   const g = c.getContext('2d')
 
-  g.fillStyle = bone ? '#D3C2A4' : '#141517'
+  g.fillStyle = '#141517'
   g.fillRect(0, 0, S, S)
-  grain(g, S, S, bone ? '#8A7550' : '#5A5F68', 110, bone ? 0.10 : 0.07)
+  grain(g, S, S, '#5A5F68', 110, 0.07)
 
   /* the domed edge: a light top-left lip and a dark bottom-right one, which is
      the whole of what makes a flat square read as a moulded key */
   g.lineWidth = S * 0.018
-  g.strokeStyle = bone ? 'rgba(255,248,232,.60)' : 'rgba(126,132,142,.13)'
+  g.strokeStyle = 'rgba(126,132,142,.13)'
   roundRect(g, S * 0.045, S * 0.045, S * 0.91, S * 0.91, S * 0.15)
   g.stroke()
-  g.strokeStyle = bone ? 'rgba(90,70,40,.28)' : 'rgba(0,0,0,.50)'
+  g.strokeStyle = 'rgba(0,0,0,.50)'
   g.lineWidth = S * 0.014
   roundRect(g, S * 0.065, S * 0.072, S * 0.87, S * 0.88, S * 0.14)
   g.stroke()
 
   /* the LED's recess — the lamp itself is on the emissive map */
-  g.fillStyle = bone ? '#6E2410' : '#2A1408'
+  g.fillStyle = '#2A1408'
   roundRect(g, S * (0.5 - LED.w / 2), S * (LED.y - LED.h / 2), S * LED.w, S * LED.h, S * LED.h / 2)
   g.fill()
 
@@ -130,7 +129,7 @@ function padFace(bone) {
    * the marks a part is seated against, and a full set of four would have read as
    * a frame around a picture instead.
    */
-  g.strokeStyle = bone ? 'rgba(96,74,42,.75)' : 'rgba(176,146,98,.60)'
+  g.strokeStyle = 'rgba(176,146,98,.60)'
   g.lineWidth = S * 0.012
   const m = S * 0.155, a = S * 0.075
   for (const s of [1, -1]) {
@@ -149,7 +148,15 @@ function padFace(bone) {
   return c
 }
 
-/** The lamp on its own, so it can burn without the face burning with it. */
+/**
+ * The lamp on its own, so it can burn without the face burning with it.
+ *
+ * Drawn **white**, not amber. This is an emissive map, which is multiplied by the
+ * material's `emissive` colour — so any hue baked in here is a hue the material can
+ * only ever darken. Painting it amber made the idle ember a muddy brown and put a
+ * ceiling on how far the selected Pad could travel from it. White gives the hue
+ * back to the material, which is the thing that actually knows which Pad is on.
+ */
 function padLamp() {
   const S = PAD_PX
   const c = canvas(S, S)
@@ -159,11 +166,11 @@ function padLamp() {
      spills, and it is the spill that stops it reading as a painted rectangle */
   g.save()
   g.filter = 'blur(6px)'
-  g.fillStyle = '#B4681A'
+  g.fillStyle = '#9A9A9A'
   roundRect(g, S * (0.5 - LED.w / 2) - 6, S * (LED.y - LED.h / 2) - 6, S * LED.w + 12, S * LED.h + 12, S * LED.h)
   g.fill()
   g.restore()
-  g.fillStyle = '#FFC98A'
+  g.fillStyle = '#FFFFFF'
   roundRect(g, S * (0.5 - LED.w / 2), S * (LED.y - LED.h / 2), S * LED.w, S * LED.h, S * LED.h / 2)
   g.fill()
   return c
@@ -171,12 +178,11 @@ function padLamp() {
 
 /**
  * @param size the Pad's world size, so the UVs can be fitted to it
- * @returns { dark, lit, lamp } — two albedo maps and one emissive
+ * @returns { face, lamp } — one albedo map for every Pad, and one emissive
  */
 export function padMaps(size) {
   return {
-    dark: tex(padFace(false), { w: size, d: size }),
-    lit: tex(padFace(true), { w: size, d: size }),
+    face: tex(padFace(), { w: size, d: size }),
     lamp: tex(padLamp(), { w: size, d: size }),
   }
 }
