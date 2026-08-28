@@ -1,0 +1,52 @@
+# Build the Unit and publish it to GitHub Pages.
+#
+# `npm run build:site` is the real site (see HANDOFF.md) — `vite.site.config.ts`
+# has `root: prototype`, `publicDir: ../public` and `base: './'`. The relative
+# base is what lets the same output work from a project subpath like
+# `/tenebrae/` as well as from a domain root, so nothing here has to know the
+# repository's name.
+name: Pages
+
+on:
+  push:
+    branches: [lyra]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a queued run supersedes a waiting one rather than
+# racing it. In-progress runs finish, so a half-uploaded site is never live.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The content tests are arithmetic over `modules.ts` and guard claims the
+      # site makes about Fernando — a build that breaks them should not ship.
+      - run: npx vitest run
+      - run: npm run build:site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
