@@ -1,13 +1,20 @@
 <!doctype html>
-<!-- `lang` is on a real `<html>` element because there was not one: the file relied on
-     the parser inventing it, which works for layout and loses the language. A screen
-     reader needs it to choose a Portuguese voice, and the page is Portuguese now. -->
-<html lang="pt-BR">
-<!-- Must be the first thing in the document, and within the first 1024 bytes, or the
-     browser guesses the encoding. It had been guessing: every em dash on the page came
-     out as "â€"" — the HUD read "Keys 1â€"6 pick a module" — because this file had no
-     charset declaration at all and the served default is not UTF-8. -->
+<!-- The charset is the first thing after the doctype, ahead of every comment, so it
+     stays inside the first 1024 bytes no matter how much prose lands below it. It had
+     been guessing before: every em dash came out as "â€"" and the HUD read
+     "Keys 1â€"6 pick a module". Prose grows; that budget does not. -->
 <meta charset="utf-8">
+<!-- `lang` is on a real root element below, because there was not one: the file
+     relied on the parser inventing it, which works for layout and loses the language.
+     A screen reader needs it to choose a Portuguese voice, and the page is Portuguese.
+
+     Do not write the root element's own tag inside a comment here. Vite injects the
+     module script immediately after the first literal occurrence of that tag in the
+     file, and if the first one is in a comment the script is injected *into* the
+     comment — the built page then loads nothing at all, silently, with no console
+     error. The dev server never shows it, because nothing is injected there. It
+     shipped once: the first GitHub Pages deploy served a blank page. -->
+<html lang="pt-BR">
 <meta name="description" content="Estratégia, mensagem, design, front-end e análise em um portfólio interativo.">
 <title>Fernando Linck — Growth, CRO e experiências digitais</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=Azeret+Mono:wght@400;500&family=UnifrakturMaguntia&family=Pirata+One&family=Grenze+Gotisch:wght@400;600&family=Silkscreen:wght@400;700&family=VT323&display=swap">

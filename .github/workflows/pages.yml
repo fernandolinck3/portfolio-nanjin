@@ -37,6 +37,10 @@ jobs:
       # site makes about Fernando — a build that breaks them should not ship.
       - run: npx vitest run
       - run: npm run build:site
+      # The built page can differ from the one the dev server serves, and has: Vite
+      # injects the module script after the first literal root tag in the source, so
+      # a comment containing that tag swallowed the script and shipped a blank site.
+      - run: npm run verify:site
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist-site
