@@ -87,7 +87,7 @@ describe('the Screen budget', () => {
    */
   it('holds whole sentences in a lead, never half of one', () => {
     for (const m of MODULES) {
-      for (const l of m.lead) {
+      for (const l of m.lead ?? []) {
         /* an address is a token on its own line, not a sentence — CONTATO's is
            lowercase because that is what it is, not because it was cut */
         if (!l.includes(' ')) continue
@@ -97,8 +97,8 @@ describe('the Screen budget', () => {
   })
 
   it.each(MODULES)('$title fits its lead', m => {
-    expect(m.lead.length).toBeLessThanOrEqual(SCREEN_BUDGET.lead.lines)
-    expect(longest(m.lead)).toBeLessThanOrEqual(SCREEN_BUDGET.lead.paraChars)
+    expect((m.lead ?? []).length).toBeLessThanOrEqual(SCREEN_BUDGET.lead.lines)
+    expect(longest(m.lead ?? [])).toBeLessThanOrEqual(SCREEN_BUDGET.lead.paraChars)
     expect(m.dim?.length ?? 0).toBeLessThanOrEqual(SCREEN_BUDGET.dim.lines)
     expect(longest(m.dim ?? [])).toBeLessThanOrEqual(SCREEN_BUDGET.dim.lineChars)
     expect(m.hint.length).toBeLessThanOrEqual(SCREEN_BUDGET.hintChars)
@@ -146,12 +146,30 @@ describe('LYRA', () => {
    * to find it. Asserted as an exemption rather than dropped, so the rule still
    * holds for the five Modules where it matters.
    */
-  it('names the MOON where the wheels are the way to the content', () => {
+  /**
+   * LYRA names a wheel only where a wheel does something.
+   *
+   * The rule used to be "every Module but CONTATO must name the MOON", and it was
+   * enforcing a lie: QUEM has no list, so both wheels are inert there, and its idle
+   * line said *"A LUA escolhe o item."* The rule the copy actually needs is the
+   * honest one — **a Module with items names the MOON; a Module without one must
+   * not.** CONTATO stays exempt for its own reason: its addresses are on screen the
+   * moment it opens, so nobody there needs to be told how to turn a wheel.
+   */
+  it('names a wheel only where a wheel has something to do', () => {
     for (const m of MODULES) {
       if (m.id === 'contact') continue
-      expect(m.lyra.idle.join(' ')).toMatch(/LUA/)
+      const idle = m.lyra.idle.join(' ')
+      if (m.items?.length) expect(idle).toMatch(/LUA/)
+      else expect(idle).not.toMatch(/\bLUA\b|\bSOL\b/)
     }
     expect(MODULES.find(m => m.id === 'contact')!.lyra.idle.join(' ')).not.toMatch(/LUA/)
+  })
+
+  /** A Module whose index is a bare list must not carry a lead: the names are the
+      content, and a paragraph above them only pushes the last one off the panel. */
+  it('leaves a bare list to speak for itself', () => {
+    expect(MODULES.find(m => m.id === 'projects')!.lead).toBeUndefined()
   })
 
   it('waits six seconds before saying the useful thing', () => {
@@ -161,7 +179,7 @@ describe('LYRA', () => {
 
 describe('what the content is allowed to claim', () => {
   const publicText = MODULES.flatMap(m => [
-    ...m.lead, ...(m.dim ?? []),
+    ...(m.lead ?? []), ...(m.dim ?? []),
     ...(m.items ?? []).flatMap(i => [i.label, i.meta ?? '', ...i.sections.flatMap(s => s.lines)]),
   ])
 
@@ -172,7 +190,7 @@ describe('what the content is allowed to claim', () => {
   it('uses first person only in CONTATO', () => {
     for (const m of MODULES) {
       if (m.id === 'contact') continue
-      const text = [...m.lead, ...(m.dim ?? [])].join(' ')
+      const text = [...(m.lead ?? []), ...(m.dim ?? [])].join(' ')
       expect(text).not.toMatch(/\b(eu|meu|minha|mim|comigo)\b/i)
     }
   })

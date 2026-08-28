@@ -50,16 +50,43 @@ export type Item = {
  */
 export type Lyra = { open: readonly string[]; idle: readonly string[] }
 
+/**
+ * Como o índice de um Módulo é desenhado.
+ *
+ * Antes havia uma forma só — um `lead` e uma lista debaixo dele — e ela servia mal a
+ * quase todos. Cinco critérios não cabiam com o texto acima; quatro grupos de
+ * habilidades pediam uma matriz e não uma coluna; dois blocos do trajeto são um mapa,
+ * não uma fila; e QUEM, que não tem lista, gastava a metade direita do painel para
+ * não mostrar nada ali.
+ *
+ * O tipo diz o que a tela **é**, e o desenho segue disso:
+ *
+ *   `identity`  uma tela de identidade em largura total, sem lista
+ *   `list`      nomes, e só nomes — nada acima deles
+ *   `index`     índice numerado compacto, com todos os itens sempre visíveis
+ *   `grid`      matriz 2x2 de grupos
+ *   `nodes`     poucos blocos grandes, ligados visualmente
+ */
+export type Layout = 'identity' | 'list' | 'index' | 'grid' | 'nodes'
+
 export type Module = {
   slot: number
   id: string
   title: string
+  layout: Layout
   /** Forma curta impressa acima da Tecla. ~96px de passo, daí as abreviações. */
   pad: string
   /** A linha que o rodapé da Tela mostra enquanto a Tecla está sob o ponteiro. */
   hint: string
-  /** A visão geral. **Sempre na tela, nunca atrás de uma roda.** */
-  lead: readonly string[]
+  /**
+   * A visão geral. **Sempre na tela, nunca atrás de uma roda.**
+   *
+   * Um índice que já se explica pelos próprios nomes não precisa de um: PROJETOS
+   * mostra três títulos e nada acima deles, porque o que o texto diria a lista já
+   * disse. Daí `lead` ser opcional agora.
+   */
+  lead?: readonly string[]
+  /** Rodapé do corpo: lugar, idioma, o que qualifica sem competir. */
   dim?: readonly string[]
   /** O que uma marca da LUA percorre, para o rodapé: `LUA · PROJETO 02/03`. */
   unit?: string
@@ -316,6 +343,7 @@ export const MODULES: readonly Module[] = [
     slot: 1,
     id: 'identity',
     title: 'QUEM',
+    layout: 'identity',
     pad: 'QUEM',
     hint: 'QUEM — A perspectiva que ele traz',
     lead: [
@@ -326,7 +354,9 @@ export const MODULES: readonly Module[] = [
     dim: ['Porto Alegre, Brasil.'],
     lyra: {
       open: ['A unidade despertou.', 'Comece aqui.'],
-      idle: ['A LUA escolhe o item.', 'O SOL revela mais.'],
+      /* QUEM não tem lista, então nem a LUA nem o SOL fazem nada aqui. A fala dizia
+         que faziam, o que ensinava, logo no primeiro módulo, que as rodas mentem. */
+      idle: ['As teclas escolhem', 'o módulo.'],
     },
   },
 
@@ -334,12 +364,11 @@ export const MODULES: readonly Module[] = [
     slot: 2,
     id: 'projects',
     title: 'PROJETOS',
+    layout: 'list',
     pad: 'PROJETOS',
     hint: 'PROJETOS — Trabalhos e o raciocínio por trás deles',
-    lead: [
-      'As duas rodas percorrem a lista.',
-      'Toque no projeto na tela para abrir por inteiro.',
-    ],
+    /* Sem `lead`. Três títulos dizem o que são; o texto acima deles só empurrava o
+       terceiro contra o rodapé. */
     unit: 'PROJETO',
     items: WORKS.map(w => ({
       id: w.id,
@@ -366,12 +395,10 @@ export const MODULES: readonly Module[] = [
     slot: 3,
     id: 'path',
     title: 'TRAJETO',
+    layout: 'nodes',
     pad: 'TRAJETO',
     hint: 'TRAJETO — Onde ele trabalhou e do que cuidou',
-    lead: [
-      'O percurso em camadas, e as datas que as sustentam.',
-      'Gire a LUA para percorrer.',
-    ],
+    lead: ['O percurso em camadas, e as datas que as sustentam.'],
     unit: 'ETAPA',
     items: [
       {
@@ -431,13 +458,13 @@ export const MODULES: readonly Module[] = [
     slot: 4,
     id: 'criteria',
     title: 'CRITÉRIOS',
+    layout: 'index',
     /* `CRITÉR.` só existe no hardware — a Tela sempre escreve por extenso. */
     pad: 'CRITÉR.',
     hint: 'CRITÉRIOS — Como contexto vira trabalho terminado',
-    lead: [
-      'Cinco regras que sobrevivem às ferramentas.',
-      'Gire a LUA para ler a próxima, o SOL para o porquê.',
-    ],
+    /* Uma linha. Cinco critérios têm de caber inteiros na mesma tela, e duas linhas
+       de abertura custavam o quinto. */
+    lead: ['Os dados decidem. O encanto também conta.'],
     unit: 'CRITÉRIO',
     items: [
       {
@@ -529,12 +556,10 @@ export const MODULES: readonly Module[] = [
     slot: 5,
     id: 'skills',
     title: 'HABILIDADES',
+    layout: 'grid',
     pad: 'HABILID.',
     hint: 'HABILIDADES — Com o que ele trabalha',
-    lead: [
-      'As ferramentas à mão, agrupadas pelo que fazem.',
-      'Gire a LUA para percorrer a lista.',
-    ],
+    lead: ['As ferramentas à mão, agrupadas pelo que fazem.'],
     unit: 'GRUPO',
     items: [
       {
@@ -579,7 +604,7 @@ export const MODULES: readonly Module[] = [
     ],
     lyra: {
       open: ['Ferramentas à mão.'],
-      idle: ['Gire a LUA para', 'percorrer a lista.'],
+      idle: ['A LUA escolhe o grupo.', 'O SOL abre.'],
     },
   },
 
@@ -593,6 +618,7 @@ export const MODULES: readonly Module[] = [
     slot: 6,
     id: 'contact',
     title: 'CONTATO',
+    layout: 'list',
     pad: 'CONTATO',
     hint: 'CONTATO — Rotas verificadas para chegar até mim',
     /**

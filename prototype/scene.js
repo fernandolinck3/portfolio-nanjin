@@ -3665,7 +3665,11 @@ el.addEventListener('pointermove', e => {
      */
     const d0 = active === 'sun' ? sun : moon;
     const now = pt(e);
-    const d = -deckTurn(d0.group, jogAt, now);
+    /* The sign is the hand's, not the maths'. `deckTurn` returns the cross product
+       in screen space, where y runs *down* — so its positive direction is the mirror
+       of what the eye calls clockwise, and the platter came out turning against the
+       drag. Fernando: *"ela tá girando inversamente ao arraste de mouse."* */
+    const d = deckTurn(d0.group, jogAt, now);
     jogAt = now;
     /* the platter follows the hand one to one; `carry` is the same travel measured
        against the detents, and the two are fed from the same number so the wheel can

@@ -667,6 +667,125 @@ function pageScrim() {
   tone(14, RULE_Y + 3, W - 28, 3, .5, BG)
 }
 
+/* ---------- the four index shapes ----------
+   Each takes the items, the cursor, the body box and the type-on progress, registers
+   its clickable rows in `workRows`, and returns the y it finished at. They share the
+   cursor's vocabulary — a filled disc is where you are, a ring is where you are not —
+   so four different shapes still read as one instrument. */
+
+/** A row of names. The plainest one, and what PROJETOS and CONTATO want. */
+function drawList(items, sel, x0, y, bodyW, typed) {
+  const top = y - 8, span = items.length * 14
+  tone(x0 - 8, top, 1, span, .3, INK)
+  items.forEach((it, i) => {
+    if (i / items.length > typed) return
+    workRows.push({ i, x: x0 - 8, y: y - 10, w: bodyW + 12, h: 14 })
+    const on = i === sel
+    if (i === hoverWork && !on) { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(x0 - 8, y - 10, bodyW + 12, 14) }
+    g.fillStyle = on ? GOLD : DIM
+    if (on) disc(g, x0 - 8, y - 4, 3); else ring(g, x0 - 8, y - 4, 2, 1)
+    g.font = '13px VT323, monospace'
+    g.fillStyle = on ? INK : MID
+    g.fillText(it.label, x0 + 4, y)
+    if (it.meta) {
+      g.font = '8px Silkscreen, monospace'
+      const mw = g.measureText(it.meta).width
+      g.fillStyle = on ? GOLD : DIM
+      g.fillText(it.meta, x0 + bodyW - mw, y - 1)
+    }
+    y += 14
+  })
+  return y
+}
+
+/**
+ * A numbered index, all of it on screen at once.
+ *
+ * *"Nenhum item pode parecer cortado ou oculto."* Five criteria at 14px with a lead
+ * above them do not fit, so the number does the work the bullet used to: it is the
+ * cursor *and* the count, and the rows tighten to 12 because a numeral reads at that
+ * size where a sentence does not.
+ */
+function drawIndex(items, sel, x0, y, bodyW, typed) {
+  items.forEach((it, i) => {
+    if (i / items.length > typed) return
+    workRows.push({ i, x: x0 - 8, y: y - 10, w: bodyW + 12, h: 12 })
+    const on = i === sel
+    if (i === hoverWork && !on) { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(x0 - 8, y - 10, bodyW + 12, 12) }
+    g.font = '8px Silkscreen, monospace'
+    g.fillStyle = on ? GOLD : DIM
+    g.fillText(String(i + 1).padStart(2, '0'), x0 - 6, y - 1)
+    g.font = '12px VT323, monospace'
+    g.fillStyle = on ? INK : MID
+    g.fillText(it.label, x0 + 14, y)
+    y += 12
+  })
+  return y
+}
+
+/**
+ * Four groups as a 2x2 matrix.
+ *
+ * A column of four would have been a list of four; a matrix says they are peers and
+ * that there are exactly four of them, which is the whole shape of the answer to
+ * *"com o que ele trabalha"*. Each cell is a target, so the labels wrap inside their
+ * half rather than being cut.
+ */
+function drawGrid(items, sel, x0, y, bodyW, typed) {
+  const cw = Math.floor((bodyW - 8) / 2), ch = 26
+  items.slice(0, 4).forEach((it, i) => {
+    if (i / 4 > typed) return
+    const cx = x0 + (i % 2) * (cw + 8), cy = y + Math.floor(i / 2) * (ch + 6)
+    const on = i === sel
+    workRows.push({ i, x: cx - 4, y: cy - 10, w: cw + 8, h: ch })
+    if (i === hoverWork && !on) { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(cx - 4, cy - 10, cw + 8, ch) }
+    /* the cell's own edge, so four blocks read as a matrix and not as loose text */
+    tone(cx - 4, cy - 10, cw + 8, 1, on ? .5 : .18, on ? GOLD : INK)
+    tone(cx - 4, cy - 10, 1, ch, on ? .5 : .18, on ? GOLD : INK)
+    g.font = '11px VT323, monospace'
+    g.fillStyle = on ? INK : MID
+    let ly = cy + 2
+    for (const line of wrap(it.label, cw - 6)) { g.fillText(line, cx + 2, ly); ly += 11 }
+  })
+  return y + 2 * (ch + 6)
+}
+
+/**
+ * Two large nodes, joined.
+ *
+ * TRAJETO has two blocks and they are not a queue — one is the shape of the work and
+ * the other is when it happened, and the line between them is the point. Drawn as
+ * two wide plates with a rule running through, so the pair reads before either name
+ * does.
+ */
+function drawNodes(items, sel, x0, y, bodyW, typed) {
+  const n = Math.min(items.length, 3)
+  const bw = Math.floor((bodyW - (n - 1) * 14) / n), bh = 30
+  /* the connecting line first, under everything */
+  tone(x0 + 6, y + bh / 2 - 4, bodyW - 12, 1, .28, INK)
+  items.slice(0, n).forEach((it, i) => {
+    if (i / n > typed) return
+    const bx = x0 + i * (bw + 14)
+    const on = i === sel
+    workRows.push({ i, x: bx, y: y - 10, w: bw, h: bh })
+    /* the node's ground, so the connecting rule appears to pass behind it */
+    g.fillStyle = BG; g.fillRect(bx, y - 10, bw, bh)
+    tone(bx, y - 10, bw, bh, on ? .16 : .07, on ? GOLD : INK)
+    if (i === hoverWork && !on) { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(bx, y - 10, bw, bh) }
+    g.fillStyle = on ? GOLD : DIM
+    if (on) disc(g, bx + 8, y + 2, 3); else ring(g, bx + 8, y + 2, 2, 1)
+    g.font = '12px VT323, monospace'
+    g.fillStyle = on ? INK : MID
+    g.fillText(it.label, bx + 16, y + 6)
+    if (it.meta) {
+      g.font = '8px Silkscreen, monospace'
+      g.fillStyle = on ? GOLD : DIM
+      g.fillText(it.meta, bx + 16, y + 16)
+    }
+  })
+  return y + bh + 4
+}
+
 function grimoire(m, t) {
   overflow = 0
   grimoireChrome(m, t)
@@ -700,7 +819,11 @@ function grimoire(m, t) {
    * body text at 100% is two paragraphs in the same place. In QUEM the bubble was
    * also lying — *"A LUA escolhe o item"* in the Module that has none.
    */
-  const wide = !(m.items || []).length || (placeOf(mod).sec || 0) > 0
+  const wide = !(m.items || []).length
+    || (placeOf(mod).sec || 0) > 0
+    /* the map wants the width, and the brief is explicit that LYRA must not compete
+       with it: two nodes and the rule between them are the whole reading */
+    || m.layout === 'nodes'
   const onPage = wide
 
   if (figure === 'drawn') {
@@ -822,18 +945,22 @@ function grimoire(m, t) {
 
   if (page === 0) {
     /**
-     * The lead, as paragraphs with air between them.
+     * The index, drawn as the shape the Module actually is.
      *
-     * It used to be one undifferentiated run of lines, so the name ran straight into
-     * the sentence under it: *"precisa-se adicionar um espaço entre o título do
-     * módulo quem e o parágrafo."* `m.lead` has always been a list of separate
-     * statements; this stops flattening it into one.
+     * One shape used to serve all six — a lead with a column of names under it — and
+     * it served most of them badly. Five criteria did not fit under two lines of
+     * opening. Four groups of tools are a matrix, not a queue. Two blocks of a career
+     * are a map. And QUEM, which has no list at all, spent the right half of the
+     * panel showing nothing. `m.layout` says what the screen *is*; this draws it.
      */
     const lx = wide ? 20 : x0, lw = wide ? W - 40 : bodyW
     if (wide) { pageScrim(); y = RULE_Y + 20 }
 
-    const paras = m.lead.map(l => wrap(l, lw))
-    const total = paras.reduce((n, q) => n + q.length, 0)
+    /* the lead, as paragraphs with air between them — the name no longer runs
+       straight into the sentence under it. Optional now: a bare list of names says
+       what a paragraph above it would have said. */
+    const paras = (m.lead || []).map(l => wrap(l, lw))
+    const total = paras.reduce((n, q) => n + q.length, 0) || 1
     let budget = Math.max(1, Math.floor(total * typed + .0001))
     for (const q of paras) {
       if (budget <= 0) break
@@ -844,31 +971,38 @@ function grimoire(m, t) {
 
     workRows = []
     if (items.length) {
-      y += 6
-      const top = y - 8, span = items.length * 13
-      tone(x0 - 8, top, 1, span, .3, INK)
-      items.forEach((it, i) => {
-        if (i / items.length > typed) return
-        workRows.push({ i, x: x0 - 8, y: y - 10, w: bodyW + 12, h: 13 })
-        const on = i === sel
-        if (i === hoverWork && !on) { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(x0 - 8, y - 10, bodyW + 12, 13) }
-        g.fillStyle = on ? GOLD : DIM
-        if (on) disc(g, x0 - 8, y - 3, 3); else ring(g, x0 - 8, y - 3, 2, 1)
-        g.font = '12px VT323, monospace'
-        g.fillStyle = on ? INK : MID
-        g.fillText(it.label, x0 + 4, y)
-        if (it.meta) {
-          g.font = '8px Silkscreen, monospace'
-          const mw = g.measureText(it.meta).width
-          g.fillStyle = on ? GOLD : DIM
-          g.fillText(it.meta, x0 + bodyW - mw, y - 1)
-        }
-        y += 13
-      })
+      y += 4
+      if (m.layout === 'grid') y = drawGrid(items, sel, x0, y, bodyW, typed)
+      else if (m.layout === 'nodes') y = drawNodes(items, sel, x0, y, bodyW, typed)
+      else if (m.layout === 'index') y = drawIndex(items, sel, x0, y, bodyW, typed)
+      else y = drawList(items, sel, x0, y, bodyW, typed)
     }
+
+    /**
+     * `dim` sits on the floor of the body, not under the last thing drawn.
+     *
+     * It is where a place and a language belong — *"localização e idioma ficam no
+     * rodapé"* — and hanging it off the previous block made it move whenever the
+     * block above changed height, which is how it ended up wedged against a list.
+     */
     const dimAll = []
     for (const l of (m.dim || [])) dimAll.push(...wrap(l, lw))
-    if (dimAll.length) { y += 2; y = flow(dimAll, lx, y, 12, DIM) }
+    if (dimAll.length) flow(dimAll, lx, FLOOR - 2 - (dimAll.length - 1) * 12, 12, DIM)
+
+    /**
+     * And the invitation to turn the SUN.
+     *
+     * *"Não fica claro que o usuário pode scrollar pra ler os textos."* It was not
+     * clear because nothing said so: the page marks appear only once you are already
+     * on a page, which is after the discovery has been made. A selected item that has
+     * something behind it says so, on the row itself.
+     */
+    if (sel >= 0 && pageMax > 0) {
+      g.font = '8px Silkscreen, monospace'
+      g.fillStyle = GOLD
+      const more = 'SOL ▸'
+      g.fillText(more, x0 + bodyW - g.measureText(more).width, FLOOR - 2)
+    }
 
   } else {
     /**
