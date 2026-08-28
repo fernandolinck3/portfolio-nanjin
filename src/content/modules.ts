@@ -78,6 +78,11 @@ export type Module = {
   pad: string
   /** A linha que o rodapé da Tela mostra enquanto a Tecla está sob o ponteiro. */
   hint: string
+  /** Só no layout `identity`: o nome, desenhado em blackletter como na abertura. */
+  name?: string
+  /** Só no layout `identity`: o posicionamento, e as disciplinas sob ele. */
+  role?: string
+  disciplines?: readonly string[]
   /**
    * A visão geral. **Sempre na tela, nunca atrás de uma roda.**
    *
@@ -147,7 +152,16 @@ export const ECLIPSE = {
     lines: ['Você trouxe a luz de volta ao dia,', 'e a sétima marca acendeu.'],
   },
   found: 'SINAL ENCONTRADO',
-  note: ['Não há prêmio, nem lista, nem servidor.', 'Encontrar era o prêmio.'],
+  /**
+   * O prêmio existe, e não precisa de servidor para existir.
+   *
+   * A tela dizia que não havia nenhum, o que era verdade sobre a infraestrutura e
+   * mentira sobre a intenção — *"temos um prêmio though, a pessoa me mandar um print
+   * ou ir direto pro Instagram."* Um print mandado no direct é a prova; a pessoa
+   * carrega, ninguém precisa arbitrar, e o canal já existe.
+   */
+  note: ['Mande um print desta tela.'],
+  claim: { label: 'ABRIR O INSTAGRAM  ·  @NAN._.JIN', url: 'https://instagram.com/nan._.jin' },
 } as const
 
 export const LYRA_NAME = 'LYRA'
@@ -374,9 +388,18 @@ export const MODULES: readonly Module[] = [
     layout: 'identity',
     pad: 'QUEM',
     hint: 'QUEM — A perspectiva que ele traz',
+    /**
+     * O nome, e a hierarquia sob ele.
+     *
+     * Estava tudo em caixa alta numa linha só — `FERNANDO LINCK — GROWTH, CRO E
+     * EXPERIÊNCIAS DIGITAIS.` — o que faz do nome mais uma linha de texto. Ele é a
+     * primeira coisa da tela de identidade e passa a ser desenhado como tal: em
+     * blackletter, do mesmo jeito que a abertura o escreve.
+     */
+    name: 'Fernando Bittencourt',
+    role: 'GROWTH · CRO · EXPERIÊNCIAS DIGITAIS',
+    disciplines: ['ESTRATÉGIA', 'MENSAGEM', 'DESIGN', 'FRONT-END', 'ANÁLISE'],
     lead: [
-      'FERNANDO LINCK — GROWTH, CRO E EXPERIÊNCIAS DIGITAIS.',
-      'Estratégia, mensagem, design, front-end e análise.',
       'Experimentos de ponta a ponta: da pesquisa à implementação e ao aprendizado.',
     ],
     dim: ['Porto Alegre, Brasil.'],

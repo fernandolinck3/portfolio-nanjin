@@ -246,7 +246,40 @@ function grimoireChrome(m, t) {
   g.font = '8px Silkscreen, monospace'; g.fillStyle = MID
   const slot = 'MOD 0' + m.slot + '/06'
   g.fillText(slot, W - 20 - g.measureText(slot).width, 40)
-  celestial(dusk(vigil), t, INK, GOLD, DIM, BG)
+  /**
+   * The sky mark in the header, and what it becomes once the secret is found.
+   *
+   * `celestial` draws the day's sun or the night's moon there — decoration, and the
+   * one glyph on the Screen that already means *the light*. Once ECLIPSE has been
+   * opened, the light stops being the key: turning the fader again would reopen the
+   * screen every time it crossed, which turns a secret into a nuisance. So the mark
+   * takes the job. It puts on a ring, breathes, and becomes the way back in —
+   * clickable, where it is drawn, and only after there is something to go back to.
+   */
+  if (eclipseFound) {
+    const cx = W - 62, cy = 26
+    const beat = .5 + .5 * Math.sin(t * 1.6)
+    mark_ = { x: cx - 11, y: cy - 11, w: 22, h: 22 }
+    g.save()
+    g.globalAlpha = .35 + .4 * beat
+    ring(g, cx, cy, 9 + beat * 1.2, 1)
+    g.restore()
+    g.fillStyle = GOLD
+    if (eclipseFace === 'sun') {
+      disc(g, cx, cy, 4)
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * 6.2832 + t * .15
+        g.fillRect(cx + Math.cos(a) * 7 - .5, cy + Math.sin(a) * 7 - .5, 1.4, 1.4)
+      }
+    } else {
+      disc(g, cx, cy, 5)
+      g.fillStyle = BG
+      disc(g, cx + 2.4, cy - 1.4, 4.4)
+    }
+  } else {
+    mark_ = null
+    celestial(dusk(vigil), t, INK, GOLD, DIM, BG)
+  }
   tone(18, 44, W - 36, 1, .4, INK)
 
 }
@@ -943,6 +976,7 @@ function grimoire(m, t) {
   pageMax = pages.length
   markSpan = pages.length * 7
   back_ = null
+  claim_ = null
   const page = Math.max(0, Math.min(pages.length, p.sec || 0))
 
   if (page === 0) {
@@ -957,6 +991,40 @@ function grimoire(m, t) {
      */
     const lx = wide ? 20 : x0, lw = wide ? W - 40 : bodyW
     if (wide) { pageScrim(); y = RULE_Y + 20 }
+
+    /**
+     * The identity screen leads with the name, drawn the way the opening draws it.
+     *
+     * It used to be the first line of the lead, in caps, which makes a name into one
+     * more sentence. Blackletter at 22px, then the positioning, then the disciplines
+     * as a rule of small caps — three sizes, so the order of importance is visible
+     * before a word is read.
+     */
+    if (m.layout === 'identity' && m.name) {
+      g.font = '22px UnifrakturMaguntia, serif'
+      g.fillStyle = INK
+      g.fillText(m.name, lx, y + 6)
+      y += 16
+      if (m.role) {
+        g.font = '8px Silkscreen, monospace'
+        g.fillStyle = GOLD
+        g.fillText(m.role, lx, y + 4)
+        y += 12
+      }
+      if (m.disciplines?.length) {
+        /* wrapped, not written straight out: five words joined at 8px Silkscreen come
+           to about 280px, which is the whole body — the last one was being cut off at
+           the frame. `wrap` is what already knows how wide the column is. */
+        g.font = '8px Silkscreen, monospace'
+        g.fillStyle = DIM
+        for (const line of wrap(m.disciplines.join(' · '), lw - 6)) {
+          g.fillText(line, lx, y + 4); y += 10
+        }
+        y -= 2
+      }
+      tone(lx, y + 4, lw, 1, .3, INK)
+      y += 18
+    }
 
     /* the lead, as paragraphs with air between them — the name no longer runs
        straight into the sentence under it. Optional now: a bare list of names says
@@ -1063,7 +1131,16 @@ function grimoire(m, t) {
    * column is showing. Filled is where you are; the first mark is the index, which is
    * why there is always one more than there are pages of text.
    */
-  if (eclipseOpen) drawEclipse(g, t, W, H, INK, MID, DIM, GOLD, BG)
+  /**
+   * It leaves the way it arrived.
+   *
+   * `eclipseOpen` used to gate the draw outright, so closing was a cut: the seventh
+   * screen vanished between one frame and the next while opening took a second and a
+   * half. A transition that only exists in one direction reads as a bug in the other.
+   * The clock runs on both edges, so this keeps drawing until the shutter has opened
+   * again — see `drawEclipse`, which reverses its beats when it is on the way out.
+   */
+  if (eclipseOpen || eclipseK() < 1) drawEclipse(g, t, W, H, INK, MID, DIM, GOLD, BG)
   grimoireStatus()
 
   /* Drawn after the status, and on its row, because the status clears its own band
@@ -1325,6 +1402,23 @@ let markSpan = 0
  */
 let back_ = null
 export const backBox = () => back_
+/**
+ * Has the seventh state been opened at least once this session?
+ *
+ * It is what turns the header's sky mark into a door, and it is why the light stops
+ * being the key: *"quando a pessoa ativa o eclipse uma vez, mudar o crossfader não
+ * deve ativar a tela novamente."*
+ */
+let eclipseFound = false
+export function setEclipseFound(v) { eclipseFound = !!v }
+/** Where that mark is, for the pick. Null while it is still a plain sky. */
+let mark_ = null
+export const eclipseMarkBox = () => (eclipseFound && !eclipseOpen ? mark_ : null)
+
+/** The seventh screen's one live control: the route out to Instagram. */
+let claim_ = null
+export const claimBox = () => claim_
+export const claimURL = () => ECLIPSE.claim.url
 export function resetPlace(i) { place.set(i, { sel: 0, sec: 0 }) }
 
 
@@ -1405,7 +1499,9 @@ function drawEclipse(g, t, W, H, INK, MID, DIM, GOLD, BG) {
    * Each beat overlaps the next, so nothing waits for anything — the whole thing is
    * a second and a half and reads as one movement, not four steps.
    */
-  const k = eclipseK()
+  /* on the way out the same clock runs backwards, so the shutter that closed over
+     the Module is the shutter that opens off it */
+  const k = eclipseOpen ? eclipseK() : 1 - eclipseK()
   const beat = (from, to) => clamp01((k - from) / (to - from))
   const shutter = beat(0, .28)
   const sky = beat(.16, .52)
@@ -1427,7 +1523,7 @@ function drawEclipse(g, t, W, H, INK, MID, DIM, GOLD, BG) {
   }
   g.fillStyle = BG; g.fillRect(0, 0, W, H)
 
-  const CY = 44
+  const CY = 38
 
   /* the sky body, rising into place */
   if (sky > 0) {
@@ -1452,7 +1548,7 @@ function drawEclipse(g, t, W, H, INK, MID, DIM, GOLD, BG) {
   const pts = []
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * 6.2832 - Math.PI / 2
-    pts.push([W / 2 + Math.cos(a) * 42, CY + Math.sin(a) * 20])
+    pts.push([W / 2 + Math.cos(a) * 42, CY + Math.sin(a) * 17])
   }
   for (let i = 0; i < 6; i++) {
     const arrive = clamp01(ring * 6 - i)
@@ -1501,38 +1597,37 @@ function drawEclipse(g, t, W, H, INK, MID, DIM, GOLD, BG) {
   /**
    * The block, written out so it can be checked rather than nudged.
    *
-   *   64        the constellation's lowest point
-   *   66        the cleared ground starts, clear of it
-   *   74        the eyebrow
-   *   91, 106   the two lines of the reading
-   *   126       the state label
-   *   135..148  the inert field, with its text on 145
-   *   154       the way out, clear of the status band at 158
+   *   55        the constellation's lowest point
+   *   62        the cleared ground starts
+   *   70        the way out, top left — the same place a detail page puts it
+   *   84        the eyebrow, with real air above it
+   *   102, 117  what the visitor just did
+   *   132       the instruction: send a screenshot
+   *   138..152  the route to Instagram, a real control that really opens
    *
-   * The first cut of this added offsets downward and lost count: the field ended at
-   * 157, past the floor at 156, and swallowed `ESC · VOLTAR` whole. A layout that is
-   * arithmetic should be legible as arithmetic.
+   * The way out moved off the bottom because it was landing on the button: a line at
+   * 154 and a control ending at 152 share the same eight pixels of glyph.
+   *
+   * An earlier cut added offsets downward and lost count: a field ended past the
+   * floor and swallowed the way out whole. A layout that is arithmetic should be
+   * legible as arithmetic.
    */
-  /**
-   * The block, written out so it can be checked rather than nudged.
-   *
-   *   64        the constellation's lowest point
-   *   66        the cleared ground starts, clear of it
-   *   74        the eyebrow: which eclipse this is, and that it was found
-   *   92, 107   what just happened, in the Screen's body size
-   *   126, 140  the note — the part that says there is nothing to collect
-   *   154       the way out, clear of the status band at 158
-   *
-   * An earlier cut added offsets downward and lost count: the field ended at 157,
-   * past the floor at 156, and swallowed `ESC · VOLTAR` whole. A layout that is
-   * arithmetic should be legible as arithmetic.
-   */
-  const TOP = 74, BACK = FLOOR - 2
+  const TOP = 84
   const copy = ECLIPSE[eclipseFace] || ECLIPSE.moon
   g.fillStyle = BG
-  g.fillRect(18, TOP - 8, W - 36, BACK + 6 - (TOP - 8))
+  g.fillRect(18, 58, W - 36, FLOOR - 58)
 
-  g.font = '8px Silkscreen, monospace'; g.fillStyle = GOLD
+  /* the way out, where a detail page also keeps it */
+  g.font = '8px Silkscreen, monospace'
+  const back = '\u25C2 VOLTAR'
+  const bw = Math.ceil(g.measureText(back).width) + 12
+  back_ = { x: 20, y: 61, w: bw, h: 13 }
+  g.fillStyle = 'rgba(255,255,255,.06)'
+  g.fillRect(back_.x, back_.y, back_.w, back_.h)
+  g.fillStyle = MID
+  g.fillText(back, 26, 70)
+
+  g.fillStyle = GOLD
   const tag = `${copy.tag} \u00B7 ${ECLIPSE.found}`
   g.fillText(tag, W / 2 - g.measureText(tag).width / 2, TOP)
 
@@ -1543,24 +1638,32 @@ function drawEclipse(g, t, W, H, INK, MID, DIM, GOLD, BG) {
   }
 
   /**
-   * And the note, which is where the dead claim field used to be.
+   * The prize, which needed no server after all.
    *
-   * It was a text input drawn as a real control and stamped `SEM SERVIDOR`, because
-   * there is no endpoint to decide who arrived first. Honest, and it read as
-   * unfinished — someone who crosses the whole object and takes the light end to end
-   * found a broken form waiting. The reward for a secret is having found it, so the
-   * field is gone and what replaces it says that out loud.
+   * The screen used to end in a text field stamped `SEM SERVIDOR`, then in a line
+   * saying there was nothing to collect. Both were true about the infrastructure and
+   * wrong about the intent: a screenshot sent to the DM is the proof, the visitor
+   * carries it, nobody has to arbitrate, and the channel already exists.
    */
   g.font = '12px VT323, monospace'; g.fillStyle = MID
-  y = 126
+  y = 132
   for (const l of ECLIPSE.note) {
-    g.fillText(l, W / 2 - g.measureText(l).width / 2, y); y += 14
+    g.fillText(l, W / 2 - g.measureText(l).width / 2, y); y += 13
   }
 
   g.font = '8px Silkscreen, monospace'
-  g.fillStyle = MID
-  const back = 'ESC · VOLTAR'
-  g.fillText(back, W / 2 - g.measureText(back).width / 2, BACK)
+  const cw = Math.ceil(g.measureText(ECLIPSE.claim.label).width) + 24
+  claim_ = { x: Math.round(W / 2 - cw / 2), y: 138, w: cw, h: 15 }
+  /* a lit control rather than an outlined one: it is the only thing on this screen
+     that does anything, and an outline reads as the disabled field it replaced */
+  g.fillStyle = 'rgba(201,190,150,.16)'
+  g.fillRect(claim_.x, claim_.y, claim_.w, claim_.h)
+  tone(claim_.x, claim_.y, claim_.w, 1, .55, GOLD)
+  tone(claim_.x, claim_.y + claim_.h - 1, claim_.w, 1, .55, GOLD)
+  g.fillStyle = GOLD
+  g.fillText(ECLIPSE.claim.label, W / 2 - g.measureText(ECLIPSE.claim.label).width / 2, claim_.y + 11)
+
+  g.font = '8px Silkscreen, monospace'
   g.restore()
 }
 

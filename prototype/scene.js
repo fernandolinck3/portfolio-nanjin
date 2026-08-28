@@ -20,7 +20,8 @@ import {
   setModule as setScreenModule, setVigil as setScreenVigil,
   setCrossfade as setScreenCrossfade, setFace as setScreenFace,
   setHoverWork, setPlinthWork, workRowAt,
-  setFlash, setHint, selectionOf, sectionOf, setSelection, setSection, resetPlace, backBox,
+  setFlash, setHint, selectionOf, sectionOf, setSelection, setSection, resetPlace,
+  backBox, claimBox, claimURL, eclipseMarkBox, setEclipseFound,
   bootLevel, touchLyra, lyraPhase, pageRange,
   setEclipseSeen, setEclipseUnlocked, setEclipseOpen,
 } from './screen/render.js'
@@ -1900,7 +1901,13 @@ const capShade = (() => {
  * short emissive strip that travels with the cap gives the same read, because what
  * the eye is actually seeing is a glow that moves with the handle.
  */
-const capGlow = new THREE.Mesh(slab(.34, .055, .010, .027),
+/* 0.18 wide, down from 0.34. The trough's half-length is 0.65 and the cap's travel
+   reaches 0.56, so a strip 0.17 to each side ran 0.08 **past the end of the slot** —
+   a lit bar sticking out of the fader at both extremes: *"o crossfader quando tá das
+   pontas tá adicionando um stroke que aparece ali no espaço do crossfader."* At 0.18
+   it lands flush with the trough at full throw, and the read is unchanged: what the
+   eye sees is a glow that travels with the handle. */
+const capGlow = new THREE.Mesh(slab(.18, .055, .010, .027),
   new THREE.MeshStandardMaterial({
     color: 0x140901, emissive: new THREE.Color(0xD8801E), emissiveIntensity: 2.4,
     roughness: .55, metalness: 0,
@@ -2978,18 +2985,17 @@ function screenRowAt(e) {
  * control drawn on the Screen has to be clickable *where it is drawn* or it is a
  * picture of a control, and `backBox` is written by the same pass that paints it.
  */
-function screenBackAt(e) {
-  const b = backBox();
-  if (!b) return false;
+function screenPoint(e) {
   const r = frameRect(), p = pt(e);
   ndc.x = ((p.x - r.left) / r.width) * 2 - 1;
   ndc.y = -((p.y - r.top) / r.height) * 2 + 1;
   ray.setFromCamera(ndc, camera);
   const hit = ray.intersectObject(screen, false)[0];
-  if (!hit || !hit.uv) return false;
-  const x = hit.uv.x * SCREEN_W, y = (1 - hit.uv.y) * SCREEN_H;
-  return x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+  if (!hit || !hit.uv) return null;
+  return [hit.uv.x * SCREEN_W, (1 - hit.uv.y) * SCREEN_H];
 }
+const inBox = (pt2, b) =>
+  !!b && !!pt2 && pt2[0] >= b.x && pt2[0] <= b.x + b.w && pt2[1] >= b.y && pt2[1] <= b.y + b.h;
 
 /**
  * The navigation, in one place.
@@ -3169,6 +3175,7 @@ function sunEnter() {
 function openEclipse(face) {
   eclipse.open = true;
   eclipse.answered = true;
+  setEclipseFound(true);
   eclipse.face = face;
   setEclipseOpen(true, face);
   flashLcd(face === 'moon' ? 'ECLIPSE · LUA' : 'ECLIPSE · SOL', 2400);
@@ -3448,6 +3455,17 @@ function watchLight() {
   const from = eclipse.band;
   eclipse.band = band;
   if (!eclipse.unlocked || eclipse.open || from === null) return;
+  /**
+   * **The light opens it once.**
+   *
+   * A key that works every time is not a key, it is a switch you keep tripping: the
+   * fader is also the light, and a reader who moves it to see the room would have the
+   * seventh screen thrown at them on every crossing. *"Quando a pessoa ativa o eclipse
+   * uma vez, mudar o crossfader não deve ativar a tela novamente."* After the first
+   * time the way back in is the mark in the Screen's header, which is a door rather
+   * than a trap.
+   */
+  if (eclipse.answered) return;
   openEclipse(band === 'day' ? 'sun' : 'moon');
 }
 
@@ -3586,8 +3604,16 @@ el.addEventListener('pointerdown', e => {
        * cursor and opens, in that order, which also keeps the Moon in step with what
        * the visitor just did rather than pointing somewhere else when they come back.
        */
-      /* the way back out of a detail page, drawn on the page itself */
-      if (screenBackAt(e)) { moonBack(); return; }
+      /**
+       * The controls the Screen draws on itself, checked before the rows.
+       *
+       * Each is registered by the pass that paints it, so a control is clickable
+       * exactly where it appears and cannot drift from its own picture.
+       */
+      const sp = screenPoint(e);
+      if (inBox(sp, claimBox())) { flashLcd('ABRIR · INSTAGRAM'); window.open(claimURL(), '_blank', 'noopener'); return; }
+      if (inBox(sp, backBox())) { moonBack(); return; }
+      if (inBox(sp, eclipseMarkBox())) { openEclipse(eclipse.face); return; }
       if (row >= 0) {
         setSelection(curPage, row);
         const it = itemsOf()[row];
