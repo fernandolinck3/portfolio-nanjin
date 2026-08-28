@@ -37,6 +37,9 @@ jobs:
       # site makes about Fernando — a build that breaks them should not ship.
       - run: npx vitest run
       - run: npm run build:site
+      # `public/CNAME` is copied to the artifact root by Vite's publicDir, and that
+      # file is what holds the custom domain. GitHub clears the domain setting on a
+      # deploy that arrives without it, so losing the file loses the domain silently.
       # The built page can differ from the one the dev server serves, and has: Vite
       # injects the module script after the first literal root tag in the source, so
       # a comment containing that tag swallowed the script and shipped a blank site.
