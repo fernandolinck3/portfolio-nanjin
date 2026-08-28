@@ -595,12 +595,16 @@ export const MODULES: readonly Module[] = [
     title: 'CONTATO',
     pad: 'CONTATO',
     hint: 'CONTATO — Rotas verificadas para chegar até mim',
-    lead: [
-      'Para uma vaga, um projeto ou uma ideia incomum que precise atravessar estratégia e execução:',
-      'fernandolinck@outlook.com',
-      'Escreva diretamente para mim. Sem formulário, sem funil.',
-    ],
-    dim: ['Porto Alegre, Brasil. Português ou inglês.'],
+    /**
+     * Uma frase, e nenhuma linha `dim`.
+     *
+     * O lead repetia o e-mail que já é o primeiro item da lista e ocupava o painel
+     * inteiro — as três rotas não apareciam e o Screen avisava com `+2` no canto.
+     * A conta é fixa: o corpo do slot 6 tem 96px, três rotas custam 45, e o que
+     * sobra são três linhas. O que uma lista já diz, o texto acima dela não precisa
+     * dizer de novo, e a cidade já está em QUEM.
+     */
+    lead: ['Para uma vaga, um projeto ou uma ideia incomum — escreva direto.'],
     unit: 'ROTA',
     items: [
       {
@@ -608,14 +612,14 @@ export const MODULES: readonly Module[] = [
         label: 'fernandolinck@outlook.com',
         meta: 'EMAIL',
         act: { kind: 'mail', value: 'fernandolinck@outlook.com' },
-        sections: [{ heading: 'EMAIL', lines: ['Pressione o SOL para escrever.'] }],
+        sections: [{ heading: 'EMAIL', lines: ['Toque na linha para escrever.'] }],
       },
       {
         id: 'ig',
         label: '@nan._.jin',
         meta: 'INSTAGRAM',
         act: { kind: 'url', value: 'https://instagram.com/nan._.jin' },
-        sections: [{ heading: 'INSTAGRAM', lines: ['Pressione o SOL para abrir.'] }],
+        sections: [{ heading: 'INSTAGRAM', lines: ['Toque na linha para abrir.'] }],
       },
       /* Sem `act`: adivinhar um endereço do LinkedIn a partir de um nome é exatamente
          a invenção que o PRODUCT.md proíbe. Fica como texto até ele informar. */

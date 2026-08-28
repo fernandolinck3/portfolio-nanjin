@@ -60,6 +60,9 @@ function wrap(text, max) {
 const charsAcross = w => Math.floor(w / g.measureText('n').width)
 const since = () => (performance.now() - switchedAt) / 1000
 const clamp01 = v => Math.max(0, Math.min(1, v))
+/** Ease-out cubic. Fast at the start, settling at the end — the shape a thing has
+    when it is arriving somewhere rather than being animated for its own sake. */
+const ease = v => 1 - Math.pow(1 - clamp01(v), 3)
 
 /** A dotted leader, the way a contents page runs a name out to its number. */
 function leader(x, y, w, colour) {
@@ -1198,10 +1201,22 @@ let eclipseSeen = 1, eclipseUnlocked = false, eclipseOpen = false, eclipseClaim 
 let eclipseFace = 'moon'
 export function setEclipseSeen(n) { eclipseSeen = n }
 export function setEclipseUnlocked(v) { eclipseUnlocked = !!v }
+/**
+ * When the seventh state started arriving, so it can arrive *over time*.
+ *
+ * It used to be a flag and a hard cut — *"a tela de eclipse deve ser progressiva, só
+ * tá dando um hard switch agora."* The state is the payoff for having walked the
+ * whole object; landing it in a single frame spends it before the eye has caught up.
+ */
+let eclipseAt = 0
 export function setEclipseOpen(v, claimEnabled, face) {
+  if (!!v !== eclipseOpen) eclipseAt = performance.now()
   eclipseOpen = !!v; eclipseClaim = !!claimEnabled
   if (face) eclipseFace = face
 }
+/** 0 at the switch, 1 when it has fully arrived. ~1.5s, and it also runs on the way out. */
+const ECLIPSE_MS = 1500
+const eclipseK = () => clamp01((performance.now() - eclipseAt) / ECLIPSE_MS)
 export const eclipseIsOpen = () => eclipseOpen
 
 /**
@@ -1215,20 +1230,45 @@ export const eclipseIsOpen = () => eclipseOpen
  * would quietly drop.
  */
 function drawEclipse(g, t, W, H, INK, MID, DIM, GOLD, BG) {
-  g.fillStyle = BG; g.fillRect(0, 0, W, H)
-  /* the constellation, complete */
   /**
-   * The same screen under a different sky.
+   * It arrives in four beats rather than in one frame.
    *
-   * Whichever wheel was pressed decides what hangs over the constellation — a disc
-   * with a bite out of it for the MOON, a rayed one for the SUN. The words, the
-   * count and the claim are identical, because they are the same state reached two
-   * ways, and giving them different *content* would make them two secrets instead
-   * of one with two doors.
+   *   the shutter  the Module is taken by a band closing from both edges
+   *   the sky      the disc rises out of the top of the panel
+   *   the circle   the six points draw in, then the lines between them
+   *   the words    the reading types on, last, once there is something to read on
+   *
+   * Each beat overlaps the next, so nothing waits for anything — the whole thing is
+   * a second and a half and reads as one movement, not four steps.
    */
+  const k = eclipseK()
+  const beat = (from, to) => clamp01((k - from) / (to - from))
+  const shutter = beat(0, .28)
+  const sky = beat(.16, .52)
+  const ring = beat(.30, .70)
+  const words = beat(.58, 1)
+
+  /* the shutter. Until it has closed the Module is still showing underneath, which
+     is what makes this a transition rather than a swap. */
+  const half = Math.round((H / 2) * ease(shutter))
+  g.fillStyle = BG
+  g.fillRect(0, 0, W, half)
+  g.fillRect(0, H - half, W, half)
+  if (shutter < 1) {
+    /* the closing edges carry a lit line, the same way the power-on sweep does */
+    g.fillStyle = GOLD
+    g.fillRect(0, half - 1, W, 1)
+    g.fillRect(0, H - half, W, 1)
+    return
+  }
+  g.fillStyle = BG; g.fillRect(0, 0, W, H)
+
   const CY = 44
-  {
-    const cx = W / 2, cy = 22, r = 9
+
+  /* the sky body, rising into place */
+  if (sky > 0) {
+    const cx = W / 2, cy = 22 - (1 - ease(sky)) * 26, r = 9
+    g.save(); g.globalAlpha = sky
     g.fillStyle = GOLD
     if (eclipseFace === 'sun') {
       for (let i = 0; i < 12; i++) {
@@ -1241,57 +1281,111 @@ function drawEclipse(g, t, W, H, INK, MID, DIM, GOLD, BG) {
       g.fillStyle = BG
       g.beginPath(); g.arc(cx + r * .42, cy - r * .22, r * .74, 0, 6.2832); g.fill()
     }
+    g.restore()
   }
+
+  /* the constellation, one point at a time and then the lines */
+  const pts = []
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * 6.2832 - Math.PI / 2
-    const x = W / 2 + Math.cos(a) * 42, y = CY + Math.sin(a) * 20
-    g.fillStyle = GOLD
-    g.beginPath(); g.arc(x, y, 1.6, 0, 6.2832); g.fill()
-    const nx = W / 2 + Math.cos(a + 1.047) * 42, ny = CY + Math.sin(a + 1.047) * 20
-    g.strokeStyle = 'rgba(214,170,90,.30)'; g.lineWidth = 1
-    g.beginPath(); g.moveTo(x, y); g.lineTo(nx, ny); g.stroke()
+    pts.push([W / 2 + Math.cos(a) * 42, CY + Math.sin(a) * 20])
   }
-  const pulse = .55 + .45 * Math.sin(t * 2)
-  g.fillStyle = GOLD
-  g.globalAlpha = pulse
-  g.beginPath(); g.arc(W / 2, CY, 4.5, 0, 6.2832); g.fill()
-  g.globalAlpha = 1
+  for (let i = 0; i < 6; i++) {
+    const arrive = clamp01(ring * 6 - i)
+    if (!arrive) continue
+    g.save(); g.globalAlpha = arrive
+    g.fillStyle = GOLD
+    g.beginPath(); g.arc(pts[i][0], pts[i][1], 1.6, 0, 6.2832); g.fill()
+    /* the line to the next point only after that point is there to reach */
+    const nxt = clamp01(ring * 6 - i - 1)
+    if (nxt) {
+      const [x, y] = pts[i], [nx, ny] = pts[(i + 1) % 6]
+      g.globalAlpha = nxt * .30
+      g.strokeStyle = GOLD; g.lineWidth = 1
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + (nx - x) * nxt, y + (ny - y) * nxt); g.stroke()
+    }
+    g.restore()
+  }
+  if (ring >= 1) {
+    const pulse = .55 + .45 * Math.sin(t * 2)
+    g.save(); g.globalAlpha = pulse
+    g.fillStyle = GOLD
+    g.beginPath(); g.arc(W / 2, CY, 4.5, 0, 6.2832); g.fill()
+    g.restore()
+  }
+
+  if (!words) return
+
+  /**
+   * The reading, and **it has to be readable**.
+   *
+   * It was 8px Silkscreen in `DIM` on black for everything but two lines — three
+   * levels of grey at label size, over a constellation, on a 320x180 panel that is
+   * then upscaled and scanned. *"O texto não tá bem legível."*
+   *
+   * So there is one gold eyebrow, the statement at the Screen's real body size in
+   * `BODY`, and the inert control in `MID` rather than `DIM` — `DIM` is for things
+   * that are *present but not for you*, and none of this is that. The block also
+   * gets its own cleared ground, because the lines of the constellation were running
+   * straight through the type.
+   */
+  g.save(); g.globalAlpha = words
+
+  /* The block is laid out from the floor up, because the last line — the way out —
+     is the one that must not fall off. `ESC · VOLTAR` did: it was placed by adding
+     offsets downward from the top and landed under the status band. */
+  /**
+   * The block, written out so it can be checked rather than nudged.
+   *
+   *   64        the constellation's lowest point
+   *   66        the cleared ground starts, clear of it
+   *   74        the eyebrow
+   *   91, 106   the two lines of the reading
+   *   126       the state label
+   *   135..148  the inert field, with its text on 145
+   *   154       the way out, clear of the status band at 158
+   *
+   * The first cut of this added offsets downward and lost count: the field ended at
+   * 157, past the floor at 156, and swallowed `ESC · VOLTAR` whole. A layout that is
+   * arithmetic should be legible as arithmetic.
+   */
+  const TOP = 74, BACK = FLOOR - 2
+  g.fillStyle = BG
+  g.fillRect(18, TOP - 8, W - 36, BACK + 6 - (TOP - 8))
 
   g.font = '8px Silkscreen, monospace'; g.fillStyle = GOLD
-  /* `SINAL 07` named the seventh detent, which no longer exists — the light is the
-     key now. `SEXTO PARA SÉTIMO` names what actually happened to get here. */
-  const tag = 'ECLIPSE / SEXTO PARA SÉTIMO'
-  g.fillText(tag, W / 2 - g.measureText(tag).width / 2, 82)
+  const tag = 'ECLIPSE'
+  g.fillText(tag, W / 2 - g.measureText(tag).width / 2, TOP)
 
-  g.font = '12px VT323, monospace'; g.fillStyle = INK
-  let y = 98
+  g.font = '13px VT323, monospace'; g.fillStyle = BODY
+  let y = TOP + 17
   for (const l of ['Seis sinais alinhados.', 'Um ficou fora do índice.']) {
-    g.fillText(l, W / 2 - g.measureText(l).width / 2, y); y += 12
+    g.fillText(l, W / 2 - g.measureText(l).width / 2, y); y += 15
   }
 
-  y += 4
+  y += 5
   g.font = '8px Silkscreen, monospace'
-  g.fillStyle = eclipseClaim ? MID : DIM
+  g.fillStyle = eclipseClaim ? GOLD : MID
   const label = eclipseClaim ? '@ DO INSTAGRAM' : 'TRANSMISSÃO AINDA NÃO ABERTA'
   g.fillText(label, W / 2 - g.measureText(label).width / 2, y)
-  y += 10
+  y += 9
+
   /* the field, drawn as a real control and plainly inert */
   const fw = 150, fx = W / 2 - fw / 2
-  g.strokeStyle = eclipseClaim ? MID : DIM
+  g.strokeStyle = eclipseClaim ? GOLD : MID
   g.lineWidth = 1
-  g.strokeRect(fx + .5, y + .5, fw, 14)
+  g.strokeRect(fx + .5, y + .5, fw, 13)
   if (!eclipseClaim) {
-    g.fillStyle = DIM
+    g.fillStyle = MID
     g.font = '8px Silkscreen, monospace'
     const off = 'SEM SERVIDOR'
     g.fillText(off, W / 2 - g.measureText(off).width / 2, y + 10)
   }
-  y += 22
-  g.fillStyle = DIM
-  /* Not `LUA · VOLTAR` any more: the wheels have no button in them. Esc is the way
-     out everywhere on the object, so it is the one to name. */
+
+  g.fillStyle = MID
   const back = 'ESC · VOLTAR'
-  g.fillText(back, W / 2 - g.measureText(back).width / 2, y)
+  g.fillText(back, W / 2 - g.measureText(back).width / 2, BACK)
+  g.restore()
 }
 
 /**

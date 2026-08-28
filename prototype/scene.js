@@ -2809,7 +2809,9 @@ function applyVigil() {
    * fixed elsewhere, by making the Plate's painting phosphorescent, so the big raise
    * was never needed; and the cut was answering a problem that did not exist.
    */
-  glow.intensity = 2.2 + vigil * 5.6;
+  /* the detent kick rides the Screen's spill too — the row and the panel flinch
+     together, which is what makes a step feel like it landed somewhere */
+  glow.intensity = (2.2 + vigil * 5.6) * (1 + ledKick * .22);
   glow.distance = 4.0 + vigil * 3.4;
   dim(rake, Math.max(0, (vigil - .42) / .58) * 3.1);
 
@@ -2920,6 +2922,7 @@ function spendNotches(d0, kind) {
   while (Math.abs(d0.carry) >= notch) {
     const step = Math.sign(d0.carry);
     d0.carry -= step * notch;
+    kickLeds();
     if (focus.active) { if (kind === 'moon') focus.step(step); }
     else if (kind === 'moon') moveSelection(step);
     else scrollBody(step);
@@ -3290,16 +3293,68 @@ const ledMeshes = [];
 /** Which lamp belongs to Module `i` — the six skip the middle. */
 const ledOf = i => (i < 3 ? i : i + 1);
 
-function updateLeds(t) {
+/**
+ * The row is never just on or off — it is **looking**.
+ *
+ * A latched lamp that only sits there is a status light. Fernando asked for
+ * *"algum flavor como a luz do meio pesquisando ou algo que dê sensação de tchum"*,
+ * and the row is the one part of the object that has nothing to do between presses.
+ *
+ * Two motions, and they say different things:
+ *
+ *   **the search** — a soft crest travels the row, out from the centre and back.
+ *     Before the six are lit it is slow and faint: the middle lamp casting about,
+ *     finding nothing. Once they are lit it runs from both ends *inward* and flares
+ *     as the two halves meet on the seventh, which is the object saying the thing is
+ *     assembled and waiting on a hand.
+ *
+ *   **the kick** — a detent landing lights the whole row for an instant. That is the
+ *     *tchum*: a control that moves something should be felt somewhere other than
+ *     where you are looking, and the row is directly under the Screen the reader is
+ *     already watching.
+ */
+let ledKick = 0;
+/** Called when a detent actually lands. See `spendNotches`. */
+const kickLeds = () => { ledKick = 1; };
+
+function updateLeds(t, dt) {
   const night = 1 + vigil * 2.2;
+  /* ~180ms to fall away: long enough to register, short enough that a fast turn
+     reads as a run of taps rather than one continuous glow */
+  ledKick *= Math.pow(.004, dt || .016);
+  if (ledKick < .01) ledKick = 0;
+
+  const armed = eclipse.unlocked;
+  const done = eclipse.answered;
+  /* position of the crest along the row, in lamp indices */
+  const sweep = t * (armed && !done ? .0022 : .0009);
+  const crest = i => {
+    /* before the six are in, one crest wanders out from the middle and back; after,
+       two run inward and meet on it */
+    const phase = (Math.sin(sweep) + 1) / 2;               // 0..1, eased at the ends
+    const at = armed && !done ? 3 - phase * 3 : 3 + Math.sin(sweep) * 3;
+    const near = armed && !done ? Math.min(Math.abs(i - at), Math.abs(i - (6 - at)))
+                                : Math.abs(i - at);
+    return Math.max(0, 1 - near / 1.35);
+  };
+
   for (let i = 0; i < 6; i++) {
+    const j = ledOf(i);
     const on = eclipse.seen.has(i);
-    ledMats[ledOf(i)].emissiveIntensity = (on ? 1.15 : 0.06) * night;
+    const base = on ? 1.15 : 0.06;
+    /* the search washes an unlit lamp far more than a lit one — it is looking for
+       the dark ones, and a crest that brightened everything equally would read as a
+       flicker rather than as a sweep */
+    const wash = crest(j) * (on ? .30 : .55);
+    ledMats[j].emissiveIntensity = (base + wash + ledKick * (on ? .9 : .35)) * night;
   }
+
   const e = ledMats[3];
-  if (!eclipse.unlocked) { e.emissiveIntensity = 0.05 * night; return; }
-  /* pulsing until it has been answered, steady afterwards */
-  e.emissiveIntensity = (eclipse.answered ? 1.4 : (0.35 + 1.25 * (0.5 + 0.5 * Math.sin(t * 0.006)))) * night;
+  if (!armed) { e.emissiveIntensity = (0.05 + crest(3) * .22 + ledKick * .3) * night; return; }
+  /* the two crests meet here, so the flare is the meeting rather than a timer */
+  const meet = crest(3);
+  e.emissiveIntensity = (done ? 1.4 : (0.30 + 1.05 * meet + .35 * (0.5 + 0.5 * Math.sin(t * 0.006)))) * night
+    + ledKick * .9;
 }
 
 /**
@@ -4807,7 +4862,7 @@ function frame(t) {
   if (!intro.running) prewarmStep(t / 1000);
   updatePads(dt);
   updateFader(dt);
-  updateLeds(t);
+  updateLeds(t, dt);
   if (intro.running && !focus.active) intro.update(dt);
   focus.update(dt);
   post.render(t / 1000);
