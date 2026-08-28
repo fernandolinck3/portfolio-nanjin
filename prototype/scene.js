@@ -20,7 +20,7 @@ import {
   setModule as setScreenModule, setVigil as setScreenVigil,
   setCrossfade as setScreenCrossfade, setFace as setScreenFace,
   setHoverWork, setPlinthWork, workRowAt,
-  setFlash, setHint, selectionOf, sectionOf, setSelection, setSection, resetPlace,
+  setFlash, setHint, selectionOf, sectionOf, setSelection, setSection, resetPlace, backBox,
   bootLevel, touchLyra, lyraPhase, pageRange,
   setEclipseSeen, setEclipseUnlocked, setEclipseOpen,
 } from './screen/render.js'
@@ -2972,6 +2972,26 @@ function screenRowAt(e) {
 }
 
 /**
+ * Is this click on the detail page's way out?
+ *
+ * The same projection as `screenRowAt`, against the box the draw registered. A
+ * control drawn on the Screen has to be clickable *where it is drawn* or it is a
+ * picture of a control, and `backBox` is written by the same pass that paints it.
+ */
+function screenBackAt(e) {
+  const b = backBox();
+  if (!b) return false;
+  const r = frameRect(), p = pt(e);
+  ndc.x = ((p.x - r.left) / r.width) * 2 - 1;
+  ndc.y = -((p.y - r.top) / r.height) * 2 + 1;
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObject(screen, false)[0];
+  if (!hit || !hit.uv) return false;
+  const x = hit.uv.x * SCREEN_W, y = (1 - hit.uv.y) * SCREEN_H;
+  return x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+}
+
+/**
  * The navigation, in one place.
  *
  *     Pads choose the Module. Moon chooses the Item. Sun explores the Item.
@@ -3569,10 +3589,23 @@ el.addEventListener('pointerdown', e => {
        * cursor and opens, in that order, which also keeps the Moon in step with what
        * the visitor just did rather than pointing somewhere else when they come back.
        */
+      /* the way back out of a detail page, drawn on the page itself */
+      if (screenBackAt(e)) { moonBack(); return; }
       if (row >= 0) {
         setSelection(curPage, row);
         const it = itemsOf()[row];
-        if (it?.act) sunEnter(); else flashLcd(`${mod().unit} ${pad2(row + 1)}/${pad2(itemsOf().length)} · ${it?.label || ''}`);
+        /**
+         * A click on a name **opens** it.
+         *
+         * It used to select and then flash the position, which is what a click on a
+         * named thing least resembles. Where the item is a route or a Work it opens
+         * that; where it is a criterion or a group of tools it opens its page —
+         * *"quando o user clica em um deles, abrir a outra página."* Landing the
+         * cursor first keeps the MOON in step with what the visitor just did.
+         */
+        if (it?.act) sunEnter();
+        else if (it?.sections?.length) { drawScreen(); moveSection(1); }
+        else flashLcd(`${mod().unit} ${pad2(row + 1)}/${pad2(itemsOf().length)} · ${it?.label || ''}`);
         return;
       }
       /* not on a row: fall through, so the Screen is still somewhere you can grab
@@ -3674,11 +3707,20 @@ el.addEventListener('pointermove', e => {
     /* the platter follows the hand one to one; `carry` is the same travel measured
        against the detents, and the two are fed from the same number so the wheel can
        never be showing one thing while the selection does another */
-    d0.turn -= d;
+    d0.turn += d;
+    /**
+     * The cursor runs the other way from the platter, and that is deliberate.
+     *
+     * They were fed the same number, which is tidy and wrong: turning the wheel
+     * **clockwise** has to walk *down* a list, the way a scroll wheel and a jog wheel
+     * both do — *"o menu está indo pra baixo quando giro a jog anti-horário, deve ser
+     * sentido horário."* The platter still follows the hand exactly; only what the
+     * turn buys is mirrored.
+     */
     d0.carry -= d;
     /* the hand's own speed, so letting go hands the wheel its momentum rather than
        an invented one. `dtNow` can be zero on the first move of a frame. */
-    d0.spin = -d / Math.max(dtNow, 1 / 240);
+    d0.spin = d / Math.max(dtNow, 1 / 240);
     d0.spin = Math.max(-JOG.SPIN_MAX, Math.min(JOG.SPIN_MAX, d0.spin));
     spendNotches(d0, active);
   }

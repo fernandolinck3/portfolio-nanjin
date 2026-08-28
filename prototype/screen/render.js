@@ -751,39 +751,44 @@ function drawGrid(items, sel, x0, y, bodyW, typed) {
 }
 
 /**
- * Two large nodes, joined.
+ * Two large blocks, joined — **stacked, not side by side.**
  *
- * TRAJETO has two blocks and they are not a queue — one is the shape of the work and
- * the other is when it happened, and the line between them is the point. Drawn as
- * two wide plates with a rule running through, so the pair reads before either name
- * does.
+ * Side by side was the first cut and it failed twice over: splitting a 202px column
+ * in half left 94px a node, which cuts a word like CRONOLOGIA, and taking the full
+ * panel to fix that put LYRA behind a scrim where she vanished. *"A Lyra não aparece
+ * e os quadrados não têm leitura."*
+ *
+ * Stacked, each block gets the whole column and the rule runs down the left edge
+ * through both — still a map rather than a queue, still readable, and she keeps her
+ * side of the panel. The ground is a solid fill rather than a dither, because 12px
+ * VT323 over a checkerboard is the same unreadable it always was.
  */
 function drawNodes(items, sel, x0, y, bodyW, typed) {
   const n = Math.min(items.length, 3)
-  const bw = Math.floor((bodyW - (n - 1) * 14) / n), bh = 30
-  /* the connecting line first, under everything */
-  tone(x0 + 6, y + bh / 2 - 4, bodyW - 12, 1, .28, INK)
+  const bh = 24, gap = 8
+  /* the spine, behind the blocks */
+  tone(x0 - 8, y - 8, 1, n * (bh + gap) - gap, .34, INK)
   items.slice(0, n).forEach((it, i) => {
     if (i / n > typed) return
-    const bx = x0 + i * (bw + 14)
+    const by = y + i * (bh + gap)
     const on = i === sel
-    workRows.push({ i, x: bx, y: y - 10, w: bw, h: bh })
-    /* the node's ground, so the connecting rule appears to pass behind it */
-    g.fillStyle = BG; g.fillRect(bx, y - 10, bw, bh)
-    tone(bx, y - 10, bw, bh, on ? .16 : .07, on ? GOLD : INK)
-    if (i === hoverWork && !on) { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(bx, y - 10, bw, bh) }
+    workRows.push({ i, x: x0 - 8, y: by - 8, w: bodyW + 12, h: bh })
+    g.fillStyle = on ? 'rgba(201,190,150,.13)' : 'rgba(255,255,255,.045)'
+    g.fillRect(x0 - 2, by - 8, bodyW + 6, bh)
+    if (i === hoverWork && !on) { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(x0 - 2, by - 8, bodyW + 6, bh) }
     g.fillStyle = on ? GOLD : DIM
-    if (on) disc(g, bx + 8, y + 2, 3); else ring(g, bx + 8, y + 2, 2, 1)
-    g.font = '12px VT323, monospace'
+    if (on) disc(g, x0 - 8, by + 3, 3); else ring(g, x0 - 8, by + 3, 2, 1)
+    g.font = '13px VT323, monospace'
     g.fillStyle = on ? INK : MID
-    g.fillText(it.label, bx + 16, y + 6)
+    g.fillText(it.label, x0 + 6, by + 3)
     if (it.meta) {
       g.font = '8px Silkscreen, monospace'
+      const mw = g.measureText(it.meta).width
       g.fillStyle = on ? GOLD : DIM
-      g.fillText(it.meta, bx + 16, y + 16)
+      g.fillText(it.meta, x0 + bodyW - mw, by + 2)
     }
   })
-  return y + bh + 4
+  return y + n * (bh + gap)
 }
 
 function grimoire(m, t) {
@@ -819,11 +824,7 @@ function grimoire(m, t) {
    * body text at 100% is two paragraphs in the same place. In QUEM the bubble was
    * also lying — *"A LUA escolhe o item"* in the Module that has none.
    */
-  const wide = !(m.items || []).length
-    || (placeOf(mod).sec || 0) > 0
-    /* the map wants the width, and the brief is explicit that LYRA must not compete
-       with it: two nodes and the rule between them are the whole reading */
-    || m.layout === 'nodes'
+  const wide = !(m.items || []).length || (placeOf(mod).sec || 0) > 0
   const onPage = wide
 
   if (figure === 'drawn') {
@@ -941,6 +942,7 @@ function grimoire(m, t) {
   }
   pageMax = pages.length
   markSpan = pages.length * 7
+  back_ = null
   const page = Math.max(0, Math.min(pages.length, p.sec || 0))
 
   if (page === 0) {
@@ -1024,9 +1026,26 @@ function grimoire(m, t) {
     const sx = 20, sw = W - 40
     pageScrim()
 
+    /**
+     * The way back, drawn where the reader is.
+     *
+     * Turning the SUN back past the first page has always been the way out, and that
+     * is a thing you have to already know. *"Ter um botão claro de voltar dentro do
+     * contexto do módulo."* So the page carries one: top left, on the heading's own
+     * rule, clickable where it is drawn.
+     */
     g.font = '8px Silkscreen, monospace'
+    const back = '\u25C2 VOLTAR'
+    const bw = Math.ceil(g.measureText(back).width) + 12
+    back_ = { x: sx - 4, y: RULE_Y + 5, w: bw, h: 13 }
+    g.fillStyle = 'rgba(255,255,255,.06)'
+    g.fillRect(back_.x, back_.y, back_.w, back_.h)
+    g.fillStyle = MID
+    g.fillText(back, sx + 2, RULE_Y + 14)
+
     g.fillStyle = GOLD
-    g.fillText(pg.cont ? pg.heading + ' ·' : pg.heading, sx, RULE_Y + 14)
+    const head = pg.cont ? pg.heading + ' \u00B7' : pg.heading
+    g.fillText(head, sx + bw + 8, RULE_Y + 14)
     tone(sx, RULE_Y + 19, sw, 1, .3, INK)
 
     g.font = '13px VT323, monospace'
@@ -1298,6 +1317,14 @@ let pageMax = 0
 export const pageRange = () => pageMax
 /** Pixels the page marks occupy on the footer row, so the overflow warning clears them. */
 let markSpan = 0
+/**
+ * Where the detail page's back control is, in Screen pixels.
+ *
+ * Written by the draw and read by the pick, the same contract `workRows` uses: the
+ * only thing that knows where a control landed is the pass that put it there.
+ */
+let back_ = null
+export const backBox = () => back_
 export function resetPlace(i) { place.set(i, { sel: 0, sec: 0 }) }
 
 

@@ -15,14 +15,47 @@
      error. The dev server never shows it, because nothing is injected there. It
      shipped once: the first GitHub Pages deploy served a blank page. -->
 <html lang="pt-BR">
-<meta name="description" content="Estratégia, mensagem, design, front-end e análise em um portfólio interativo.">
+<!-- **This was missing entirely**, which is most of "a parte do navegador ta deixando
+     tudo mt pequeno" on a phone: without it a mobile browser lays the page out at a
+     980px virtual width and scales the result down, so the Unit arrives at roughly a
+     third of the size it should. It also broke the rotated frame's arithmetic, which
+     reads `innerWidth` and was being told 980 rather than the device's width.
+     `viewport-fit=cover` is what makes `safe-area-inset-*` resolve to anything other
+     than zero on a notched screen. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Portfólio de Fernando Linck — growth, CRO e experiências digitais — apresentado como um instrumento: seis teclas, duas rodas e um fader que vai da noite ao dia.">
+<meta name="theme-color" content="#0A0A0B">
 <title>Fernando Linck — Growth, CRO e experiências digitais</title>
+
+<!-- The link preview. Without these a shared URL unfurls as a bare domain and a
+     title, which for a portfolio is the one place a first impression is free. The
+     absolute URL is required: unfurlers do not resolve relative paths. -->
+<link rel="canonical" href="https://fernandolinck3.github.io/tenebrae/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:site_name" content="Fernando Linck">
+<meta property="og:url" content="https://fernandolinck3.github.io/tenebrae/">
+<meta property="og:title" content="Fernando Linck — Growth, CRO e experiências digitais">
+<meta property="og:description" content="Um portfólio apresentado como instrumento: seis teclas, duas rodas e um fader que vai da noite ao dia.">
+<meta property="og:image" content="https://fernandolinck3.github.io/tenebrae/preview.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A unidade Tenebrae: um painel gravado com duas rodas, um mostrador monocromático e um fader.">
+<meta name="twitter:card" content="summary_large_image">
+
+<!-- A four-pointed star, the same one the lamp row is cut from. Inline, because one
+     more request for 300 bytes is a request too many and a missing favicon is a
+     browser-drawn placeholder in every tab. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230A0A0B'/%3E%3Cpath d='M16 3 L19 13 L29 16 L19 19 L16 29 L13 19 L3 16 L13 13 Z' fill='%23C9BE96'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=Azeret+Mono:wght@400;500&family=UnifrakturMaguntia&family=Pirata+One&family=Grenze+Gotisch:wght@400;600&family=Silkscreen:wght@400;700&family=VT323&display=swap">
 <style>
   *{box-sizing:border-box} html,body{height:100%;margin:0;overflow:hidden;background:#0A0A0B}
   #stage{position:fixed;inset:0} canvas{display:block}
   .hud{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:flex-end;justify-content:space-between;
-    gap:14px;padding:18px 22px;flex-wrap:wrap;pointer-events:none;
+    gap:14px;flex-wrap:wrap;pointer-events:none;
+    /* the inset is zero everywhere but a notched screen, where it is the difference
+       between a control and a control under the home indicator */
+    padding:18px calc(22px + env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) calc(22px + env(safe-area-inset-left));
     font-family:"Azeret Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.14em;color:#8A8880}
   .hud b{color:#C4281C;font-weight:500}
   .ctl{pointer-events:auto;display:flex;align-items:center;gap:12px}
@@ -75,7 +108,8 @@
   body[data-turned] #frame{width:100vh;height:100vw;
     transform:translate(100vw,0) rotate(90deg);transform-origin:0 0}
   body[data-turned] #turn{display:flex}
-  #turn{position:absolute;z-index:55;left:50%;transform:translateX(-50%);bottom:14px;
+  #turn{position:absolute;z-index:55;left:50%;transform:translateX(-50%);
+    bottom:calc(14px + env(safe-area-inset-bottom));
     display:none;align-items:center;gap:10px;margin:0;padding:8px 14px;
     background:rgba(10,9,8,.82);border:1px solid #3A3A38;color:#8A8880;
     font-family:"Azeret Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.16em}
@@ -85,7 +119,8 @@
      window — *"a parte do navegador ta deixando tudo mt pequeno."* Safari has no
      fullscreen that leaves the page in charge, so the page offers one. Hidden where
      the API is missing rather than shown and inert. */
-  #full{position:absolute;z-index:55;top:14px;right:16px;padding:7px 12px;
+  #full{position:absolute;z-index:55;min-height:44px;min-width:44px;
+    top:calc(14px + env(safe-area-inset-top));right:calc(16px + env(safe-area-inset-right));padding:7px 12px;
     background:rgba(10,9,8,.72);border:1px solid #3A3A38;color:#8A8880;cursor:pointer;
     font-family:"Azeret Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.18em}
   #full:hover,#full:focus-visible{color:#F0E8D2;border-color:#8A7A54}
@@ -98,9 +133,12 @@
   /* The touch row. Shown where there is no hover and no rotary gesture to make —
      `hover:none` is the honest test for that, rather than a width breakpoint that
      would also catch a small window on a desktop. */
-  .touch{position:fixed;left:0;right:0;bottom:0;display:none;gap:6px;padding:8px;
-    justify-content:center;z-index:5;font:11px/1 ui-monospace,Menlo,monospace}
-  .touch button{flex:1 1 0;max-width:120px;padding:12px 6px;color:#C9C2B0;
+  .touch{position:fixed;left:0;right:0;bottom:0;display:none;gap:6px;
+    padding:8px calc(8px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left));
+    justify-content:center;z-index:5;font:11px/1 "Azeret Mono",ui-monospace,Menlo,monospace}
+  /* 46px, inside the 44–48 a thumb actually hits. It was 12px of padding around an
+     11px line, which comes to about 35 — small enough that a miss is the norm. */
+  .touch button{flex:1 1 0;max-width:120px;min-height:46px;padding:12px 6px;color:#C9C2B0;
     background:#141110;border:1px solid #3A2E20;border-radius:3px;letter-spacing:.12em}
   .touch button:active{background:#241D16}
   @media (hover:none){ .touch{display:flex} }
