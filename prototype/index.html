@@ -44,6 +44,28 @@
   #fps{min-width:5.5em;display:inline-block}
   #fps[data-ok="1"]{color:#7FD9B0}
   #fps[data-ok="0"]{color:#C4703A}
+
+  /**
+   * Portrait on a phone: ask for the phone to be turned.
+   *
+   * The Unit is 1.82 wide and the Screen inside it is 16:9. In a portrait viewport
+   * the whole object shrinks to fit its width and the 320x180 display lands at a size
+   * nothing on it can be read at — the layout is not cramped, it is illegible. There
+   * is no orientation lock a web page can rely on (`screen.orientation.lock` needs
+   * fullscreen and is refused on iOS), so the honest move is to say so and wait.
+   *
+   * Gated on `pointer: coarse` as well as orientation, so a tall desktop window gets
+   * the object rather than an instruction it cannot follow.
+   */
+  #rotate{position:fixed;inset:0;z-index:60;display:none;place-items:center;text-align:center;
+    background:#0A0A0B;color:#8A8880;padding:32px;
+    font-family:"Azeret Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.14em;line-height:2}
+  #rotate b{display:block;color:#C9BE96;font-size:15px;letter-spacing:.24em;margin-bottom:18px}
+  #rotate svg{display:block;margin:0 auto 26px;stroke:#8A7A54;fill:none;stroke-width:1.5}
+  @media (orientation: portrait) and (pointer: coarse){
+    #rotate{display:grid}
+    #stage,.hud,.touch,.sr{display:none}
+  }
   /* The workbench is not part of the object. It stays in the DOM because scene.js
      binds to every dial by id and would throw on the first missing element, but it
      is only shown when the URL asks: /?debug */
@@ -59,6 +81,19 @@
   .touch button:active{background:#241D16}
   @media (hover:none){ .touch{display:flex} }
 </style>
+<div id="rotate" role="alertdialog" aria-live="polite">
+  <div>
+    <!-- a phone turning: the frame rotates, the arrow says which way -->
+    <svg width="74" height="74" viewBox="0 0 74 74" aria-hidden="true">
+      <rect x="25" y="12" width="24" height="42" rx="3"/>
+      <line x1="32" y1="18" x2="42" y2="18"/>
+      <path d="M18 60 a22 22 0 0 0 38 0"/>
+      <path d="M18 60 l-5 -7 M18 60 l7 -4"/>
+    </svg>
+    <b>Vire o celular</b>
+    A unidade é larga como o instrumento que ela é.<br>Na horizontal, o mostrador fica legível.
+  </div>
+</div>
 <div id="stage"></div>
 <!--
   The semantic layer. ADR-0002: the DOM is the truth and the Screen is a render of

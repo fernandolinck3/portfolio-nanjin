@@ -6,6 +6,7 @@
  * costs minutes on an iCloud-backed disk (see HANDOFF.md), so this suite opts out
  * the same way `prototype/screen/reaction.test.js` does.
  */
+import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { MODULES, SCREEN_BUDGET, WORKS, LYRA_IDLE_MS, moduleAt, lyraAt, workById } from './modules'
 
@@ -229,6 +230,23 @@ describe('what the content is allowed to claim', () => {
 })
 
 describe('the projects', () => {
+  /**
+   * Every still a Work names has to be a file that is actually there.
+   *
+   * A missing image is invisible in review — the panel just shows its empty plate —
+   * and the failure only appears in a deployed build if the path is also wrong for
+   * the base. `modules.ts` stores these root-relative and `public/` is the root, so
+   * the check is a straight join.
+   */
+  it('points every image at a file that exists', () => {
+    for (const w of WORKS) {
+      for (const src of w.images ?? []) {
+        expect(src.startsWith('/')).toBe(true)
+        expect(existsSync(new URL('../../public' + src, import.meta.url))).toBe(true)
+      }
+    }
+  })
+
   it('is exactly Portfólio, Graecus and Miscelânea', () => {
     expect(WORKS.map(w => w.id)).toEqual(['portfolio', 'graecus', 'miscelanea'])
   })
@@ -247,10 +265,14 @@ describe('the projects', () => {
    * it stays that way — the failure mode is a future edit filling it with plausible
    * titles and dates to make the module look finished.
    */
-  it('leaves Miscelânea empty rather than inventing work', () => {
+  it('lets Miscelânea show real work and invent none', () => {
     const m = workById('miscelanea')!
+    /* still a gallery under construction, which is what `empty` says */
     expect(m.empty).toBe(true)
-    expect(m.images ?? []).toHaveLength(0)
+    /* the guard was never "no images" — it was **no fabricated ones**. Every path
+       here has to resolve to a file that exists, and no date may be claimed for work
+       whose date nobody stated. */
+    for (const src of m.images ?? []) expect(src).toMatch(/^\/works\/[\w-]+\.jpg$/)
     expect(m.year).toBeUndefined()
   })
 
@@ -266,10 +288,15 @@ describe('the projects', () => {
    * screenshots the brief asks for do not exist locally — the two files under
    * `public/works/` are social pieces, which is different work for the same client.
    */
-  it('declares the missing Graecus captures rather than omitting them', () => {
+  it('shows the Graecus captures it declares', () => {
     const g = MODULES.find(x => x.id === 'projects')!.items!.find(i => i.id === 'graecus')!
     const capturas = g.sections.find(s => s.heading === 'CAPTURAS')
     expect(capturas).toBeDefined()
-    expect(capturas!.lines).toHaveLength(0)
+    /* it used to be a declared gap: the six screenshots did not exist locally and the
+       section said so rather than pretending. They exist now, so the section
+       describes them and the Work carries them. */
+    expect(capturas!.lines.length).toBeGreaterThan(0)
+    const shots = workById('graecus')!.images ?? []
+    expect(shots.length).toBeGreaterThanOrEqual(6)
   })
 })

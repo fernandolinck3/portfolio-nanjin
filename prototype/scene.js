@@ -2797,7 +2797,15 @@ const NOTCH = 0.38;
  * pesada"* Fernando asked for, arriving as weight rather than as friction.
  */
 const SUN_NOTCH = 0.68;
-const notchOf = kind => (kind === 'sun' && !focus.active ? SUN_NOTCH : NOTCH);
+/**
+ * A detent is sized by what it moves.
+ *
+ * The SUN's is nearly double because one of its notches is a whole page — but in a
+ * Module whose items have no pages the SUN is choosing an item instead, and an item
+ * costs a MOON notch.
+ */
+const notchOf = kind =>
+  (kind === 'sun' && !focus.active && pageRange() > 0 ? SUN_NOTCH : NOTCH);
 
 /**
  * How the wheels feel, in four numbers.
@@ -2948,11 +2956,18 @@ function moveSection(step) {
      over more than one page, so only it knows how many there are. It is written by
      the last draw, which is why this is safe to read here: the Screen has painted
      this Module at least once before any control can reach it. */
+  /**
+   * With nothing to page through, the SUN chooses too.
+   *
+   * PROJETOS keeps its cases in the overlay rather than on the Screen, so its items
+   * have no pages — and the SUN there was inert, which is half of *"as jogs não estão
+   * navegando direito."* A dead wheel next to a live one reads as broken, and there
+   * is an obvious thing for it to be doing: *"mantenha ambas possibilitando ao
+   * usuário dar switch nos projetos individuais."* So both wheels move the cursor,
+   * and the SUN only becomes a pager where there are pages.
+   */
   const n = pageRange();
-  /* PROJETOS keeps its cases in the overlay rather than on the Screen, so its items
-     have no pages at all. Turning the SUN there is not a mistake, it is someone
-     reaching for the case — so it says where the case actually is. */
-  if (!n) { flashLcd(it.act?.kind === 'work' ? 'APERTE O CENTRO DO SOL PARA ABRIR' : 'SEM PÁGINAS AQUI'); return; }
+  if (!n) { moveSelection(step); return; }
   const from = sectionOf(curPage);
   const to = Math.max(0, Math.min(n, from + step));
   if (to === from) {

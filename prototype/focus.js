@@ -42,6 +42,29 @@ const EASE = t => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 const asset = p => (import.meta.env?.BASE_URL || '/') + String(p).replace(/^\//, '')
 
 /**
+ * Rejoin lines that were broken for a 320-pixel Screen.
+ *
+ * `modules.ts` stores prose as short lines, because that is what the Screen needs.
+ * This panel is real HTML at real size, and rendering one `<p>` per stored line put
+ * a paragraph break after every eight words — the case came out as a column of
+ * fragments rather than as writing.
+ *
+ * A blank entry is a deliberate paragraph break and is the only thing that starts a
+ * new one. Everything else flows, and the browser decides where the lines fall,
+ * which is the same principle the Screen's own `lead` now follows.
+ */
+const paragraph = (lines = []) => {
+  const paras = []
+  let run = []
+  for (const l of lines) {
+    if (String(l).trim() === '') { if (run.length) paras.push(run.join(' ')); run = [] }
+    else run.push(String(l).trim())
+  }
+  if (run.length) paras.push(run.join(' '))
+  return paras.map(t => `<p>${t}</p>`).join('')
+}
+
+/**
  * Where the camera has to stand for the Screen to fill the frame.
  *
  * The Screen is set into a horizontal Plate, so it faces straight up and the
@@ -92,7 +115,7 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
    * behaviour every dialog on the web already has, so nobody has to learn it.
    */
   panel.innerHTML = `
-    <button class="work-back" type="button">&larr;&nbsp; RETURN</button>
+    <button class="work-back" type="button">&larr;&nbsp; VOLTAR</button>
     <button class="work-step" data-d="-1" type="button" aria-label="Previous work">&lsaquo;</button>
     <button class="work-step" data-d="1" type="button" aria-label="Next work">&rsaquo;</button>
     <div class="work-body">
@@ -110,53 +133,96 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
   mount.appendChild(panel)
 
   const style = document.createElement('style')
+  /**
+   * The panel is dressed in the object's own faces.
+   *
+   * It used to be `ui-monospace` and Georgia — system defaults that said nothing and
+   * belonged to nothing: *"as fontes dessa tela do projeto aberto estão destoando do
+   * design da página."* They were right for a prototype answering "does the *move*
+   * feel right", and wrong the moment the move stopped being the question.
+   *
+   * The three roles map onto the three the Screen already has, so opening a project
+   * reads as the same instrument at a larger size rather than as a web page arriving
+   * over it:
+   *
+   *   Grenze Gotisch   the blackletter the Screen sets Module titles in
+   *   Silkscreen       the Screen's own label face — eyebrows, headings, counters
+   *   Azeret Mono      the running text, the face the rest of the page already uses
+   *
+   * All three are already in the document's font link, so this costs no new request.
+   * Every one carries a real fallback stack: an unloaded face is a silent fallback,
+   * not an error, and Silkscreen falling back to a proportional sans would take the
+   * letter-spacing with it.
+   *
+   * The ground is **blurred**, not merely darkened. The Unit behind is high-contrast
+   * engraving and lit brass, and prose over a gradient of it was fighting the detail
+   * for the reader's eye — *"a tela no fundo deve ficar blurred ou algo pra dar
+   * leitura."* The blur keeps the object present as colour and light while taking its
+   * edges away, which is exactly what a backdrop should be. Where `backdrop-filter`
+   * is unsupported the gradient alone still darkens it, so the text stays legible.
+   */
   style.textContent = `
     /* fixed, not absolute: the stage is not a positioned ancestor, so inset:0 was
        resolving somewhere unhelpful and the panel came out a few hundred pixels
        wide in the middle of the frame */
     .work-panel { position:fixed; inset:0; z-index:20; display:grid; place-items:center;
       opacity:0; pointer-events:none; transition:opacity .28s ease;
-      background:linear-gradient(180deg, rgba(6,5,5,.55), rgba(6,5,5,.86));
-      font:13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; color:#C9C2B0; }
+      background:linear-gradient(180deg, rgba(6,5,5,.62), rgba(6,5,5,.88));
+      -webkit-backdrop-filter:blur(14px) saturate(.75);
+      backdrop-filter:blur(14px) saturate(.75);
+      font:400 14px/1.7 "Azeret Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      color:#C9C2B0; }
     .work-panel[data-open="1"] { opacity:1; pointer-events:auto; }
-    .work-body { display:flex; gap:40px; align-items:flex-start;
-      width:min(1180px, 86vw); max-height:86vh; }
+
+    .work-body { display:flex; gap:44px; align-items:flex-start;
+      width:min(1180px, 86vw); max-height:86vh; position:relative; z-index:1; }
     /* the text column scrolls on its own; the image stays put */
-    .work-text { overflow:auto; max-height:86vh; padding-right:12px; }
-    .work-case h3 { margin:18px 0 4px; font-size:11px; letter-spacing:.18em;
-      color:#C9BE96; font-weight:600; }
-    .work-case p { margin:0 0 4px; color:#A9A292; }
-    .work-more { margin-top:20px; padding-top:12px; border-top:1px solid #2A2620;
-      color:#8A8470; font-size:12px; letter-spacing:.06em; }
+    .work-text { overflow:auto; max-height:86vh; padding-right:16px; flex:1 1 auto; }
+
+    .work-no, .work-meta, .work-client, .work-count, .work-hint, .work-back,
+    .work-case h3 {
+      font-family:Silkscreen, "Azeret Mono", ui-monospace, monospace; }
+
+    .work-no { color:#8A7A54; font-size:10px; letter-spacing:.28em; margin:0 0 14px; }
+    .work-title { font:400 40px/1.05 "Grenze Gotisch", "Pirata One", Georgia, serif;
+      margin:0 0 10px; color:#E4DCC6; letter-spacing:.01em; text-wrap:balance; }
+    .work-meta { color:#7E7565; font-size:10px; letter-spacing:.2em; margin:0 0 22px; }
+    .work-client { color:#8A7A54; font-size:10px; letter-spacing:.2em; margin:0 0 14px; }
+    .work-blurb p { margin:0 0 8px; color:#ADA491; max-width:62ch; }
+
+    .work-case h3 { margin:24px 0 8px; font-size:10px; letter-spacing:.22em;
+      color:#C9BE96; font-weight:400; }
+    .work-case p { margin:0 0 5px; color:#A9A292; max-width:62ch; }
+    .work-more { margin-top:24px; padding-top:14px; border-top:1px solid #2A2620;
+      color:#8A8470; font-size:13px; letter-spacing:.04em; }
+
     .work-plate { position:relative; flex:0 0 58%; aspect-ratio:16/10; border:1px solid #3A322A;
       background:#14110F center/contain no-repeat; box-shadow:0 24px 70px rgba(0,0,0,.6); }
     .work-plate[data-many="1"] { cursor:pointer; }
-    .work-count { position:absolute; bottom:10px; right:12px; color:#8A7A54;
-      background:rgba(8,7,6,.7); padding:3px 8px; letter-spacing:.14em; }
-    .work-client { color:#8A7A54; letter-spacing:.14em; margin:0 0 14px; }
-    .work-text { flex:1 1 auto; }
-    .work-no { color:#8A7A54; letter-spacing:.24em; margin:0 0 10px; }
-    .work-title { font:600 30px/1.15 Georgia, 'Times New Roman', serif; margin:0 0 8px; color:#E4DCC6; }
-    .work-meta { color:#7E7565; letter-spacing:.12em; margin:0 0 18px; }
-    .work-blurb p { margin:0 0 6px; color:#ADA491; }
-    .work-body { position:relative; z-index:1; }
+    .work-count { position:absolute; bottom:10px; right:12px; color:#8A7A54; font-size:10px;
+      background:rgba(8,7,6,.7); padding:4px 9px; letter-spacing:.18em; }
+
     .work-back { position:absolute; top:26px; left:30px; z-index:2; background:rgba(10,9,8,.6);
-      cursor:pointer; border:1px solid #4A4136; color:#C9C2B0; padding:10px 18px;
-      letter-spacing:.22em; font:inherit; transition:.18s; }
-    .work-back:hover { color:#F0E8D2; border-color:#8A7A54; background:rgba(20,17,14,.85); }
+      cursor:pointer; border:1px solid #4A4136; color:#C9C2B0; padding:11px 18px;
+      font-size:10px; letter-spacing:.24em; transition:.18s; }
+    .work-back:hover, .work-back:focus-visible { color:#F0E8D2; border-color:#8A7A54;
+      background:rgba(20,17,14,.85); }
     .work-step { position:absolute; top:50%; transform:translateY(-50%); z-index:2;
       background:none; border:0; cursor:pointer; color:#5C5346; font-size:44px; line-height:1;
       padding:20px 26px; transition:.18s; }
-    .work-step:hover { color:#C9C2B0; }
+    .work-step:hover, .work-step:focus-visible { color:#C9C2B0; }
     .work-step[data-d="-1"] { left:8px; }
     .work-step[data-d="1"] { right:8px; }
     .work-hint { position:absolute; bottom:24px; left:0; right:0; text-align:center;
-      color:#5C5346; letter-spacing:.16em; margin:0; pointer-events:none; }
+      color:#5C5346; font-size:10px; letter-spacing:.2em; margin:0; pointer-events:none; }
+
+    @media (prefers-reduced-motion: reduce) { .work-panel { transition:none } }
     @media (max-width: 760px) {
+      .work-body { flex-direction:column; gap:22px; }
+      .work-title { font-size:30px; }
       .work-back { top:16px; left:16px; padding:8px 14px; }
       .work-step { font-size:34px; padding:14px; }
-    }
-    @media (max-width: 760px) { .work-body { flex-direction:column; gap:20px; } }`
+    }`
   document.head.appendChild(style)
 
   /* ---------- state ---------- */
@@ -186,8 +252,7 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
        the edge, and cropping them to fill a 16:10 box would cut the work up */
     panel.querySelector('.work-meta').textContent =
       [work.client, work.kind, work.year].filter(Boolean).join('  ·  ')
-    panel.querySelector('.work-blurb').innerHTML =
-      (work.blurb || []).map(l => `<p>${l}</p>`).join('')
+    panel.querySelector('.work-blurb').innerHTML = paragraph(work.blurb)
 
     /**
      * The case lives **here**, and only here.
@@ -202,7 +267,7 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
     const secs = caseOf(work.id) || []
     panel.querySelector('.work-case').innerHTML = secs
       .filter(sec => sec.lines.length)
-      .map(sec => `<h3>${sec.heading}</h3>` + sec.lines.map(l => `<p>${l}</p>`).join(''))
+      .map(sec => `<h3>${sec.heading}</h3>` + paragraph(sec.lines))
       .join('')
     /* A slot, not a link. The long write-up does not exist yet, and a button that
        goes nowhere is worse than a line saying it is coming. */

@@ -281,7 +281,22 @@ function grimoireStatus() {
   if (flash && now > flashUntil) flash = ''
 
   const m = MODULES[mod]
-  const line = flash || hint || standingLine(m)
+  /**
+   * On an index page the standing line says nothing the page does not.
+   *
+   * It read `PROJETO 01/03 · PORTFÓLIO` under a list whose first row was already
+   * marked with a filled dot and spelled out — and in PROJETOS the list is three
+   * rows deep, so the line landed **on top of the third project**: *"em projetos, o
+   * texto inferior esquerdo tapa os projetos. Remova-o."*
+   *
+   * It stays everywhere it carries something: on a case page, where it is the only
+   * thing reporting which page of how many; on a Module with no list; and whenever a
+   * flash or a hover hint has something to say. What goes is the one case where the
+   * footer was repeating the screen back to itself.
+   */
+  const onIndex = (m.items?.length || 0) > 0 && (placeOf(mod).sec || 0) === 0
+  const line = flash || hint || (onIndex ? '' : standingLine(m))
+  if (!line && !overflow) return
 
   /**
    * The footer gets its own ground.

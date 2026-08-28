@@ -153,7 +153,18 @@ export const WORKS: readonly Work[] = [
     title: 'Graecus',
     kind: 'Site institucional + blog',
     client: 'Graecus',
-    images: ['/works/graecus-mdsale.jpg', '/works/graecus-namorados.jpg'],
+    /* As capturas do site vêm primeiro: são o trabalho que o case descreve. As duas
+       peças sociais fecham a sequência — são do mesmo cliente e de outro trabalho. */
+    images: [
+      '/works/graecus-home-hero.jpg',
+      '/works/graecus-services.jpg',
+      '/works/graecus-blog-archive.jpg',
+      '/works/graecus-blog-article.jpg',
+      '/works/graecus-faq-open.jpg',
+      '/works/graecus-mobile-home.jpg',
+      '/works/graecus-mdsale.jpg',
+      '/works/graecus-namorados.jpg',
+    ],
     blurb: [
       'Site institucional e blog em WordPress com tema',
       'personalizado, sem page builder.',
@@ -164,7 +175,11 @@ export const WORKS: readonly Work[] = [
     id: 'miscelanea',
     title: 'Miscelânea',
     kind: 'Galeria de artes',
+    /* `empty` continua verdadeiro: a galeria segue em construção. O que mudou é que
+       ela deixou de estar vazia — duas peças reais entraram. Nenhuma data, nenhum
+       título inventado; o que não se sabe continua não sendo dito. */
     empty: true,
+    images: ['/works/ru-mine-a.jpg', '/works/ru-mine-b.jpg'],
     blurb: [
       'Uma galeria em construção para reunir pôsteres,',
       'composições e estudos visuais em um mesmo arquivo.',
@@ -267,10 +282,13 @@ export function caseOf(id: string): readonly Section[] {
         'públicos de conversão ou tráfego.',
       ],
     },
-    /* As capturas do site — hero, serviços, FAQ, arquivo, artigo e mobile — ainda não
-       existem localmente. As duas imagens em `public/works/` são peças de social da
-       Graecus, que é trabalho diferente para o mesmo cliente. */
-    gap('CAPTURAS'),
+    {
+      heading: 'CAPTURAS',
+      lines: [
+        'Home, serviços, arquivo do blog, um artigo, o FAQ',
+        'aberto e a home em mobile.',
+      ],
+    },
   ]
   return [
     {
@@ -305,7 +323,7 @@ export const MODULES: readonly Module[] = [
       'Estratégia, mensagem, design, front-end e análise.',
       'Experimentos de ponta a ponta: da pesquisa à implementação e ao aprendizado.',
     ],
-    dim: ['Porto Alegre, Brasil. Português ou inglês.'],
+    dim: ['Porto Alegre, Brasil.'],
     lyra: {
       open: ['A unidade despertou.', 'Comece aqui.'],
       idle: ['A LUA escolhe o item.', 'O SOL revela mais.'],
@@ -319,7 +337,7 @@ export const MODULES: readonly Module[] = [
     pad: 'PROJETOS',
     hint: 'PROJETOS — Trabalhos e o raciocínio por trás deles',
     lead: [
-      'Gire a LUA para escolher e o SOL para ler.',
+      'As duas rodas percorrem a lista.',
       'Toque no projeto na tela para abrir por inteiro.',
     ],
     unit: 'PROJETO',
@@ -332,7 +350,7 @@ export const MODULES: readonly Module[] = [
     })),
     lyra: {
       open: ['Alguns sinais já chegaram.', 'Outros ainda viajam.'],
-      idle: ['Gire a LUA para escolher.', 'O SOL abre.'],
+      idle: ['A LUA percorre a lista.', 'Toque para abrir.'],
     },
   },
 
