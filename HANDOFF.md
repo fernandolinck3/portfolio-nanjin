@@ -1,6 +1,7 @@
 # Handoff — Fer Bittencourt portfolio ("Tenebrae")
 
-**Date:** 2026-08-28 · **Repo:** `~/dev/fernando-portfolio` · **Branch:** `lyra` · **HEAD:** `9c6dffa`
+**Date:** 2026-08-28 · **Repo:** `~/dev/fernando-portfolio` · **Branch:** `lyra`
+**Remote:** https://github.com/fernandolinck3/tenebrae · **Live:** https://fernandolinck3.github.io/tenebrae/
 **Language:** Fernando writes EN and PT-BR, often in one message; the *product* is PT-BR.
 Reply in whichever he used last (last was mixed, leaning PT-BR).
 
@@ -15,49 +16,19 @@ session and all verified in a browser — see *"What changed on 2026-08-28"* bel
 uncommitted deliberately: he was mid-judgement on the Decks when the session ended. Read that
 section, then either commit it or take his ruling first.
 
-**There is still no remote.** `git remote -v` is empty. Fifty-five commits and about a week of work
-exist as **one copy on one disk**, now that the repo is out of iCloud. T-14 is his call and has been
-raised in six consecutive sessions.
+**T-14 is done.** There is a remote, the work is backed up, and the site is live:
 
-**On 2026-08-28 he asked for the online version** — *"publique uma versão online para eu
-compartilhar."* That was answered with a **single-file build published as a Claude Artifact**:
+> **https://fernandolinck3.github.io/tenebrae/**
 
-> https://claude.ai/code/artifact/cc6c648f-de43-4462-b796-0b099d6740f5
+`.github/workflows/pages.yml` builds and deploys on every push to `lyra`, which is the repo's
+default branch. The workflow runs `npx vitest run` and `npm run verify:site` before it uploads — the
+content tests guard what the site claims about Fernando, and a build that breaks them should not
+reach the web. Custom domain when he has one: a `CNAME` file in `dist-site` plus DNS.
 
-It gives him a link today without deciding anything about hosting or a remote. It is a share link,
-not a deploy: it does not back the work up, it is not his domain, and it does not remove T-14. Treat
-the Artifact as the demo and the remote as still open. **It is private until he shares it** from the
-page's own share menu.
-
-The packer is `scratchpad/pack.py` (session-local; move it into the repo if this becomes a habit).
-It exists because Artifacts run under a CSP that blocks every external image, and the bundle builds
-its asset URLs at run time — so the images are intercepted on assignment to `HTMLImageElement.src`
-rather than rewritten in the source.
-
-**`fetch` has to be intercepted as well, and the first packed build shipped without it.** `scene.js`
-probes for the faceplate with `fetch(f, { method: 'HEAD' })` before it will touch the image — right
-against a real server, where a missing file is a 404. Under the CSP `fetch` is blocked outright, the
-probe throws, and the loader concludes the artwork is not there. The published page had a Plate with
-no artwork on it and Fernando caught it: *"the faceplate design is missing."* **The console said so
-on every load** — `no ornament artwork; using the procedural vine` — in the same output that was
-read for something else. Read the whole console, not the line being looked for.
-
-The packer also swaps the 2.8MB Plate PNG for a 0.6MB JPEG in the packed copy only; the **Deck art
-must stay PNG**, because `deck-faces.js` reads its pixels to find the chroma key and JPEG ringing
-would put stray green along every edge.
-
-To update the link: rebuild, re-run the packer, and publish the same file path.
-
-### A deploy-only bug found while packing: the Plate artwork never shipped
-
-`prototype/ornament/plate.png` sits under Vite's `root` but `publicDir` is `../public`, so the dev
-server served it and **`dist-site/` never contained it** — every build silently fell back to the
-procedural vine, and the console said so on every load (`no ornament artwork; using the procedural
-vine`). Fixed by copying it to `public/ornament/plate.png`. `plate.jpg` was deliberately not copied:
-the loader probes `.png` first, so the 4.2MB JPEG would have been dead weight in every deploy.
-
-This is the third instance of the same class — an asset path that only fails once the site is built.
-The other two are commented in `deck-faces.js` and `focus.js`.
+The Claude Artifact from earlier the same day is still live at
+`https://claude.ai/code/artifact/cc6c648f-de43-4462-b796-0b099d6740f5` and is a **second copy that
+can drift**. GitHub Pages is canonical now; if the Artifact is kept, republish it from the same
+build (see the packer note below) whenever Pages moves.
 
 ## The goal he actually stated
 
