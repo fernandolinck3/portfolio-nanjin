@@ -122,6 +122,34 @@ export const SCREEN_BUDGET = {
   hintChars: 62,
 } as const
 
+/**
+ * O que a sétima tela diz — e por que ela deixou de ser um formulário.
+ *
+ * Ela mostrava um campo desenhado como controle de verdade e marcado `SEM SERVIDOR`,
+ * porque não havia endpoint para decidir quem chegou primeiro. Era honesto e lia como
+ * inacabado: quem atravessa o objeto inteiro e faz a luz cruzar de ponta a ponta
+ * encontra uma caixa de texto quebrada.
+ *
+ * O prêmio de um segredo é ter sido encontrado. Então o campo saiu e no lugar dele
+ * ficou o que aconteceu, dito por extenso — inclusive a parte de que não há prêmio,
+ * que assim vira intenção em vez de ausência.
+ *
+ * Duas faces porque há dois caminhos: descer a luz para a noite acorda a LUA, subir
+ * para o dia acorda o SOL. O texto muda; o que ele diz, não.
+ */
+export const ECLIPSE = {
+  moon: {
+    tag: 'ECLIPSE DA LUA',
+    lines: ['Você levou a luz de volta ao escuro,', 'e a sétima marca acendeu.'],
+  },
+  sun: {
+    tag: 'ECLIPSE DO SOL',
+    lines: ['Você trouxe a luz de volta ao dia,', 'e a sétima marca acendeu.'],
+  },
+  found: 'SINAL ENCONTRADO',
+  note: ['Não há prêmio, nem lista, nem servidor.', 'Encontrar era o prêmio.'],
+} as const
+
 export const LYRA_NAME = 'LYRA'
 export const LYRA_BUBBLE_CHARS = 26
 

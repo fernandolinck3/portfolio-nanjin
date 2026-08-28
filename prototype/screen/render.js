@@ -13,7 +13,7 @@
    than taking it per call because the reaction, the raven and the Cast all need
    continuity between frames.
 */
-import { MODULES, WORKS, GAP, LYRA_NAME, lyraAt, LYRA_IDLE_MS } from '../../src/content/modules.ts'
+import { MODULES, WORKS, GAP, ECLIPSE, LYRA_NAME, lyraAt, LYRA_IDLE_MS } from '../../src/content/modules.ts'
 import { EMBLEMS, disc, ring } from './sprites.js'
 import { drawWizard, drawRaven, updateRaven, flush, drawSpell, castHand,
          heldOrbs, heldBook, heldUnit, drawRobe } from './figure.js'
@@ -1358,7 +1358,7 @@ export function setHint(text) { hint = text || '' }
  * without also forging a claim — the button flips the flag, and everything here
  * follows from the flag rather than from how it came to be set.
  */
-let eclipseSeen = 1, eclipseUnlocked = false, eclipseOpen = false, eclipseClaim = false
+let eclipseSeen = 1, eclipseUnlocked = false, eclipseOpen = false
 let eclipseFace = 'moon'
 export function setEclipseSeen(n) { eclipseSeen = n }
 export function setEclipseUnlocked(v) { eclipseUnlocked = !!v }
@@ -1370,9 +1370,12 @@ export function setEclipseUnlocked(v) { eclipseUnlocked = !!v }
  * whole object; landing it in a single frame spends it before the eye has caught up.
  */
 let eclipseAt = 0
-export function setEclipseOpen(v, claimEnabled, face) {
+/* `claimEnabled` is gone with the field it gated: there is nothing to claim, and a
+   flag that only ever said "the thing that does not exist is still disabled" is state
+   that can only rot. */
+export function setEclipseOpen(v, face) {
   if (!!v !== eclipseOpen) eclipseAt = performance.now()
-  eclipseOpen = !!v; eclipseClaim = !!claimEnabled
+  eclipseOpen = !!v
   if (face) eclipseFace = face
 }
 /** 0 at the switch, 1 when it has fully arrived. ~1.5s, and it also runs on the way out. */
@@ -1510,39 +1513,51 @@ function drawEclipse(g, t, W, H, INK, MID, DIM, GOLD, BG) {
    * 157, past the floor at 156, and swallowed `ESC · VOLTAR` whole. A layout that is
    * arithmetic should be legible as arithmetic.
    */
+  /**
+   * The block, written out so it can be checked rather than nudged.
+   *
+   *   64        the constellation's lowest point
+   *   66        the cleared ground starts, clear of it
+   *   74        the eyebrow: which eclipse this is, and that it was found
+   *   92, 107   what just happened, in the Screen's body size
+   *   126, 140  the note — the part that says there is nothing to collect
+   *   154       the way out, clear of the status band at 158
+   *
+   * An earlier cut added offsets downward and lost count: the field ended at 157,
+   * past the floor at 156, and swallowed `ESC · VOLTAR` whole. A layout that is
+   * arithmetic should be legible as arithmetic.
+   */
   const TOP = 74, BACK = FLOOR - 2
+  const copy = ECLIPSE[eclipseFace] || ECLIPSE.moon
   g.fillStyle = BG
   g.fillRect(18, TOP - 8, W - 36, BACK + 6 - (TOP - 8))
 
   g.font = '8px Silkscreen, monospace'; g.fillStyle = GOLD
-  const tag = 'ECLIPSE'
+  const tag = `${copy.tag} \u00B7 ${ECLIPSE.found}`
   g.fillText(tag, W / 2 - g.measureText(tag).width / 2, TOP)
 
   g.font = '13px VT323, monospace'; g.fillStyle = BODY
-  let y = TOP + 17
-  for (const l of ['Seis sinais alinhados.', 'Um ficou fora do índice.']) {
+  let y = TOP + 18
+  for (const l of copy.lines) {
     g.fillText(l, W / 2 - g.measureText(l).width / 2, y); y += 15
   }
 
-  y += 5
-  g.font = '8px Silkscreen, monospace'
-  g.fillStyle = eclipseClaim ? GOLD : MID
-  const label = eclipseClaim ? '@ DO INSTAGRAM' : 'TRANSMISSÃO AINDA NÃO ABERTA'
-  g.fillText(label, W / 2 - g.measureText(label).width / 2, y)
-  y += 9
-
-  /* the field, drawn as a real control and plainly inert */
-  const fw = 150, fx = W / 2 - fw / 2
-  g.strokeStyle = eclipseClaim ? GOLD : MID
-  g.lineWidth = 1
-  g.strokeRect(fx + .5, y + .5, fw, 13)
-  if (!eclipseClaim) {
-    g.fillStyle = MID
-    g.font = '8px Silkscreen, monospace'
-    const off = 'SEM SERVIDOR'
-    g.fillText(off, W / 2 - g.measureText(off).width / 2, y + 10)
+  /**
+   * And the note, which is where the dead claim field used to be.
+   *
+   * It was a text input drawn as a real control and stamped `SEM SERVIDOR`, because
+   * there is no endpoint to decide who arrived first. Honest, and it read as
+   * unfinished — someone who crosses the whole object and takes the light end to end
+   * found a broken form waiting. The reward for a secret is having found it, so the
+   * field is gone and what replaces it says that out loud.
+   */
+  g.font = '12px VT323, monospace'; g.fillStyle = MID
+  y = 126
+  for (const l of ECLIPSE.note) {
+    g.fillText(l, W / 2 - g.measureText(l).width / 2, y); y += 14
   }
 
+  g.font = '8px Silkscreen, monospace'
   g.fillStyle = MID
   const back = 'ESC · VOLTAR'
   g.fillText(back, W / 2 - g.measureText(back).width / 2, BACK)

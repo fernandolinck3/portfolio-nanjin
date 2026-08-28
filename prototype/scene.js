@@ -3170,7 +3170,7 @@ function openEclipse(face) {
   eclipse.open = true;
   eclipse.answered = true;
   eclipse.face = face;
-  setEclipseOpen(true, eclipse.claimEnabled, face);
+  setEclipseOpen(true, face);
   flashLcd(face === 'moon' ? 'ECLIPSE · LUA' : 'ECLIPSE · SOL', 2400);
   drawScreen();
 }
@@ -3187,7 +3187,7 @@ function moonBack() {
    */
   if (eclipse.open) {
     eclipse.open = false;
-    setEclipseOpen(false, eclipse.claimEnabled, eclipse.face);
+    setEclipseOpen(false, eclipse.face);
     flashLcd('VOLTAR · ' + mod().title);
     drawScreen();
     return;
@@ -3382,14 +3382,14 @@ function updateLeds(t, dt) {
  *
  * ADR-0001 says there are six and there is no seventh, and that stands: the Pads
  * still address six, the array still has six, and nothing here adds one. What this
- * adds is a position the MOON can reach *after* all six have been seen — a detent
- * past the end of the list, which is why it can exist without becoming a Module.
+ * adds is a state the light can reach *after* all six have been seen, which is why
+ * it can exist without becoming a Module.
  *
  * The visited set lives for the session and nothing else. The brief is explicit that
- * persistence must never decide a winner, and the front half of this feature does
- * not decide anything at all: the claim is built and **disabled**, because there is
- * no server to arbitrate it and a prize promised without one is a promise nobody can
- * keep. `eclipse.claimEnabled` is the single switch that changes when there is.
+ * persistence must never decide a winner — and there is now nothing to decide. The
+ * claim field is gone: it was a real-looking control stamped `SEM SERVIDOR`, honest
+ * about having no endpoint and reading as unfinished. What the seventh screen offers
+ * is the fact of having been found, which needs no server and cannot be taken away.
  */
 const eclipse = {
   seen: new Set([0]),
@@ -3408,9 +3408,6 @@ const eclipse = {
   band: null,
   /** Which wheel opened it: the two Faces carry the same content and a different sky. */
   face: 'moon',
-  /* No endpoint exists yet. Until one does this stays false and the UI says so
-     rather than collecting a handle it cannot honour. */
-  claimEnabled: false,
 };
 
 function markSeen(i) {
