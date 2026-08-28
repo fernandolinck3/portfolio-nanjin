@@ -1529,7 +1529,12 @@ screenGlass.position.set(0, FACE_Y + .006, SCREEN_Z); unit.add(screenGlass);
  * answer is "nothing", it is aimed at the wrong thing.
  */
 const GLOW_LAYER = 3;
-const glow = new THREE.PointLight(0x7FD9B0, 1.9, 3.0, 2);
+/* Range 4.2, up from 3.0. The Decks sit 2.2 units out and were technically inside
+   the old radius and practically at nothing — the light reached them the way a candle
+   reaches the far wall. *"O brilho da tela deve gerar na CDJ um pouco, afinal tem uma
+   luz sendo exposta na vigília da lua."* The Screen is the brightest thing on the
+   object at night; the platters should know it. */
+const glow = new THREE.PointLight(0x7FD9B0, 1.9, 4.2, 2);
 glow.position.set(0, .95, SCREEN_Z);
 glow.layers.set(GLOW_LAYER);
 unit.add(glow);
@@ -1850,6 +1855,43 @@ const cap = new THREE.Mesh(slab(.13, .26, .11, .03),
 const capX = v => -FADER.travel / 2 + v * FADER.travel;
 cap.position.set(capX(xfVal), .35, FADER.z); cap.userData.ctl = 'fader'; unit.add(cap);
 /**
+ * The cap's contact shadow, which the shadow map cannot give it.
+ *
+ * *"O crossfader parece não gerar sombra."* It does cast — `castOnly` sets it, and
+ * the key light throws a short one to the side. What is missing is the **contact**:
+ * the dark hairline where an object meets the surface it stands on, which is what the
+ * eye actually reads as "this is resting there" rather than "this is floating".
+ *
+ * The shadow map cannot supply it here. `key.shadow.normalBias` is 0.022, which is
+ * what stops the Plate — a plane a hair above the Chassis — from crawling with acne;
+ * it also pushes the receiver's sample far enough along its normal to erase a contact
+ * band on a cap that only stands 0.11 proud. Lowering it to rescue one handle would
+ * put the acne back across the whole faceplate.
+ *
+ * So the contact is drawn rather than computed: a soft radial patch that rides under
+ * the cap. It is `transparent`, so `castOnly` skips it and it never casts a shadow of
+ * its own, and `depthWrite: false` keeps it from biting the Plate it lies on.
+ */
+const capShade = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const r = g.createRadialGradient(64, 64, 4, 64, 64, 62);
+  r.addColorStop(0, 'rgba(0,0,0,.85)');
+  r.addColorStop(.45, 'rgba(0,0,0,.42)');
+  r.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c);
+  const m = new THREE.Mesh(
+    new THREE.PlaneGeometry(.30, .40),
+    new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, opacity: .9 }));
+  m.rotation.x = -Math.PI / 2;
+  m.renderOrder = 2;
+  unit.add(m);
+  return m;
+})();
+
+/**
  * The light behind the cap.
  *
  * In the reference the two beads either side of the cap are burning and the rest
@@ -1905,10 +1947,13 @@ capGlow.position.set(capX(xfVal), .346, FADER.z); unit.add(capGlow);
  * mirror returns a coloured source as that colour, which is a real effect and not a
  * flattering one on a green lamp.
  */
-for (const m of [moon.plate, sun.plate, slot, cap, capGlow,
+for (const m of [moon.plate, sun.plate, moon.ring, sun.ring, slot, cap, capGlow,
                  ...padMeshes, ...padRings, ...padWells]) {
   m.layers.enable(GLOW_LAYER);
 }
+/* The ECLIPSE stars are built further down the file and join the layer there — this
+   list runs at module scope, and reaching forward to them was a TDZ error that took
+   the whole scene down before the first frame. */
 
 /**
  * The Crossfader tracks the hand, and the beads take it when it is close.
@@ -1955,6 +2000,11 @@ function updateFader(dt) {
 
   cap.position.x = capX(xfVal);
   capGlow.position.x = cap.position.x;
+  /* a hair above the Plate's face, and a hair behind the cap's centre — the key
+     comes from the left and above, so the contact sits slightly to its right */
+  capShade.position.set(cap.position.x + .012, .3535, FADER.z + .006);
+  /* darker as the key falls away, because a contact shadow is the last shadow to go */
+  capShade.material.opacity = .9 - vigil * .45;
   /**
    * **The Crossfader is the light.**
    *
@@ -2796,7 +2846,7 @@ const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 const el = renderer.domElement;
 /* The Unit does not move. It is a heavy object on a table, not a thing that follows a cursor. */
-let active = null, px = 0, py = 0, startVal = 0, jogAcc = 0, jogLast = 0;
+let active = null, px = 0, py = 0, startVal = 0, jogAcc = 0, jogAt = { x: 0, y: 0 };
 /**
  * One detent, in radians of platter rotation — about 30 degrees.
  *
@@ -2806,12 +2856,16 @@ let active = null, px = 0, py = 0, startVal = 0, jogAcc = 0, jogLast = 0;
  * navigates *instantly*, and it reads as broken because you can never land on the
  * item you meant — *"as jogs não estão navegando direito."*
  *
- * At 0.62 a quarter turn is two and a half steps and a full turn is ten, which is
- * about what a track wheel gives you and what *"deve girar progressivamente aos poucos"*
- * describes. `carry` holds the part of a turn that has not yet bought a step, so a
- * slow drag steps once per notch instead of quantising the hand's jitter.
+ * At 0.50 a 260-pixel drag across the rim is two steps and a full turn is twelve —
+ * *"progressivamente aos poucos"* without asking for a wind. It can be this small
+ * only because `deckTurn` clamps the grip radius: under the old angle-to-centre
+ * reading the same drag was worth anything from one step to three depending on where
+ * the hand landed, and no single number could be right for all of them.
+ *
+ * `carry` holds the part of a turn that has not yet bought a step, so a slow drag
+ * steps once per notch instead of quantising the hand's jitter.
  */
-const NOTCH = 0.62;
+const NOTCH = 0.50;
 /**
  * The SUN's detent is nearly twice the MOON's, because they no longer move
  * comparable amounts.
@@ -2823,7 +2877,7 @@ const NOTCH = 0.62;
  * It only applies while the SUN is a pager. Where a Module's items have no pages the
  * SUN is choosing an item instead, and an item costs a MOON notch — see `notchOf`.
  */
-const SUN_NOTCH = 1.00;
+const SUN_NOTCH = 0.82;
 /**
  * A detent is sized by what it moves.
  *
@@ -2950,7 +3004,7 @@ const itemsOf = () => mod().items || [];
  */
 function moveSelection(step) {
   const items = itemsOf();
-  if (!items.length) { flashLcd('A LUA NÃO SELECIONA AQUI'); return; }
+  if (!items.length) { flashLcd('ESTE MÓDULO NÃO TEM LISTA', 900); return; }
   const from = selectionOf(curPage);
   /**
    * One position past the end, and only once the six have been seen.
@@ -2961,7 +3015,20 @@ function moveSelection(step) {
    */
   const last = items.length - 1;
   const to = Math.max(0, Math.min(last, from + step));
-  if (to === from) return;
+  /**
+   * **The end of the list has to say so.**
+   *
+   * This was a bare `return`, and it is most of *"eu giro e nao muda nada no
+   * display."* Turning the MOON at the top of a list moved the platter, spent a
+   * detent, and changed nothing on screen — which is indistinguishable from a broken
+   * wheel, and the direction is not obvious in advance: the same drag to the right
+   * turns the platter one way above the centre and the other way below it, exactly
+   * as a real one does. A control that declines has to say it declined.
+   */
+  if (to === from) {
+    flashLcd(step < 0 ? 'INÍCIO DA LISTA' : 'FIM DA LISTA', 700);
+    return;
+  }
   setSelection(curPage, to);
   if (to > items.length - 1) { flashLcd('· · · SINAL 07'); drawScreen(); return; }
   flashLcd(`LUA · ${mod().unit} ${pad2(to + 1)}/${pad2(items.length)} · ${items[to].label}`);
@@ -3000,7 +3067,7 @@ function moveSection(step) {
   const from = sectionOf(curPage);
   const to = Math.max(0, Math.min(n, from + step));
   if (to === from) {
-    flashLcd(step > 0 ? 'ÚLTIMA PÁGINA' : 'ÍNDICE', 700);
+    flashLcd(step > 0 ? 'ÚLTIMA PÁGINA' : 'JÁ NO ÍNDICE', 700);
     return;
   }
   setSection(curPage, to);
@@ -3163,8 +3230,8 @@ function starGeom(outer, inner, h, points = 4) {
   }
   s.closePath();
   const g = new THREE.ExtrudeGeometry(s, {
-    depth: h, bevelEnabled: true, bevelThickness: .0035, bevelSize: .0025,
-    bevelSegments: 2, curveSegments: 1,
+    depth: h, bevelEnabled: true, bevelThickness: .0060, bevelSize: .0045,
+    bevelSegments: 1, curveSegments: 1,
   });
   g.rotateX(-Math.PI / 2); g.computeVertexNormals();
   return g;
@@ -3189,16 +3256,33 @@ const ledMeshes = [];
   /* index 3 is the middle of seven, which is where ECLIPSE goes; the six Modules
      take the places either side of it */
   const ECL = 3;
-  const geo = starGeom(LED.r, LED.r * .30, .012);
+  /**
+   * A cut stone, not a sticker.
+   *
+   * *"As estrelas parecem 2d demais, dê algum bevel ou desenho 3d nelas."* They were:
+   * a 12mm extrusion with a 2.5mm chamfer reads as a flat shape with a softened edge,
+   * and at this size the eye only ever saw the top face.
+   *
+   * The bevel is now nearly the whole inner radius and `bevelSegments: 1`, so the
+   * chamfer is a **single flat facet** per edge rather than a rounded lip. The top
+   * face all but vanishes at the points and each arm becomes a pair of planes meeting
+   * at a ridge — which is what makes a small shape catch the light differently along
+   * its length instead of lighting uniformly.
+   */
+  const geo = starGeom(LED.r, LED.r * .30, .010);
   for (let i = 0; i < 7; i++) {
     const m = new THREE.MeshStandardMaterial({
       color: 0x0B0C0E,
       emissive: new THREE.Color(i === ECL ? 0xC9BE96 : 0xC0301A),
       emissiveIntensity: 0.06,
-      roughness: .45, metalness: 0,
+      /* smoother than the Plate, so the facets separate by specular rather than by
+         albedo — a matte star is a flat star however it is cut */
+      roughness: .28, metalness: 0,
     });
     const mesh = new THREE.Mesh(geo, m);
     mesh.position.set((i - 3) * LED.pitch, LED.y, LED.z);
+    /* the Screen's spill reaches them too: they sit between it and the Pads */
+    mesh.layers.enable(GLOW_LAYER);
     unit.add(mesh);
     ledMats.push(m); ledMeshes.push(mesh);
   }
@@ -3350,11 +3434,46 @@ function setVigil(v) {
  * Screen, `Enter` on the focused SUN, and the touch row's open button.
  */
 
-function deckAngle(e, g) {
-  const r = frameRect(), q = pt(e);
-  const p = new THREE.Vector3().setFromMatrixPosition(g.matrixWorld).project(camera);
-  const cx = r.left + (p.x * .5 + .5) * r.width, cy = r.top + (-p.y * .5 + .5) * r.height;
-  return Math.atan2(q.y - cy, q.x - cx);
+/**
+ * Where a Deck sits on the frame, and how big it is there — centre and radius in
+ * frame pixels, both projected through the live camera so a tilt or a zoom cannot
+ * put them out of step with what is drawn.
+ */
+const _v = new THREE.Vector3();
+function deckFrame(g) {
+  const r = frameRect();
+  const toPx = v => [r.left + (v.x * .5 + .5) * r.width, r.top + (-v.y * .5 + .5) * r.height];
+  const [cx, cy] = toPx(_v.setFromMatrixPosition(g.matrixWorld).project(camera));
+  /* a point on the rim, projected the same way. The Deck is an ellipse on screen —
+     it is seen at a tilt — so this is the wide half-axis, which is the one a hand
+     reaches for. */
+  const [ex, ey] = toPx(_v.setFromMatrixPosition(g.matrixWorld).add(new THREE.Vector3(WHEEL.r, 0, 0)).project(camera));
+  return { cx, cy, R: Math.max(1, Math.hypot(ex - cx, ey - cy)) };
+}
+
+/**
+ * How far the hand turned the platter — **by the tangential part of the movement,
+ * not by the angle to the centre.**
+ *
+ * The angle-to-centre reading is exactly right for a hand on a real platter and
+ * quietly wrong for a mouse, because nobody drags in a circle. Measured: an
+ * identical 260px drag to the right moved the wheel 0.96 rad when it started near
+ * the top, 1.34 near the upper third, and **1.95 when it started on the centre** —
+ * where the radius is nearly zero and a few pixels are most of a revolution. Same
+ * gesture, three different answers, one of them explosive.
+ *
+ * `(r × dp) / |r|²` is the same quantity the angle difference gave, written so the
+ * radius is visible — and so it can be clamped. Below `GRIP` of the Deck's radius
+ * the wheel stops getting more sensitive, which is the difference between a control
+ * and a hair trigger. At the rim, where a hand actually lands, this is unchanged.
+ */
+const GRIP = 0.45;
+function deckTurn(g, from, to) {
+  const { cx, cy, R } = deckFrame(g);
+  const rx = from.x - cx, ry = from.y - cy;
+  const dx = to.x - from.x, dy = to.y - from.y;
+  const len = Math.max(Math.hypot(rx, ry), R * GRIP);
+  return (rx * dy - ry * dx) / (len * len);
 }
 
 el.addEventListener('pointerdown', e => {
@@ -3412,7 +3531,7 @@ el.addEventListener('pointerdown', e => {
       /* The whole platter is the wheel — centre included. Grabbing it also kills any
          coast still running, the way a hand on a turntable does. */
       const d0 = c === 'sun' ? sun : moon;
-      active = c; jogLast = deckAngle(e, d0.group); d0.spin = 0;
+      active = c; jogAt = pt(e); d0.spin = 0;
       el.setPointerCapture(e.pointerId); return;
     }
   }
@@ -3490,9 +3609,9 @@ el.addEventListener('pointermove', e => {
      * hand's jitter into double steps.
      */
     const d0 = active === 'sun' ? sun : moon;
-    const a = deckAngle(e, d0.group); let d = a - jogLast;
-    if (d > Math.PI) d -= 6.2832; if (d < -Math.PI) d += 6.2832;
-    jogLast = a;
+    const now = pt(e);
+    const d = -deckTurn(d0.group, jogAt, now);
+    jogAt = now;
     /* the platter follows the hand one to one; `carry` is the same travel measured
        against the detents, and the two are fed from the same number so the wheel can
        never be showing one thing while the selection does another */
@@ -3540,6 +3659,11 @@ function setLightTo(v) {
   xfHand = null;
   cap.position.x = capX(xfVal);
   capGlow.position.x = cap.position.x;
+  /* a hair above the Plate's face, and a hair behind the cap's centre — the key
+     comes from the left and above, so the contact sits slightly to its right */
+  capShade.position.set(cap.position.x + .012, .3535, FADER.z + .006);
+  /* darker as the key falls away, because a contact shadow is the last shadow to go */
+  capShade.material.opacity = .9 - vigil * .45;
   setVigil(1 - xfVal);
   flashLcd('LUZ · ' + lightName(xfVal) + ' · ' + Math.round(xfVal * 100) + '%', 900);
 }
