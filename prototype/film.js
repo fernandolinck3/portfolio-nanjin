@@ -28,26 +28,42 @@ const FPS = 30
 /**
  * The cut, in seconds.
  *
- * A landscape object in a portrait frame cannot be shown wide — it would be a band
- * across the middle of a tall black rectangle. So the camera is close for all of it
- * and the *movement* does the establishing: down the face, across to the Screen,
- * then out as the light goes.
+ * Three rules, and they are all the same rule: **the object, and nothing else.**
+ *
+ * **Framing looks down, and `tilt` runs backwards.** A *lower* `tilt` puts the camera
+ * *higher* — 20 is nearly overhead, 50 is closer to eye level. Reading it the other
+ * way is what put a candlestick across the top third of the first cut: pulling back to
+ * fit the object also tipped the frame up into the wall.
+ *
+ * The distance is not free either. The Plate is 1.84 wide and a 9:16 frame is narrow,
+ * so anything under about `dist` 4.7 crops the Screen at the sides — which is fine for
+ * a texture shot and fatal for the one beat where the display has to be read. So every
+ * shot lives between 4.5 and 5.0, steeply overhead, and the extra vertical goes to the
+ * desk rather than to the room: *"evite mostrar muito do room e a vela também."*
+ *
+ * **The opening is cut short.** It is a fly-in from across the room, which is the one
+ * part of the object that is *about* the room. The film takes the camera at 2.6s,
+ * while the ritual is still landing.
+ *
+ * **Nothing arms ECLIPSE.** The light still goes down to night, because that is the
+ * best thing the object does on camera — but with the seventh state unarmed the
+ * crossing opens nothing. A story that shows the secret has spent it.
+ *
+ * It ends on QUEM at full night, lit by its own Screen: the name, in blackletter, on
+ * a dark object. That is the card, and it gives nothing away.
  */
 const SHOTS = [
-  /* The opening runs on its own camera for the first four seconds — it is the ritual
-     and it already knows how to stage itself. The film takes over after it lands. */
-  { at: 4.0, cam: { tilt: 26, yaw: -10, dist: 3.4, pan: { x: 0, y: 0, z: .1 } } },
-  { at: 5.4, do: u => u.press(1) },
-  { at: 6.2, cam: { tilt: 38, yaw: 0, dist: 2.4, pan: { x: 0, y: 0, z: -.05 } }, ease: 1.8 },
-  { at: 7.0, do: u => u.moon(1) },
-  { at: 7.9, do: u => u.moon(1) },
-  /* armed before the light moves, so the crossing that follows is the one that opens
-     it — day into night, which is the MOON's face */
-  { at: 8.8, do: u => u.eclipse() },
-  { at: 9.2, cam: { tilt: 22, yaw: 12, dist: 3.2, pan: { x: 0, y: 0, z: .15 } }, ease: 2.0 },
-  { at: 9.6, do: u => u.light(0) },
-  { at: 12.4, cam: { tilt: 34, yaw: 0, dist: 2.1, pan: { x: 0, y: 0, z: -.08 } }, ease: 2.2 },
-  { at: 17.0, end: true },
+  { at: 2.6, cam: { tilt: 21, yaw: -6, dist: 5.0, pan: { x: 0, y: 0, z: .05 } } },
+  { at: 4.2, do: u => u.press(1) },
+  { at: 4.6, cam: { tilt: 26, yaw: 0, dist: 4.6, pan: { x: 0, y: 0, z: 0 } }, ease: 1.8 },
+  { at: 5.8, do: u => u.moon(1) },
+  { at: 6.6, do: u => u.moon(1) },
+  { at: 7.4, cam: { tilt: 19, yaw: 7, dist: 5.0, pan: { x: 0, y: 0, z: .05 } }, ease: 1.8 },
+  /* the light going out, which is the thing worth filming */
+  { at: 8.2, do: u => u.light(0) },
+  { at: 10.6, do: u => u.press(0) },
+  { at: 11.0, cam: { tilt: 24, yaw: 0, dist: 4.5, pan: { x: 0, y: 0, z: -.02 } }, ease: 2.4 },
+  { at: 15.0, end: true },
 ]
 
 const ease = t => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
