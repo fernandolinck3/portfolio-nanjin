@@ -662,22 +662,25 @@ same instinct as `prototype/light-fit/`; use it, and extend it when you add a ne
 
 ## Open
 
-1. **T-14, publish.** A single-file Artifact was published on 2026-08-28 so he had a link to share
-   the same day. That is not T-14: it does not back the work up and it is not his domain. Netlify or
-   Cloudflare Pages will take `dist-site/` as a drag-and-drop; a GitHub remote first is the version
-   that also protects the work. Offer both, do the setup.
-2. **Write the ADR for shipping `prototype/`** — or unpick it into `src/` (T-02). Needs his ruling.
-3. **`src/App.tsx` is still eleven lines.** T-02 has not moved in three sessions.
-4. **One gap left against `cross and jogs.png`**: the Pad row is six separate wells where the
+1. **Two names on one object.** The boot screen says **Fernando Bittencourt**
+   (`prototype/screen/render.js`, `const NAME`) and QUEM says **Fernando Linck**. One of them is
+   wrong and only he knows which. Open across several sessions and now visible on a public URL.
+2. **QUEM's LYRA line describes controls QUEM does not have.** Its idle is *"A LUA escolhe o item. O
+   SOL revela mais."* and the Module has no items, so both wheels do nothing there. Worse, the test
+   `names the MOON where the wheels are the way to the content` **requires** that line, so the suite
+   is currently enforcing the lie. Fix the copy and the exemption together.
+3. **Write the ADR for shipping `prototype/`** — or unpick it into `src/` (T-02). Needs his ruling.
+4. **`src/App.tsx` is still eleven lines.** T-02 has not moved in three sessions.
+5. **One gap left against `cross and jogs.png`**: the Pad row is six separate wells where the
    reference has one continuous brass tray with dividers. The other two closed themselves — the
    Sun's petal ribs came with the artwork, and `HOT CUE` / `CROSSFADE` were removed at his ask, so
    the arrow glyphs that flanked them are moot.
-5. **The clipped back candlestick** at the tight framing. Three options were offered, none chosen.
-6. **Two models undecided.** He said Grimoire and Cracktro "should be two different models, cause I
+6. **The clipped back candlestick** at the tight framing. Three options were offered, none chosen.
+7. **Two models undecided.** He said Grimoire and Cracktro "should be two different models, cause I
    really love them both." The Unit is pinned to Grimoire; Cracktro is unwired but intact in
    `render.js`. **No ADR** — it would reverse 0012, 0015 and 0016 and needs his decision, not a guess.
    Suggestion on the table: ship Tenebrae as Grimoire, make Cracktro Project 002.
-7. **Lyra's bubble** is plain. He asked for ornamental, and for it to stop covering text. The covering
+8. **Lyra's bubble** is plain. He asked for ornamental, and for it to stop covering text. The covering
    is fixed; the ornament is not.
 
 ## Blocked on Fernando
