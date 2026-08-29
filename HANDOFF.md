@@ -53,10 +53,9 @@ know are there, not here.
 is an import ready to go — a Google tag, one regex trigger covering all seven events,
 one GA4 event tag using `{{Event}}`, and a Data Layer variable per parameter.
 
-**It is blocked on one value**: the GA4 measurement id (`G-XXXXXXXXXX`), which lives in
-a single constant in that file. He was shown where to find it (GA4 → Admin → Data
-streams → the web stream) and the session paused before he supplied it. He may not have
-created the property yet.
+The measurement id is in: `G-3GV5YJ7VV4`, in the `GA4 Measurement ID` constant, which is
+the only place it appears. **Nothing is blocking the import** — it has simply not been
+imported and published yet, and nobody has confirmed a hit landing in GA4 Realtime.
 
 Two things written down there that are easy to lose:
 

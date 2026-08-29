@@ -43,9 +43,9 @@ is the only way to know whether the cost is the animation or the shader warm-up.
 
 `gtm-nanj-in.json` is a Tag Manager export, ready to import into `GTM-PLPVLQH9`.
 
-**Before importing:** open it and replace `G-XXXXXXXXXX` — the value of the
-`GA4 Measurement ID` constant — with the real measurement id, or edit that one variable
-in the GTM UI after importing.
+The measurement id is `G-3GV5YJ7VV4`, already in the `GA4 Measurement ID` constant. It
+is the only place it appears: change it there if the property ever changes, not in the
+tags.
 
 **To import:** Tag Manager → *Admin* → *Import Container* → choose the file → workspace
 *Existing* → **Merge**, *Rename conflicting tags*. Never *Overwrite* on a container that

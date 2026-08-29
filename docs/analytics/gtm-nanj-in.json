@@ -319,11 +319,11 @@
           {
             "type": "TEMPLATE",
             "key": "value",
-            "value": "G-XXXXXXXXXX"
+            "value": "G-3GV5YJ7VV4"
           }
         ],
         "fingerprint": "0",
-        "notes": "Troque pelo ID de medição da sua propriedade GA4 antes de publicar."
+        "notes": "ID de medição da propriedade GA4 de nanj.in."
       },
       {
         "accountId": "0",
