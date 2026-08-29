@@ -60,6 +60,10 @@ What it contains:
   collapse into one, and adding an eighth event later means editing the regex rather
   than building a tag.
 - **`dl.*`**, a Data Layer variable per parameter.
+- **`Event`**, the built-in, declared in `builtInVariable`. Without that declaration the
+  import validates with *"A variável desconhecida `Event` foi encontrada em uma tag"* —
+  a built-in that is not declared is not *enabled* in the workspace, and the event tag
+  references it by name. Any future export that uses a built-in has to declare it too.
 
 **Custom parameters need registering in GA4 to appear in reports.** *Admin → Custom
 definitions → Create custom dimension*, one per parameter you want to slice by —
