@@ -41,6 +41,33 @@ the packer note below) whenever Pages moves.
 **That is done.** It is on his domain, over HTTPS, rebuilt on every push. What the work is *about*
 now is the object itself, and the standing brief for that is the long list under *Open*.
 
+## What changed on 2026-08-29 — analytics, and one thing waiting on him
+
+`prototype/track.js` pushes seven events to `dataLayer` and nothing else — no tag, no
+vendor, no dependency. The Tag Manager container `GTM-PLPVLQH9` is installed and
+**verified live on nanj.in**; a real `module_open` was observed arriving with its UTMs
+attached. `docs/analytics/README.md` is the taxonomy and the reasoning; the numbers to
+know are there, not here.
+
+**The container is empty.** Nothing is recorded yet. `docs/analytics/gtm-nanj-in.json`
+is an import ready to go — a Google tag, one regex trigger covering all seven events,
+one GA4 event tag using `{{Event}}`, and a Data Layer variable per parameter.
+
+**It is blocked on one value**: the GA4 measurement id (`G-XXXXXXXXXX`), which lives in
+a single constant in that file. He was shown where to find it (GA4 → Admin → Data
+streams → the web stream) and the session paused before he supplied it. He may not have
+created the property yet.
+
+Two things written down there that are easy to lose:
+
+- **Custom parameters do not appear in GA4 reports until registered as custom
+  dimensions.** Until then the events arrive and the parameters are invisible, which
+  looks exactly like data loss and is not.
+- **Consent is a decision waiting, not an oversight.** Nothing is set while the
+  container is empty. A published GA4 tag writes a cookie and LGPD then makes a banner
+  the honest next step. He has not ruled between a banner, GTM Consent Mode, and a
+  cookieless tag.
+
 ## What changed on 2026-08-28, night — the domain, the jog, and six screens
 
 ### The jog took three rounds because the mechanism was never broken
