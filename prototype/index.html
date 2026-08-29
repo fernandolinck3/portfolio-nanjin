@@ -43,6 +43,36 @@
 <meta property="og:image:alt" content="A unidade Tenebrae: um painel gravado com duas rodas, um mostrador monocromático e um fader.">
 <meta name="twitter:card" content="summary_large_image">
 
+<!--
+  Tag Manager.
+
+  The container is loaded **only on the published host**, so a day of pressing every
+  Pad four hundred times on localhost does not become the dataset. `GTM` below is the
+  one place the container id lives; empty means no container is loaded at all, which
+  is also how the site runs with tracking switched off.
+
+  `dataLayer` is declared before the loader so the events `track.js` pushes during
+  boot are already in the queue when the container arrives. The object is one page
+  that never navigates — the pageview says almost nothing, and the events are the
+  analytics.
+
+  No consent gate yet. Everything GTM ends up setting is a decision made in the
+  container rather than here; if a GA4 tag goes in, LGPD makes a banner the honest
+  next step. See HANDOFF.md.
+-->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  (function () {
+    var GTM = '';
+    if (!GTM || !/(^|\.)nanj\.in$/.test(location.hostname)) return;
+    window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtm.js?id=' + GTM;
+    document.head.appendChild(s);
+  })();
+</script>
+
 <!-- A four-pointed star, the same one the lamp row is cut from. Inline, because one
      more request for 300 bytes is a request too many and a missing favicon is a
      browser-drawn placeholder in every tab. -->

@@ -8,6 +8,7 @@ import { createSummoning } from './summon.js'
 import { createPortrait } from './portrait.js'
 import { createDisplay } from './display.js'
 import { printLayer, engravedLayer } from './plate-art.js'
+import { track } from './track.js'
 import { padMaps, faderSlot, faderCap } from './control-faces.js';
 import { deckMaps, deckGlow } from './deck-faces.js'
 import { createRoomDecor } from './room-decor.js'
@@ -3068,6 +3069,7 @@ function moveSelection(step) {
   }
   setSelection(curPage, to);
   if (to > items.length - 1) { flashLcd('· · · SINAL 07'); drawScreen(); return; }
+  track('item_select', { module: mod().id, item: items[to].id });
   flashLcd(`LUA · ${mod().unit} ${pad2(to + 1)}/${pad2(items.length)} · ${items[to].label}`);
   drawScreen();
 }
@@ -3108,6 +3110,7 @@ function moveSection(step) {
     return;
   }
   setSection(curPage, to);
+  if (to > 0) track('page_turn', { module: mod().id, item: it.id, page: to });
   if (to === 0) flashLcd(`SOL · ÍNDICE · ${it.label}`);
   else flashLcd(`SOL · PÁGINA ${pad2(to)}/${pad2(n)}`);
   drawScreen();
@@ -3156,11 +3159,13 @@ function sunEnter() {
   if (!act) { flashLcd(`SEM ROTA · ${it.label}`); return; }
   if (act.kind === 'work') {
     const w = WORKS.find(x => x.id === act.value);
-    if (w) { flashLcd(`ABRIR · ${w.title}`); focus.enter(w); }
+    if (w) { flashLcd(`ABRIR · ${w.title}`); track('work_open', { work: w.id }); focus.enter(w); }
     return;
   }
   /* A mail or a link leaves the page, so it is announced before it happens. */
   flashLcd(`ABRIR · ${it.meta || it.label}`);
+  /* the only events that mean a visit turned into contact */
+  track('outbound', { route: it.meta || it.id, kind: act.kind });
   window.open(act.kind === 'mail' ? 'mailto:' + act.value : act.value,
     act.kind === 'mail' ? '_self' : '_blank', 'noopener');
 }
@@ -3182,6 +3187,8 @@ function sunEnter() {
  */
 function openEclipse(face) {
   eclipse.open = true;
+  /* the rarest thing on the object, and the one worth knowing the rate of */
+  if (!eclipse.answered) track('eclipse_found', { face });
   eclipse.answered = true;
   setEclipseFound(true);
   eclipse.face = face;
@@ -3497,6 +3504,7 @@ function pressPad(i) {
   }
   if (focus.active) focus.exit();
   setPage(i);
+  track('module_open', { module: MODULES[i].id });
   markSeen(i);
   flashLcd(MODULES[i].title.replace(' / ', '/'));
 }
@@ -3619,7 +3627,11 @@ el.addEventListener('pointerdown', e => {
        * exactly where it appears and cannot drift from its own picture.
        */
       const sp = screenPoint(e);
-      if (inBox(sp, claimBox())) { flashLcd('ABRIR · INSTAGRAM'); window.open(claimURL(), '_blank', 'noopener'); return; }
+      if (inBox(sp, claimBox())) {
+        flashLcd('ABRIR · INSTAGRAM');
+        track('outbound', { route: 'INSTAGRAM', kind: 'url', from: 'eclipse' });
+        window.open(claimURL(), '_blank', 'noopener'); return;
+      }
       if (inBox(sp, backBox())) { moonBack(); return; }
       if (inBox(sp, eclipseMarkBox())) { openEclipse(eclipse.face); return; }
       if (row >= 0) {
@@ -4703,6 +4715,8 @@ let perfSample = null;
    Pointer events do not carry one and `performance.now()` deltas between moves are
    noisier than the frame clock. */
 let dtNow = 1 / 60;
+/** Whether the opening has finished, so `boot_complete` fires exactly once. */
+let booted = false;
 
 /**
  * A live frame rate, in the workbench.
@@ -4961,6 +4975,18 @@ function frame(t) {
   updateFader(dt);
   updateLeds(t, dt);
   if (intro.running && !focus.active) intro.update(dt);
+  /**
+   * How long the opening actually took, once.
+   *
+   * The ritual is about five seconds and the standing brief wants the content usable
+   * in two and a half. That is a change worth measuring rather than asserting, and a
+   * real distribution across real machines is the only way to know whether it is the
+   * animation or the shader warm-up that costs.
+   */
+  if (booted === false && !intro.running) {
+    booted = true;
+    track('boot_complete', { ms: Math.round(performance.now()) });
+  }
   focus.update(dt);
   post.render(t / 1000);
   /* `interval` is what the visitor feels — wall time between frames, and with vsync
