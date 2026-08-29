@@ -845,10 +845,12 @@ part to work from, not from taste.
 
 **Older, still open:**
 
-9. **Two names on one object.** QUEM and the boot screen now both say **Fernando Bittencourt**, but
-   the `<title>`, the meta description, the Open Graph tags and CONTATO's LinkedIn label still say
-   **Fernando Linck**, and the email is `fernandolinck@outlook.com`. He was asked; he changed QUEM
-   and did not rule on the rest. Do not guess — it is identity, not layout.
+9. **Two names on one object — smaller than it looks.** QUEM and the boot screen both say
+   **Fernando Bittencourt** (`modules.ts:399`). What still says **Fernando Linck** is the `<title>`,
+   the meta description, the Open Graph tags, and the LinkedIn row's display label
+   (`modules.ts:705`) — which has no `act` anyway, because he has never given the URL. The email is
+   `fernandolinck@outlook.com`. He was asked; he ruled on QUEM and not on the rest. Do not guess —
+   it is identity, not layout.
 10. **`www.nanj.in` has no certificate.** It resolves and redirects over plain HTTP; over HTTPS it
     hits GitHub's `*.github.io` cert and warns. Covering it means making `www` canonical, which is
     ugly on a four-letter domain. Deliberate, and his call.

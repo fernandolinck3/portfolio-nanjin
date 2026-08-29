@@ -36,6 +36,12 @@ jobs:
       # The content tests are arithmetic over `modules.ts` and guard claims the
       # site makes about Fernando — a build that breaks them should not ship.
       - run: npx vitest run
+      # Typecheck runs here because nothing else did. `vitest` transpiles without
+      # checking types and `build:site` is a bare `vite build`, so `npm run typecheck`
+      # was broken for a day — a test file imported `node:fs` without `@types/node`
+      # installed — and every local run failed while CI stayed green. A gate nobody
+      # runs is not a gate.
+      - run: npm run typecheck
       - run: npm run build:site
       # `public/CNAME` is copied to the artifact root by Vite's publicDir, and that
       # file is what holds the custom domain. GitHub clears the domain setting on a
