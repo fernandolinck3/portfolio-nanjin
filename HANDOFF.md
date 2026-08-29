@@ -1,41 +1,138 @@
 # Handoff — Fer Bittencourt portfolio ("Tenebrae")
 
-**Date:** 2026-08-28 · **Repo:** `~/dev/fernando-portfolio` · **Branch:** `lyra`
-**Remote:** https://github.com/fernandolinck3/tenebrae · **Live:** https://fernandolinck3.github.io/tenebrae/
+**Date:** 2026-08-29 · **Repo:** `~/dev/fernando-portfolio` · **Branch:** `lyra`
+**Remote:** https://github.com/fernandolinck3/tenebrae · **Live:** https://nanj.in
 **Language:** Fernando writes EN and PT-BR, often in one message; the *product* is PT-BR.
 Reply in whichever he used last (last was mixed, leaning PT-BR).
 
 ## Read this first
 
-**Twenty-three ADRs**, several of them reversals. `CONTEXT.md` is the glossary.
+**Twenty-six ADRs**, several of them reversals. `CONTEXT.md` is the glossary.
 `docs/tickets/README.md` is the board. `docs/realism-budget.md` is the plan for adding to the room
 without spending the frame. This file does not repeat them.
 
-**There is uncommitted work.** Six modified files and one new directory, all from the 2026-08-28
-session and all verified in a browser — see *"What changed on 2026-08-28"* below. It was left
-uncommitted deliberately: he was mid-judgement on the Decks when the session ended. Read that
-section, then either commit it or take his ruling first.
+**Everything is committed and deployed.** Sixteen commits on 2026-08-28, working tree clean, and
+`origin/lyra` is level with local. Nothing is waiting on a ruling.
 
-**T-14 is done.** There is a remote, the work is backed up, and the site is live:
+**The site is live on his own domain, over HTTPS.**
 
-> **https://fernandolinck3.github.io/tenebrae/**
+> **https://nanj.in**
 
-`.github/workflows/pages.yml` builds and deploys on every push to `lyra`, which is the repo's
-default branch. The workflow runs `npx vitest run` and `npm run verify:site` before it uploads — the
-content tests guard what the site claims about Fernando, and a build that breaks them should not
-reach the web. Custom domain when he has one: a `CNAME` file in `dist-site` plus DNS.
+`.github/workflows/pages.yml` builds and deploys on every push to `lyra`, the repo's default branch.
+It runs `npx vitest run` and `npm run verify:site` before uploading — the content tests guard what
+the site claims about Fernando, and `verify:site` catches a class of build-only failure described
+below. **`public/CNAME` holds the domain**: a deploy that arrives without that file clears the custom
+domain silently, so never move or drop it.
 
-The Claude Artifact from earlier the same day is still live at
+DNS is at **Hostinger** (nameservers `dns-parking.com`), four `A` and four `AAAA` records on `@`
+pointing at GitHub Pages. `www.nanj.in` resolves and redirects over plain HTTP but **has no
+certificate** — GitHub issued one for the apex only. Left alone deliberately; covering `www` means
+making it canonical, which is ugly on a four-letter domain. See *Open*.
+
+The Claude Artifact from 2026-08-28 is still live at
 `https://claude.ai/code/artifact/cc6c648f-de43-4462-b796-0b099d6740f5` and is a **second copy that
-can drift**. GitHub Pages is canonical now; if the Artifact is kept, republish it from the same
-build (see the packer note below) whenever Pages moves.
+can drift**. `nanj.in` is canonical; if the Artifact is kept, republish it from the same build (see
+the packer note below) whenever Pages moves.
 
 ## The goal he actually stated
 
 > *"i need a version online of my portfolio asap"*
 
-That is the frame for everything below. It is closer than it has ever been — the build works and
-produces a real site — and the only thing left is somewhere to put it.
+**That is done.** It is on his domain, over HTTPS, rebuilt on every push. What the work is *about*
+now is the object itself, and the standing brief for that is the long list under *Open*.
+
+## What changed on 2026-08-28, night — the domain, the jog, and six screens
+
+### The jog took three rounds because the mechanism was never broken
+
+Worth reading before touching a wheel, because it is the shape of the whole session's
+mistakes. Three times he said the jogs did not work; three times measurement showed every wheel
+moving the cursor in every Module that had one. What was wrong was never the mechanism:
+
+1. **Sensitivity.** At `NOTCH` 0.38 a quarter turn was four items, so PROJETOS went 0→2, CRITÉRIOS
+   0→4 and HABILIDADES 0→3 in one gesture. You could never land on the item you meant.
+2. **The angle-to-centre reading is wrong for a mouse.** Nobody drags in a circle. The same 260px
+   drag to the right moved the wheel 0.96 rad from near the top, 1.34 from the upper third and
+   **1.95 starting on the centre**, where the radius is nearly zero and a few pixels are most of a
+   revolution. `deckTurn` uses the tangential component now, `(r × dp) / |r|²`, with the grip radius
+   clamped to 45% of the Deck. The same drag reads 1.00 / 0.58 / 0.01 / −1.00.
+3. **Silence at the ends.** `moveSelection` returned bare when clamped, so turning at the top of a
+   list moved the platter, spent a detent and changed nothing on screen — indistinguishable from a
+   broken wheel. It says `INÍCIO DA LISTA` / `FIM DA LISTA` now.
+4. **Direction.** The platter follows the hand exactly; the cursor is deliberately mirrored, so
+   clockwise walks *down*, the way a scroll wheel does.
+
+The coast is **visual only** — a thrown wheel keeps turning, because a heavy platter does, but
+selecting on momentum is what walked a small flick to the end of a list. And the detent no longer
+drags the platter behind the hand: that is how a detent feels under a finger and not how it *looks*
+on a screen, where the only visible part is the wheel failing to keep up. He read it as lag; it was
+lag.
+
+`__unit.nav()` returns `{ page, sel, sec, pages }`. Use it. Before it existed the only way to see
+whether a control had done anything was to read a 320x180 texture out of a screenshot.
+
+### Every Module's index is now the shape it actually is
+
+`m.layout` says what a screen *is*, and four renderers in `render.js` draw it:
+
+- **`list`** — names, nothing above them. PROJETOS has no `lead` at all: three titles say what they
+  are, and a paragraph above them pushed the third against the footer.
+- **`index`** — a numbered index with every item on screen at once. The numeral is both cursor and
+  count, which is what let five criteria fit.
+- **`grid`** — the four skill groups as a 2x2 matrix. A column of four is a list of four.
+- **`nodes`** — TRAJETO's two blocks **stacked**, spine down the left. Side by side cut CRONOLOGIA
+  at 94px, and taking the full panel to fix that put LYRA behind a scrim where she vanished.
+
+A Module with **no items** takes the whole panel (QUEM). Clicking a name **opens** it rather than
+selecting it, and a detail page carries `◂ VOLTAR` on the heading's rule, clickable where it is
+drawn. `SOL ▸` appears on a selected row that has pages behind it, because the page marks only show
+up once you are already on a page — after the discovery.
+
+QUEM leads with **Fernando Bittencourt** in blackletter, the way the opening writes it, then the
+positioning, then the five disciplines. Three sizes, so the order of importance reads before a word
+does.
+
+### ECLIPSE: a light-key, a door, and a prize that needs no server
+
+- The six lamps **arm** it; taking the fader end to end **fires** it, and the direction picks the
+  face — night→day is the SUN, day→night the MOON.
+- **It fires once.** A key that works every time is a switch you keep tripping, and the fader is
+  also the light. Afterwards the way back in is the sky mark in the Screen's header: it takes a
+  ring, breathes, and becomes clickable. `celestial` was already the glyph that means *the light*,
+  which is why it is the right thing to promote.
+- It arrives and leaves in four overlapping beats over 1.5s; the clock runs on both edges.
+- The claim field is gone. It was a real-looking input stamped `SEM SERVIDOR`, honest about having
+  no endpoint and reading as unfinished. **There is a prize**: a screenshot sent to the DM. The
+  screen ends in a lit control that opens Instagram.
+
+The lamp row also **searches** — a crest travels it, inward from both ends once armed, flaring where
+they meet — and a landed detent kicks the whole row for ~180ms, riding the Screen's spill. That is
+the *tchum*.
+
+### The domain
+
+`nanj.in`, his own, from his handle `@nan._.jin`. DNS at Hostinger, `public/CNAME` in the repo,
+HTTPS enforced. **The certificate took hours and needed unsticking**: removing and re-adding the
+domain via `gh api -X PUT .../pages -f cname=` (empty, then the domain again) moved it from `none`
+to `authorization_pending` and it completed in minutes. If a future domain change stalls, that is
+the move.
+
+### A film mode, for the release clip
+
+`?film` loads `prototype/film.js` as a separate chunk, pins the render to 1080x1920 via a `FILM`
+override on `W()`/`H()`, hides the HUD, runs a scripted cut and records the canvas straight to WebM.
+`__unit` gained `press`, `moon`, `sun`, `light`, `eclipse` — the same calls the pointer makes, so a
+script can *use* the object rather than pose it.
+
+Two things about framing, learned the hard way:
+
+- **`tilt` runs backwards.** A lower number puts the camera *higher*. Reading it the other way put a
+  candlestick across the top third of the first cut.
+- **The Plate is 1.84 wide and 9:16 is narrow**, so under about `dist` 4.7 the Screen is cropped at
+  the sides. Every shot lives between 4.5 and 5.0, steeply overhead.
+
+**Nobody has recorded it yet.** rAF is throttled in an automated tab, so the clip has to be run by
+him in a visible window; the framing numbers come from geometry, not from having watched it.
 
 ## What changed on 2026-08-28, afternoon — pages, stars, and a measured jog
 
@@ -660,35 +757,95 @@ same instinct as `prototype/light-fit/`; use it, and extend it when you add a ne
 - **`metalness: .85` makes albedo a reflection tint, not colour.** Printed colour needed a
   `metalnessMap` dropping the ink to a dielectric before it appeared at all.
 
+### The build is not the dev server, and it bit three times in one day
+
+This is now the most productive place to look when something is wrong only in production:
+
+- **The built page loaded nothing.** Vite injects the module script immediately after the first
+  *literal* occurrence of the root element's tag in the source — and the comment above it contained
+  that tag, so the script was injected **inside the comment**. No console error, no build warning,
+  invisible in development because the dev server injects nothing. The first Pages deploy was blank.
+  `npm run verify:site` now strips comments from `dist-site/index.html` and asserts a module script
+  survives, and checks the charset is inside the first 1024 bytes. It runs in the workflow.
+- **The Plate artwork never shipped.** `prototype/ornament/plate.png` sat under Vite's `root` but
+  `publicDir` is `../public`, so the dev server served it and `dist-site/` never contained it. Every
+  build fell back to the procedural vine, and *the console said so on every load* —
+  `no ornament artwork; using the procedural vine`. It was read past.
+- **The page had no `<meta name="viewport">` at all.** A phone laid it out at a 980px virtual width
+  and scaled down, which is most of "tudo muito pequeno" on mobile, and fed the rotated frame a
+  width that was not the device's.
+
+Two more from the same day, different class:
+
+- **A TDZ in a module-scope list.** The glow-layer array reached forward to `ledMeshes`, declared
+  1200 lines later. `ReferenceError` before the first frame, whole scene dead. Module-scope arrays
+  that name things run at import time.
+- **`fetch` is blocked under an Artifact's CSP**, and `scene.js` probes for the faceplate with a
+  `HEAD` request before touching the image — right against a real server, fatal there. If something
+  works on Pages and not in the Artifact, look for a probe.
+
 ## Open
 
-1. **Two names on one object.** The boot screen says **Fernando Bittencourt**
-   (`prototype/screen/render.js`, `const NAME`) and QUEM says **Fernando Linck**. One of them is
-   wrong and only he knows which. Open across several sessions and now visible on a public URL.
-2. **QUEM's LYRA line describes controls QUEM does not have.** Its idle is *"A LUA escolhe o item. O
-   SOL revela mais."* and the Module has no items, so both wheels do nothing there. Worse, the test
-   `names the MOON where the wheels are the way to the content` **requires** that line, so the suite
-   is currently enforcing the lie. Fix the copy and the exemption together.
-3. **Write the ADR for shipping `prototype/`** — or unpick it into `src/` (T-02). Needs his ruling.
-4. **`src/App.tsx` is still eleven lines.** T-02 has not moved in three sessions.
-5. **One gap left against `cross and jogs.png`**: the Pad row is six separate wells where the
-   reference has one continuous brass tray with dividers. The other two closed themselves — the
-   Sun's petal ribs came with the artwork, and `HOT CUE` / `CROSSFADE` were removed at his ask, so
-   the arrow glyphs that flanked them are moot.
-6. **The clipped back candlestick** at the tight framing. Three options were offered, none chosen.
-7. **Two models undecided.** He said Grimoire and Cracktro "should be two different models, cause I
-   really love them both." The Unit is pinned to Grimoire; Cracktro is unwired but intact in
-   `render.js`. **No ADR** — it would reverse 0012, 0015 and 0016 and needs his decision, not a guess.
-   Suggestion on the table: ship Tenebrae as Grimoire, make Cracktro Project 002.
-8. **Lyra's bubble** is plain. He asked for ornamental, and for it to stop covering text. The covering
-   is fixed; the ornament is not.
+**His standing brief, given 2026-08-28 and mostly not started.** It is long and specific; this is the
+part to work from, not from taste.
+
+1. **The project overlay's architecture.** Desktop 60% media / 40% content, a fixed textual header
+   with back-title-summary, the first fold explaining project, context and construction *without
+   scrolling*, the rest scrolling with an indicator in the object's own style rather than a white
+   scrollbar. Mobile: one column, back fixed at the top, image first. Escape, focus trap, and focus
+   returned to the project that opened it. The panel currently has the right typefaces and a blurred
+   backdrop; the architecture is still the old one.
+2. **The accessible mirror of the LCD.** *The biggest real gap in the project.* The controls have
+   accessible names but the live content lives only in the canvas. Needs a semantic HTML mirror of
+   the current state — active Module, selected item, page title, shown content, position, available
+   action — with short announcements for state changes rather than re-reading everything. The canvas
+   stays visually sovereign; the HTML becomes the accessible representation of the same state.
+3. **Per-project case content.** Portfolio should present the system as the project — boot, modules,
+   decks, LYRA, interactions, ECLIPSE. Graecus should tie the eight captures to the WordPress build.
+   Miscelânea is a gallery in formation with little text, and **must stop saying the content is
+   coming "em breve"** now that real pieces are in it.
+4. **Boot in 2–2.5s.** The opening is about five. Keep the ritual, make the content usable sooner,
+   and run the full animation only on the first visit of a session.
+5. **PROJETOS: the SUN should reveal a short preview** of the selected project — one factual line,
+   optionally a small monochrome image — with pressing the Screen opening the full case. Today the
+   SUN just moves the cursor there, because those items have no pages.
+6. **CONTATO hierarchy.** Email primary, Instagram secondary, LinkedIn only if a real URL exists.
+   Location and language in the footer. MOON selects the route, SUN executes it.
+7. **Mobile, on a real device.** The rotated frame works — the pointer mapping is verified end to
+   end via `?turned`, which forces it on a desktop — but nobody has held a phone. Touch targets are
+   46px and safe-area insets are respected; that is not the same as having tested it.
+8. **Record the film.** `?film` is built and never run. It needs a visible window; the framing
+   numbers come from geometry, not from watching it.
+
+**Older, still open:**
+
+9. **Two names on one object.** QUEM and the boot screen now both say **Fernando Bittencourt**, but
+   the `<title>`, the meta description, the Open Graph tags and CONTATO's LinkedIn label still say
+   **Fernando Linck**, and the email is `fernandolinck@outlook.com`. He was asked; he changed QUEM
+   and did not rule on the rest. Do not guess — it is identity, not layout.
+10. **`www.nanj.in` has no certificate.** It resolves and redirects over plain HTTP; over HTTPS it
+    hits GitHub's `*.github.io` cert and warns. Covering it means making `www` canonical, which is
+    ugly on a four-letter domain. Deliberate, and his call.
+11. **Write the ADR for shipping `prototype/`** — or unpick it into `src/` (T-02). Needs his ruling.
+12. **`src/App.tsx` is still eleven lines.** T-02 has not moved in four sessions.
+13. **One gap left against `cross and jogs.png`**: the Pad row is six separate wells where the
+    reference has one continuous brass tray with dividers.
+14. **The clipped back candlestick** at the tight framing. Three options were offered, none chosen.
+15. **Two models undecided.** He said Grimoire and Cracktro "should be two different models, cause I
+    really love them both." The Unit is pinned to Grimoire; Cracktro is unwired but intact in
+    `render.js`. **No ADR** — it would reverse 0012, 0015 and 0016 and needs his decision, not a
+    guess. Suggestion on the table: ship Tenebrae as Grimoire, make Cracktro Project 002.
+16. **Lyra's bubble** is plain. He asked for ornamental. The covering-text half is fixed.
 
 ## Blocked on Fernando
 
 - **The LinkedIn URL.** `modules.ts` has the name "Fernando Linck" and no link. Instagram has both.
 - **The PATH glossary rename** — needs his word, and a `CONTEXT.md` entry when it lands.
 - **RACK contents** (T-13) — slot 4 still lists influences, not tools. Blocked four sessions.
-- **His own voice.** Ident, Method and Lyra's lines are mine. They are honest and they are not his.
+- **His own voice.** QUEM, CRITÉRIOS and Lyra's lines are mine. They are honest and they are not his.
+  The ECLIPSE copy is mine too, and it is the most *written* thing on the object.
+- **The Graecus captures are in** (six site screenshots, `public/works/graecus-*.jpg`), and the case
+  section describes them. That one is closed.
 
 ## Cautions
 
@@ -702,6 +859,13 @@ same instinct as `prototype/light-fit/`; use it, and extend it when you add a ne
   Decks' whole palette. Measure them; crop them with `sips` and look properly.
 - **Do not open his browser without asking** — but *do* ask. Four rounds of blind performance fixes
   achieved nothing; twenty minutes of measuring in a real tab found the cause.
+- **The Chrome extension gives out.** Screenshots start timing out, then `javascript_tool` loses the
+  tab, and creating a fresh tab is what recovers it. It happened perhaps a dozen times on
+  2026-08-28. Budget for it: prefer one probe that returns numbers over five that return pictures,
+  and never let a verification plan depend on a long sequence of screenshots.
+- **rAF fires zero times in an automated tab.** Drive the scene with `__unit.step(t)` then
+  `__unit.render()`, and read state with `__unit.nav()`. Anything timing-based — the opening, the
+  ECLIPSE transition, the film — cannot be observed here at all and has to be handed to him.
 - **Give him the thing, not a toggle.** Confirmed three times now.
 - **Do not add dependencies** (ADR-0004). When Node could not decode a PNG the answer was 120 lines of
   `zlib`, not a package.
