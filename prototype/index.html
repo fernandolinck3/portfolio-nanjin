@@ -56,6 +56,11 @@
   that never navigates — the pageview says almost nothing, and the events are the
   analytics.
 
+  No `<noscript>` iframe, which the standard snippet includes. It exists to record
+  visitors whose browser runs no JavaScript — and this object *is* JavaScript: without
+  it there is no scene, no Screen and nothing to measure. The only thing that tag
+  could ever count here is a crawler.
+
   No consent gate yet. Everything GTM ends up setting is a decision made in the
   container rather than here; if a GA4 tag goes in, LGPD makes a banner the honest
   next step. See HANDOFF.md.
@@ -63,7 +68,7 @@
 <script>
   window.dataLayer = window.dataLayer || [];
   (function () {
-    var GTM = '';
+    var GTM = 'GTM-PLPVLQH9';
     if (!GTM || !/(^|\.)nanj\.in$/.test(location.hostname)) return;
     window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
     var s = document.createElement('script');
