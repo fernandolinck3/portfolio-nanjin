@@ -4496,6 +4496,37 @@ window.__unit = {
      camera is — a readout that only updates when you drag is a readout that lies */
   setCam(c) { Object.assign(CAM, c); placeCamera(); if (FREECAM) showFreecam(); },
   parts: () => ({ cap, sun: sun.ring, moon: moon.ring, faceMat, face }),
+  /**
+   * The Unit as the layers it is stacked from.
+   *
+   * Named where a name exists, and swept up where it does not. The rim furniture —
+   * the gilt inlay, the beading, the screws and their slots — is built inside a block
+   * and never bound at module scope, so there is nothing to name: it rides with the
+   * Plate because that is where it sits. Anything added to the Unit later and left
+   * unclaimed joins the Plate too, which is the right default and self-maintaining.
+   *
+   * Positions are not used to *classify* — the whole object lives inside 0.38 of
+   * height and the Plate is thirteen thousandths above the Chassis, so a height
+   * heuristic would be wrong the first time a Part moved. The one exception is the
+   * fader trough, which is unclaimed and unmistakable at its own `z`.
+   */
+  layers() {
+    const claimed = new Set();
+    const take = (...m) => { m.forEach(o => o && claimed.add(o)); return m.filter(Boolean); };
+    const out = {
+      chassis: take(chassis),
+      display: take(screen, well),
+      decks: take(moon.group, sun.group),
+      pads: take(...padWells, ...padRings, ...padMeshes),
+      lamps: take(...ledMeshes),
+      fader: take(cap, capGlow, capShade,
+        ...unit.children.filter(o => o.isMesh && Math.abs(o.position.z - FADER.z) < .02
+          && o !== cap && o !== capGlow && o !== capShade)),
+    };
+    out.plate = take(face, ...unit.children.filter(o =>
+      (o.isMesh || o.isInstancedMesh) && !claimed.has(o)));
+    return out;
+  },
   get title() { return TITLE; },
   get page() { return curPage; },
   get vigil() { return vigil; },
@@ -5018,6 +5049,11 @@ if (location.search.includes('film')) {
  * `surface` pass taken before the maps land is a black rectangle, and the failure
  * looks like a bug in the pass rather than a race.
  */
+if (location.search.includes('explode')) {
+  Promise.all([plateReady, artLoaded]).then(() =>
+    import('./explode.js').then(m => m.runExplode(window.__unit, renderer.domElement)));
+}
+
 if (location.search.includes('breakdown')) {
   Promise.all([plateReady, artLoaded]).then(() =>
     import('./breakdown.js').then(m => m.runBreakdown(window.__unit, renderer.domElement, THREE)));
