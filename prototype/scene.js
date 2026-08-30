@@ -4229,6 +4229,8 @@ window.__unit = {
     return [(v.x * .5 + .5) * W(), (-v.y * .5 + .5) * H()];
   },
   pads: () => padMeshes,
+  /** The scene graph and the Unit inside it, for passes that restyle rather than pose. */
+  roots: () => ({ scene, unit, room, altar }),
   /**
    * The controls, as functions.
    *
@@ -5007,4 +5009,16 @@ requestAnimationFrame(frame);
  */
 if (location.search.includes('film')) {
   import('./film.js').then(m => m.runFilm(window.__unit, renderer.domElement));
+}
+
+/**
+ * The breakdown, likewise its own chunk.
+ *
+ * It waits for the Plate artwork and the Deck photographs before it shoots — a
+ * `surface` pass taken before the maps land is a black rectangle, and the failure
+ * looks like a bug in the pass rather than a race.
+ */
+if (location.search.includes('breakdown')) {
+  Promise.all([plateReady, artLoaded]).then(() =>
+    import('./breakdown.js').then(m => m.runBreakdown(window.__unit, renderer.domElement, THREE)));
 }
