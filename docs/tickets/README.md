@@ -1,6 +1,8 @@
 # Tickets
 
-Split out of `SPEC.md`. One ticket is one `/implement` run with fresh context — each states its own
+Split out of `SPEC.md`. T-15 to T-17 came later, out of a code review on 2026-08-29 — they are
+**findings pinned to work that is already planned**, not new work. Each names what absorbs it, so
+whoever picks that work up meets the finding instead of rediscovering it. One ticket is one `/implement` run with fresh context — each states its own
 traps so it can be picked up without reading the whole thread.
 
 ## The graph
@@ -39,6 +41,9 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-12 | [Faceplate artwork](T-12-faceplate-artwork.md) | C | Fernando | blocked |
 | T-13 | [RACK contents](T-13-rack-contents.md) | C | Fernando | blocked |
 | T-14 | [Publish the repo](T-14-publish-the-repo.md) | C | Fernando | blocked |
+| T-15 | [Canvas controls need a DOM twin](T-15-canvas-controls-need-a-dom-twin.md) | A | — | absorbed by the accessible mirror |
+| T-16 | [An index that does not fit must say so](T-16-an-index-that-does-not-fit-must-say-so.md) | B | — | absorbed by whichever Module grows first |
+| T-17 | [PROJETOS never invites the SUN](T-17-projetos-never-invites-the-sun.md) | B | — | absorbed by the PROJETOS preview |
 
 ## Standing rules for every ticket
 

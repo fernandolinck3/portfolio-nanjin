@@ -8,7 +8,7 @@ import { createSummoning } from './summon.js'
 import { createPortrait } from './portrait.js'
 import { createDisplay } from './display.js'
 import { printLayer, engravedLayer } from './plate-art.js'
-import { track } from './track.js'
+import { track, trackSettled } from './track.js'
 import { padMaps, faderSlot, faderCap } from './control-faces.js';
 import { deckMaps, deckGlow } from './deck-faces.js'
 import { createRoomDecor } from './room-decor.js'
@@ -3069,7 +3069,7 @@ function moveSelection(step) {
   }
   setSelection(curPage, to);
   if (to > items.length - 1) { flashLcd('· · · SINAL 07'); drawScreen(); return; }
-  track('item_select', { module: mod().id, item: items[to].id });
+  trackSettled('item_select', { module: mod().id, item: items[to].id });
   flashLcd(`LUA · ${mod().unit} ${pad2(to + 1)}/${pad2(items.length)} · ${items[to].label}`);
   drawScreen();
 }
@@ -3165,7 +3165,7 @@ function sunEnter() {
   /* A mail or a link leaves the page, so it is announced before it happens. */
   flashLcd(`ABRIR · ${it.meta || it.label}`);
   /* the only events that mean a visit turned into contact */
-  track('outbound', { route: it.meta || it.id, kind: act.kind });
+  track('outbound', { route: it.meta || it.id, kind: act.kind, from: mod().id });
   window.open(act.kind === 'mail' ? 'mailto:' + act.value : act.value,
     act.kind === 'mail' ? '_self' : '_blank', 'noopener');
 }

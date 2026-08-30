@@ -45,15 +45,10 @@ const UTM = (() => {
 
 /** Suppress repeats of the same event with the same payload, back to back. */
 let last = ''
+/** Pending settle timers, one per event name. See `trackSettled`. */
+const settling = new Map()
 
-/**
- * Report something the visitor did.
- *
- * Wheel turns are deliberately *not* reported one per detent: a reader crossing a
- * six-item list would emit six events that say nothing except that a wheel moves.
- * What is worth knowing is where they stopped, so selection is reported on arrival
- * and the intermediate steps are dropped by the repeat guard.
- */
+/** Report something the visitor did. */
 export function track(event, params = {}) {
   if (!LIVE) return
   const key = event + JSON.stringify(params)
@@ -61,6 +56,25 @@ export function track(event, params = {}) {
   last = key
   window.dataLayer = window.dataLayer || []
   window.dataLayer.push({ event, ...params, ...UTM })
+}
+
+/**
+ * Report where something **came to rest**, not every place it passed through.
+ *
+ * The repeat guard above cannot do this and never could: it compares against the
+ * previous push, and consecutive selections differ in `item`, so nothing is dropped.
+ * A hand dragging the MOON from the first row to the fifth emitted four events —
+ * exactly the "six events saying only that a wheel moves" this file claimed to have
+ * designed out.
+ *
+ * So the push waits. Each new call for the same event name cancels the one before it,
+ * and only the last one survives the quiet period. A reader crossing a list emits one
+ * event, for the row they stopped on.
+ */
+export function trackSettled(event, params = {}, ms = 400) {
+  if (!LIVE) return
+  clearTimeout(settling.get(event))
+  settling.set(event, setTimeout(() => { settling.delete(event); track(event, params) }, ms))
 }
 
 /** The campaign that brought this visit, for anything that wants to read it. */

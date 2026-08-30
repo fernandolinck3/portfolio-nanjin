@@ -143,6 +143,18 @@ domain via `gh api -X PUT .../pages -f cname=` (empty, then the domain again) mo
 to `authorization_pending` and it completed in minutes. If a future domain change stalls, that is
 the move.
 
+### The ECLIPSE prize, and the film — both asked for, neither recorded until now
+
+Both arrived in conversation and neither was written down, which made a code review flag them as
+scope creep built against no request. The reviewer was right from what the repo said. **His words:**
+
+> temos um premio though, a pessoa me mandar um print ou ir direto pro instagram
+
+> queria fazer uma animação dese modelo pra exportar como vídeo e ser apoio de um story no instagram
+> apresentando o release
+
+A request that only exists in a chat log is a request the next reader will treat as invention.
+
 ### A film mode, for the release clip
 
 `?film` loads `prototype/film.js` as a separate chunk, pins the render to 1080x1920 via a `FILM`

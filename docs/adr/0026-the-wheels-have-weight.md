@@ -35,15 +35,31 @@ Four parts, and they only make sense together:
 2. **Both platters drift.** They used to drift against the Vigil, which made the Moon perfectly still
    in daylight. Both turn now; the Vigil decides only which one leads.
 
-3. **A thrown wheel coasts, and keeps selecting while it does.** The hand's own angular velocity is
-   handed to the Deck on release and bleeds off against friction, spending detents the whole way
-   down.
+3. **A thrown wheel coasts — and the coast is visual only.** The hand's angular velocity is handed
+   to the Deck on release and bleeds off against friction, so a heavy platter keeps turning. It does
+   **not** spend detents while it does.
 
-4. **The detent is visible.** Each Deck holds `turn` (where the platter is), `carry` (how far past
-   the last detent the selection has come) and `spin`. The displayed angle is `turn - PULL * carry`,
-   so between two notches the platter lags the hand and catches up the instant the notch is spent —
-   that is the snap. When the coast dies the carry is eased to zero, which walks the wheel the last
-   few degrees onto its detent; draining the carry *is* the settle, and nothing else needs to know.
+   *This part was written the other way and shipped that way for an afternoon.* Selecting on
+   momentum is what walked a small flick to the end of a list, which is most of what "the jogs don't
+   navigate right" turned out to mean. The hand chooses; the mass only carries the picture.
+
+4. **The hand's travel is the only thing the platter shows.** Each Deck holds `turn` (where the
+   platter is), `carry` (how far past the last detent the selection has come) and `spin`. The
+   displayed angle is `turn`, full stop.
+
+   *This part was also written the other way.* It said `turn - PULL * carry`, so the platter lagged
+   the hand between notches and caught up as each was spent — a detent you could see. That is how a
+   detent feels under a finger and not how it looks on a screen, where the only visible part is the
+   wheel failing to keep up with the cursor: **"remove the snaps please its looking laggy."** On a
+   screen the pointer *is* the hand, and anything that lags it is lag. There is no `PULL` constant.
+
+## Amended the same day it was written
+
+Parts 3 and 4 above describe what shipped; the struck-through reasoning inside them is what this ADR
+originally decided, hours earlier. Both were undone by watching the object rather than reasoning
+about it — the coast overshot, and the visible detent read as lag. Kept in place rather than quietly
+rewritten, because a decision that survived three hours is worth knowing about before someone
+reinvents it.
 
 ## What survives from the decision it amends
 
