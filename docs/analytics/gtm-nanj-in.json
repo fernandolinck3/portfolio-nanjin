@@ -48,7 +48,7 @@
           {
             "type": "TEMPLATE",
             "key": "eventName",
-            "value": "{{Event}}"
+            "value": "{{dl.event}}"
           },
           {
             "type": "TEMPLATE",
@@ -116,6 +116,21 @@
                     "type": "TEMPLATE",
                     "key": "parameterValue",
                     "value": "{{dl.work}}"
+                  }
+                ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "image"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{dl.image}}"
                   }
                 ]
               },
@@ -299,21 +314,13 @@
               {
                 "type": "TEMPLATE",
                 "key": "arg1",
-                "value": "^(module_open|item_select|page_turn|work_open|outbound|eclipse_found|boot_complete)$"
+                "value": "^(module_open|item_select|page_turn|work_open|image_open|image_step|outbound|eclipse_found|boot_complete)$"
               }
             ]
           }
         ],
         "fingerprint": "0",
-        "notes": "Um gatilho para os sete eventos. A tag usa {{Event}} como nome, então sete tags viram uma."
-      }
-    ],
-    "builtInVariable": [
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "type": "EVENT",
-        "name": "Event"
+        "notes": "Um gatilho para os nove eventos. A tag usa a variável dl.event como nome, então nove tags viram uma."
       }
     ],
     "variable": [
@@ -332,6 +339,32 @@
         ],
         "fingerprint": "0",
         "notes": "ID de medição da propriedade GA4 de nanj.in."
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "variableId": "17",
+        "name": "dl.event",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "event"
+          }
+        ],
+        "fingerprint": "0",
+        "notes": "O nome do evento, lido do dataLayer. Substitui a variável integrada Event, que o importador não habilita num Merge — integrada é configuração de workspace, não conteúdo, então a tag chegava referenciando uma variável desabilitada e o espaço de trabalho não validava."
       },
       {
         "accountId": "0",
@@ -429,6 +462,31 @@
             "type": "TEMPLATE",
             "key": "name",
             "value": "work"
+          }
+        ],
+        "fingerprint": "0"
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "variableId": "16",
+        "name": "dl.image",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "image"
           }
         ],
         "fingerprint": "0"

@@ -22,7 +22,22 @@
  * A day of pressing every Pad four hundred times while building the thing would
  * otherwise *be* the dataset. The published host is the only one that counts.
  */
-const LIVE = /(^|\.)nanj\.in$/.test(location.hostname)
+const LIVE = /(^|\.)nanj\.in$/.test(location.hostname) ||
+  /**
+   * `?track` opens the pushes on any host, so the taxonomy can be **checked**.
+   *
+   * The host guard above is right about the data and wrong about verification: with it
+   * the only place the events can be seen firing is production, which is the one place
+   * a mistake costs something. Every event here was written against a table in
+   * `docs/analytics/README.md` and nothing had ever compared the two.
+   *
+   * It is safe because the loader in `index.html` is gated on the same host: on
+   * anything but `nanj.in` there is no container listening, so a push reaches a
+   * `dataLayer` array nobody reads. It cannot put a local run into the dataset — it
+   * can only let someone read what a local run *would* send. The same shape as
+   * `?turned` and `?film`: a flag that reveals a path nobody can otherwise see.
+   */
+  location.search.includes('track')
 
 /**
  * The campaign parameters, read once and carried.

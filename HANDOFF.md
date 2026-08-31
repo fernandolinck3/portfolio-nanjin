@@ -147,6 +147,72 @@ selector whatever its tabindex, so the trap's own list disagreed with the browse
 The ends were right by luck; they are right by construction now. Verified: first stop VOLTAR,
 last a step arrow, Shift+Tab and Tab wrap at both ends, focus returns to the opener on exit.
 
+### The pictures were small, and two different things were making them small
+
+*"as imagens, especialmente de desktop da graecus, ficam bem pequenas com esse layout."*
+Right, and the 60/40 was not the cause.
+
+**The frame's cap was.** It was `min(1180px, 86vw)` on a viewport with 1935px of `86vw`
+available — 755px left on the table. The cap has a natural stopping point rather than a
+taste one: body copy is capped at `62ch`, which measures **564px** here, and
+`0.4 × (W − 110) = 564` back-solves to **W = 1520**. Past that the reading column has
+reached its own limit and every further pixel lands as dead space beside the prose rather
+than on the picture. Measured at 1420 first — the column came out 524, forty short — so the
+number is checked from both sides. The Graecus capture goes **642 → 846**, and the first
+fold gains a section on the way.
+
+**And 846 is still 67% of a 1265px screenshot**, whose content is small type. No split of a
+two-column layout fixes that, so the panel has a second state: click the picture and the
+case, header and rail go away (`display:none`, because the focus trap tests `offsetParent`
+and would keep handing Tab to a column nobody can see) and the media area takes the frame.
+The strip survives it, so the set is still navigable from inside the enlargement, and the
+arrows move images there for the same reason they do inside the strip.
+
+**The picture is capped at its own natural width** — `--nw`, set from the image. A 1265px
+capture blown to 1900 is softer than the same capture at 1265, and the 375px mobile still is
+honest at 375 rather than impressive at 900. Verified: Graecus enlarges to exactly 1265×713,
+100% of native; `graecus-mobile-home` to 375×809, also 100%.
+
+**The source is the ceiling now, and it is his call.** Five of the eight Graecus stills are
+**1265×712**, about 88KB each. That is a small capture of a website: 100% of it is as good as
+this can ever look, and on a wide monitor the enlargement is already at the limit. Re-exporting
+the captures at 2× (2530px) is the only thing that moves it.
+
+### The arrows walk the pictures now
+
+*"só removeria a seta pra trocar de projeto e deixaria ela pra scrollar a imagem dentro da
+página."* They stepped between Works, which put the panel's largest and most obvious control
+on its least likely action — you open a project to read *that* project, and the set of stills
+is the thing you actually want to walk.
+
+So the arrows and the arrow **keys** both move through the images, everywhere in the panel:
+two controls with the same shape and different meanings was the bug the arrows themselves
+were. They hide entirely on a Work with fewer than two stills (Portfólio has none), and they
+are **shown inside the enlargement**, where they used to be hidden back when they meant
+"another project" — enlarged is exactly when walking the set matters most.
+
+Changing project keeps the two routes it always had, and both are the object's own: VOLTAR to
+the index, or the **LUA**, which is the wheel that selects on that index. `onStep` is still
+wired to it and is untouched.
+
+### Back had two owners, and that is why Escape closed two levels
+
+Worth recording because the patch that suggests itself is the wrong one. The panel handled
+Escape, and so does `scene.js` — Escape is one of four ways into `moonBack()`, the Unit's own
+Back. Both fired, so the first Escape on an enlarged picture closed the enlargement *and* left
+the project.
+
+Stopping the event looks like the fix and is not: **which handler runs first depends on where
+the key was pressed.** A real press targets the focused element and reaches the window capture
+listener first; a synthetic one targets the window, where capture and bubble listeners run in
+registration order — and `scene.js` registers at line 3824, long before `createFocus` runs. So
+the patch worked under the hand and failed under the probe, which is the worst way for a fix to
+be wrong.
+
+A back stack with two owners is the bug. `focus.back()` closes one level and says which one it
+closed; `moonBack()` is the only caller; the panel no longer listens for Escape at all. The
+enlargement is now a level of the Unit's Back like any other, LCD flash included.
+
 ### Mobile is his order, verified at 402×874
 
 Not on a phone — in a same-origin iframe with a real 402px viewport, because the window would
@@ -156,6 +222,13 @@ Back sticky at the top (y = 14 before and after a 400px scroll), then the image,
 and summary, then the case. The frame itself is the scrollport, the rail is gone with the second
 column, and the prev/next arrows leave the edges of the image for a pair of **46×46** targets
 above the home indicator. No horizontal scroll, no native scrollbar.
+
+**The enlargement cannot help a landscape capture here, and that is a decision waiting.**
+On a 402px phone the picture is already at the viewport's width, so enlarging a 1265px capture
+changes nothing but the case going away — measured 363×206 in both states. It does help portrait
+stills, which gain the full height. Reading a desktop screenshot on a phone needs panning at
+natural width, and that is a touch behaviour nobody can test until item 7 below is done with a
+real device in a real hand. Not guessed at.
 
 **One bug caught only here, and only by a portrait image.** `min-height:0` is the desktop rule
 that lets the plate shrink inside a fixed row; carried into the mobile grid it let the row
@@ -185,6 +258,77 @@ portrait against a 436px ceiling.
 - **Portfólio has no images at all**, so its media column is empty — the flagship project opens
   on a blank 60%. That is content, not layout, and it is part of Open #3.
 - `prototype/explode.js` still carries 30 uncommitted lines from the session before this one.
+
+## The analytics, as of 2026-08-31 — checked on this side, still waiting on his
+
+**The container file is correct and nothing blocks the import.** Verified by reading it
+rather than by trusting it: the trigger's regex covers every event name `track.js` emits,
+every parameter pushed has a `dl.*` variable, every `dl.*` is mapped in the event tag, every
+`{{...}}` reference resolves, and `Event` is declared as a built-in. `G-3GV5YJ7VV4` appears
+once, in the constant.
+
+**`?track` exists now, and it is how that was checked.** The host guard is right about the
+data and was wrong about verification: with it, the only place the events could be seen
+firing was production — the one place a mistake costs something. The flag opens the pushes on
+any host and cannot pollute anything, because the loader in `index.html` is gated on the same
+host, so off `nanj.in` a push reaches an array nobody reads. Same shape as `?turned`
+and `?film`.
+
+Seen arriving with their parameters and their UTMs: `module_open`, `item_select`,
+`work_open`, `image_step`, `image_open`. **Not seen, and not a fault:** `boot_complete` and
+`page_turn` both need the render loop, and rAF does not run in an automated tab;
+`eclipse_found` needs the light-key path; `outbound` was left alone deliberately rather than
+send his browser to Instagram.
+
+**Two events were added, before the import rather than after it.** The overlay grew an
+enlargement and a way to walk the stills today, and nothing reported either — `work_open`
+says a case was opened, which is not the same as anyone having *seen* the eight Graecus
+captures. `image_open` is the only way to know whether the enlargement was worth building
+(read it as a ratio against `work_open`); `image_step` is settled, like `item_select`, so
+three arrow presses produce one event naming the still it stopped on. `image` is a **name**,
+not an index — `graecus-blog-archive` reads in a report and survives an insertion into the
+set. The container went from seven events to nine as one line of regex and one variable,
+which is what that design was for.
+
+### The import failed to validate, and the file was wrong rather than the workspace
+
+*"A variável desconhecida Event foi encontrada em uma tag."* The export referenced the
+`{{Event}}` built-in and declared it in a `builtInVariable` block precisely to prevent this,
+and the README said so. **The declaration does nothing on a Merge**: a built-in is a workspace
+setting, not container content, so the importer ignores it and the tag lands pointing at a
+variable that is not switched on.
+
+Enabling *Event* by hand under *Variables → Configure* clears it in that workspace and clears
+it nowhere else — the next import into a fresh one fails identically. So the event name now
+comes from **`dl.event`**, an ordinary Data Layer variable reading `event`, which is container
+content, travels with the export and resolves to the same value the built-in reads from. The
+`builtInVariable` block is gone.
+
+The rule worth keeping: **an export must not depend on a built-in being enabled at the other
+end.** The old note in `docs/analytics/README.md` claimed the opposite and has been corrected.
+
+**What is still his, and only his:**
+
+1. **Import and publish.** *Admin → Import Container →* `docs/analytics/gtm-nanj-in.json` →
+   workspace *Existing* → **Merge**. Then publish.
+
+   **Which conflict mode depends on what is already in there, and right now the answer is
+   *Overwrite*.** The standing rule is *Rename conflicting tags*, and it exists to protect
+   work that came from somewhere else. This container holds nothing but a failed import of
+   this same file, so renaming would leave the broken tag in place and add a second one
+   beside it. Overwrite replaces the same-named items with the corrected ones, which is the
+   whole point of re-importing a fixed export. **Once anything not from this file lives in
+   the container, the rule goes back to *Rename*.**
+
+   Confirm the right version landed: the tag's *Event Name* must read `{{dl.event}}`, not
+   `{{Event}}`.
+2. **Confirm one hit in GA4 Realtime.** Nobody has. Until then the pipe is proven only as far
+   as `dataLayer`.
+3. **Register the custom dimensions** — `module`, `item`, `work`, `image`, `route`, `face`.
+   Until they exist the events arrive and the parameters are invisible in reports, which
+   looks exactly like data loss and is not.
+4. **Rule on consent.** A published GA4 tag writes a cookie and LGPD makes a banner the honest
+   next step. Banner, GTM Consent Mode, or a cookieless tag — unchanged, still unruled.
 
 ## What changed on 2026-08-29 — analytics, and one thing waiting on him
 

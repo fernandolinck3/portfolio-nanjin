@@ -3214,7 +3214,15 @@ function moonBack() {
     drawScreen();
     return;
   }
-  if (focus.active) { flashLcd('VOLTAR · ÍNDICE DE ' + mod().title.replace(' / ', '/')); focus.exit(); return; }
+  /* The overlay is two levels deep — an enlarged image inside a Work — and Back takes
+     one at a time. It used to call `focus.exit()` outright while the panel had its own
+     Escape as well, so closing a picture also left the project. `focus.back()` is the
+     single owner of that stack now. */
+  if (focus.active) {
+    if (focus.back() === 'zoom') { flashLcd('VOLTAR · CASE'); return; }
+    flashLcd('VOLTAR · ÍNDICE DE ' + mod().title.replace(' / ', '/'));
+    return;
+  }
   if (sectionOf(curPage) > 0) {
     setSection(curPage, 0);
     flashLcd('VOLTAR · ' + (itemsOf()[selectionOf(curPage)]?.label || mod().title));

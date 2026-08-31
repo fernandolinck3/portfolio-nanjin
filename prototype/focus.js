@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { caseOf } from '../src/content/modules.ts'
+import { track, trackSettled } from './track.js'
 
 /**
  * Zoom to the Screen, then hand the Work to the DOM.
@@ -117,7 +118,7 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
   panel.innerHTML = `
     <div class="work-frame">
       <button class="work-back" type="button">&larr;&nbsp; VOLTAR</button>
-      <figure class="work-plate">
+      <figure class="work-plate" role="button" tabindex="-1">
         <img class="work-shot" alt="" hidden>
         <ol class="work-strip" aria-label="Imagens do projeto"></ol>
         <figcaption class="work-count"></figcaption>
@@ -137,9 +138,9 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
         <span class="work-pos"></span>
       </nav>
     </div>
-    <button class="work-step" data-d="-1" type="button" aria-label="Projeto anterior">&lsaquo;</button>
-    <button class="work-step" data-d="1" type="button" aria-label="Próximo projeto">&rsaquo;</button>
-    <p class="work-hint">clique em qualquer lugar para voltar &middot; &larr; &rarr; para navegar</p>`
+    <button class="work-step" data-d="-1" type="button" aria-label="Imagem anterior">&lsaquo;</button>
+    <button class="work-step" data-d="1" type="button" aria-label="Próxima imagem">&rsaquo;</button>
+    <p class="work-hint">clique na imagem para ampliar &middot; &larr; &rarr; para percorrer as imagens</p>`
   panel.setAttribute('aria-labelledby', 'work-title')
   mount.appendChild(panel)
 
@@ -228,7 +229,14 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
     .work-panel[data-open="1"] { opacity:1; pointer-events:auto; }
 
     .work-frame { position:relative; z-index:1;
-      width:min(1180px, 86vw); height:min(824px, 84vh);
+      /* 1420, not 1180: the reading column's own ceiling sets this. Body copy is
+         capped at 62ch, so past the frame width where the text column reaches that,
+         extra width lands as dead space beside the prose instead of on the picture.
+         62ch of Azeret Mono measures 564px here, and 0.4 x (W - 110) = 564 back-solves
+         to this W — the exact width at which the prose reaches its own limit and every
+         further pixel would land as dead space beside it rather than on the picture.
+         Measured at 1420 first: the column came out 524, forty short. */
+      width:min(1520px, 92vw); height:min(824px, 84vh);
       display:grid; gap:20px 44px;
       /* minmax(0, …), not a bare fr: a track's automatic minimum is its content's
          min-content size, and the stretched plate carries an aspect ratio, so it
@@ -362,14 +370,47 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
     .work-pos { position:absolute; bottom:0; left:50%; transform:translateX(-50%);
       font-size:9px; letter-spacing:.12em; color:#8A7A54; font-variant-numeric:tabular-nums; }
 
-    .work-step { position:absolute; top:50%; transform:translateY(-50%); z-index:2;
+    .work-step { display:none; position:absolute; top:50%; transform:translateY(-50%); z-index:2;
       background:none; border:0; cursor:pointer; color:#5C5346; font-size:44px; line-height:1;
       padding:20px 26px; transition:.18s; }
+    .work-panel[data-shots="1"] .work-step { display:block; }
     .work-step:hover, .work-step:focus-visible { color:#C9C2B0; }
     .work-step[data-d="-1"] { left:8px; }
     .work-step[data-d="1"] { right:8px; }
     .work-hint { position:absolute; bottom:24px; left:0; right:0; text-align:center;
       color:#5C5346; font-size:10px; letter-spacing:.2em; margin:0; pointer-events:none; }
+
+    /**
+       Full frame, because 67% of native is still not a website capture.
+
+       The Graecus stills are 1265 x 712 and the widened panel shows them at 846 —
+       better than the 642 he called small, and still two thirds of a screenshot whose
+       whole content is small type. No split of a two-column layout fixes that; the
+       picture has to be allowed to take the window.
+
+       So the panel has a second state. The case, the header and the rail go away with
+       display:none — not visibility or opacity, because the focus trap tests
+       offsetParent and would keep handing Tab to a column nobody can see — and the
+       media area takes the frame. The strip stays, so the set is still navigable from
+       inside the enlargement.
+
+       The picture is capped at its own natural width. A 1265px capture blown to 1900
+       is softer than the same capture at 1265, and the 375px mobile still is honest at
+       375 rather than impressive at 900. --nw carries that number from the image.
+     */
+    .work-panel[data-zoom="1"] .work-frame {
+      width:min(2400px, 96vw); height:92vh;
+      grid-template-columns:minmax(0, 1fr);
+      grid-template-rows:auto minmax(0, 1fr);
+      grid-template-areas: "back" "media"; }
+    .work-panel[data-zoom="1"] .work-head,
+    .work-panel[data-zoom="1"] .work-text,
+    .work-panel[data-zoom="1"] .work-rail { display:none; }
+    .work-panel[data-zoom="1"] .work-shot { max-width:min(100%, var(--nw, 100%)); }
+
+    .work-plate[data-shot="1"] { cursor:zoom-in; }
+    .work-panel[data-zoom="1"] .work-plate[data-shot="1"] { cursor:zoom-out; }
+    .work-plate:focus-visible { outline:1px solid #8A7A54; outline-offset:8px; }
 
     @media (prefers-reduced-motion: reduce) { .work-panel { transition:none } }
 
@@ -399,11 +440,18 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
       .work-text { overflow:visible; padding-right:0; }
       .work-rail { display:none; }
       .work-hint { display:none; }
+      .work-panel[data-zoom="1"] .work-frame {
+        width:100vw; height:100dvh;
+        grid-template-rows:auto minmax(0, 1fr);
+        grid-template-areas: "back" "media"; }
+      .work-panel[data-zoom="1"] .work-shot { max-height:none; }
+      .work-panel[data-zoom="1"] .work-plate { align-self:stretch; min-height:0; }
       /* off the edges of the image and onto real targets: 46px, above the home bar */
+      .work-panel[data-shots="1"] .work-step { display:grid; }
       .work-step { position:fixed; top:auto; transform:none; z-index:4;
         bottom:calc(16px + env(safe-area-inset-bottom));
         width:46px; height:46px; padding:0; font-size:26px;
-        display:grid; place-items:center; color:#C9C2B0;
+        place-items:center; color:#C9C2B0;
         background:rgba(10,9,8,.78); border:1px solid #4A4136; }
       .work-step[data-d="-1"] { left:auto; right:76px; }
       .work-step[data-d="1"] { right:18px; }
@@ -441,6 +489,15 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
       img.alt = ''
     }
     plate.dataset.many = n > 1 ? '1' : '0'
+    /* the arrows walk the set, so a Work without one has no arrows at all */
+    panel.dataset.shots = n > 1 ? '1' : '0'
+    /* a figure with no picture in it is not a control, so it leaves the tab order */
+    plate.dataset.shot = n ? '1' : '0'
+    plate.tabIndex = n ? 0 : -1
+    plate.setAttribute('aria-label', n
+      ? (zoomed() ? 'Reduzir a imagem' : 'Ampliar a imagem')
+      : '')
+    setNatural()
     count.textContent = n > 1 ? `${at + 1} / ${n}` : ''
 
     const strip = panel.querySelector('.work-strip')
@@ -463,6 +520,67 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
         b.scrollIntoView({ block: 'nearest', inline: 'nearest' })
       }
     }
+  }
+
+  /**
+   * The picture, at the size the file actually is.
+   *
+   * The panel's second state: the case, the header and the rail go away and the media
+   * area takes the frame. The strip survives it, so the set stays navigable from
+   * inside the enlargement, and the picture is capped at its own natural width — a
+   * 1265px capture stretched to 1900 is softer than the same capture at 1265.
+   */
+  const zoomed = () => panel.dataset.zoom === '1'
+
+  /**
+   * Which still is showing, by name.
+   *
+   * `graecus-blog-archive` reads in a report; `3` does not, and stops meaning the same
+   * thing the moment an image is inserted into the set.
+   */
+  const shotName = () => {
+    const shots = current?.images || []
+    if (!shots.length) return ''
+    const at = ((shot % shots.length) + shots.length) % shots.length
+    return String(shots[at]).split('/').pop().replace(/\.[a-z]+$/i, '')
+  }
+
+  /**
+   * Next or previous still, wrapping. The set is a ring, like the Works were.
+   *
+   * Reported **settled**, for the same reason `item_select` is: a hand walking eight
+   * captures would otherwise emit eight events saying only that a hand walks. What is
+   * worth knowing is which capture it stopped on.
+   */
+  function stepShot(d) {
+    if ((current?.images || []).length < 2) return
+    shot += d
+    paintPlate()
+    trackSettled('image_step', { work: current.id, image: shotName() })
+  }
+
+  /** Hand the image's own pixel width to the stylesheet, once it is known. */
+  function setNatural() {
+    const img = panel.querySelector('.work-shot')
+    if (img.naturalWidth) img.style.setProperty('--nw', img.naturalWidth + 'px')
+    else img.style.removeProperty('--nw')
+  }
+
+  function setZoom(on) {
+    const plate = panel.querySelector('.work-plate')
+    if (plate.dataset.shot !== '1') on = false
+    const opening = on && !zoomed()
+    panel.dataset.zoom = on ? '1' : '0'
+    plate.setAttribute('aria-label', on ? 'Reduzir a imagem' : 'Ampliar a imagem')
+    /* only on the way open, and only from a real gesture — `show()` and `enter()` both
+       close it on the way past, and a close is not an event worth having */
+    if (opening && current) track('image_open', { work: current.id, image: shotName() })
+    panel.querySelector('.work-hint').textContent = on
+      ? 'clique na imagem para reduzir · ← → para percorrer · Esc para voltar ao case'
+      : 'clique na imagem para ampliar · ← → para percorrer as imagens'
+    /* the strip is the only way between images while enlarged, and a rebuilt layout
+       can leave the lit one out of view */
+    paintPlate()
   }
 
   /**
@@ -489,6 +607,7 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
         e.stopPropagation()
         shot = i
         paintPlate()
+        trackSettled('image_step', { work: current.id, image: shotName() })
       })
       li.appendChild(b)
       strip.appendChild(li)
@@ -616,6 +735,9 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
   function show(work) {
     if (!work) return
     current = work
+    /* the enlargement belongs to the picture that was enlarged; carrying it into the
+       next project would open that one on an image with its case hidden */
+    setZoom(false)
     fill(work)
     onStep?.(work)
   }
@@ -653,6 +775,7 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
      * and untouchable for the whole flight either way.
      */
     panel.hidden = false
+    panel.dataset.zoom = '0'
     fill(work)
     /* only remember the opener on the way *in* — stepping between Works must not
        overwrite it with a button inside the panel */
@@ -667,6 +790,7 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
 
   function exit() {
     if (phase === 'idle' || phase === 'out') return
+    panel.dataset.zoom = '0'
     panel.dataset.open = '0'
     from.pos.copy(camera.position); from.quat.copy(camera.quaternion)
     phase = 'out'; k = 0
@@ -675,22 +799,65 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
     opener = null
   }
 
-  panel.querySelector('.work-back').addEventListener('click', e => { e.stopPropagation(); exit() })
-  /* a Work with two stills steps through them on the plate itself */
-  panel.querySelector('.work-plate').addEventListener('click', e => {
+  panel.querySelector('.work-back').addEventListener('click', e => {
     e.stopPropagation()
-    if ((current?.images || []).length > 1) { shot++; paintPlate() }
+    if (zoomed()) setZoom(false); else exit()
   })
+  /**
+   * The picture is a control now, and what it does is change its own size.
+   *
+   * It used to advance to the next still, which was the whole of what a visitor could
+   * do with a set and is the thing he called *"ruim"*. Stepping belongs to the strip,
+   * which shows what it is stepping to; the picture keeps the gesture that its own
+   * cursor advertises — zoom-in, then zoom-out.
+   */
+  const plateEl = panel.querySelector('.work-plate')
+  plateEl.addEventListener('click', e => {
+    e.stopPropagation()
+    if (plateEl.dataset.shot === '1') setZoom(!zoomed())
+  })
+  /* role=button means the keyboard expects both of these to work */
+  plateEl.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return
+    e.preventDefault(); e.stopPropagation()
+    if (plateEl.dataset.shot === '1') setZoom(!zoomed())
+  })
+  panel.querySelector('.work-shot').addEventListener('load', setNatural)
+  /**
+   * The arrows move through the pictures, not through the projects.
+   *
+   * They stepped between Works, which put the panel's largest, most obvious control on
+   * its least likely action — you open a project to read *that* project, and the set of
+   * stills is the thing you actually want to walk. Fernando: *"só removeria a seta pra
+   * trocar de projeto e deixaria ela pra scrollar a imagem dentro da página."*
+   *
+   * Changing project keeps the route it always had and the one that matches the object:
+   * VOLTAR to the index, or the LUA, which is the wheel that selects on that index.
+   */
   for (const b of panel.querySelectorAll('.work-step')) {
-    b.addEventListener('click', e => { e.stopPropagation(); onStep?.(+b.dataset.d, 'request') })
+    b.addEventListener('click', e => { e.stopPropagation(); stepShot(+b.dataset.d) })
   }
   /* click anywhere that is not the Work itself — the dialog convention, and the
      same instinct summon.js had about the Screen being the way back */
-  panel.addEventListener('click', exit)
+  panel.addEventListener('click', () => { if (zoomed()) setZoom(false); else exit() })
   panel.querySelector('.work-frame').addEventListener('click', e => e.stopPropagation())
   addEventListener('keydown', e => {
     if (!(phase === 'held' || phase === 'in')) return
-    if (e.key === 'Escape') { exit(); e.preventDefault(); return }
+    /**
+     * Escape is **not** handled here, deliberately.
+     *
+     * It used to be, and `scene.js` handles it too — Escape is one of four ways into
+     * `moonBack()`, the Unit's own Back. Both fired, so the first Escape on an enlarged
+     * picture closed the enlargement *and* left the project. Stopping the event was the
+     * obvious patch and the wrong one: which handler runs first depends on where the
+     * key was pressed, because a real press targets the focused element and reaches the
+     * window capture listener first, while a synthetic one targets the window and
+     * reaches whichever listener was registered first — `scene.js`, as it happens.
+     *
+     * A back stack with two owners is the bug. There is one now: `moonBack()` calls
+     * `back()` below, and this panel's levels are levels of the Unit's Back like any
+     * other, LCD flash included.
+     */
     /**
      * The arrows mean what is under the hand.
      *
@@ -700,19 +867,20 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
      * what it does. So inside the strip they move the selection and carry focus with
      * it; everywhere else they are unchanged.
      */
-    const inStrip = document.activeElement?.closest?.('.work-strip')
-    if (inStrip && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-      const shots = current?.images || []
-      if (shots.length > 1) {
-        shot += e.key === 'ArrowRight' ? 1 : -1
-        paintPlate()
-        panel.querySelector('.work-strip button[aria-current="true"]')?.focus()
-        e.preventDefault()
+    /* the keys say what the arrows say — everywhere in the panel, not only inside the
+       strip. Two controls with the same shape and different meanings is the bug that
+       the arrows themselves used to be. */
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      if ((current?.images || []).length > 1) {
+        stepShot(e.key === 'ArrowRight' ? 1 : -1)
+        /* keep focus on the thumbnail being moved between, when that is where it is */
+        if (document.activeElement?.closest?.('.work-strip')) {
+          panel.querySelector('.work-strip button[aria-current="true"]')?.focus()
+        }
       }
+      e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation()
       return
     }
-    if (e.key === 'ArrowLeft') { onStep?.(-1, 'request'); e.preventDefault(); return }
-    if (e.key === 'ArrowRight') { onStep?.(1, 'request'); e.preventDefault(); return }
     /**
      * The focus trap.
      *
@@ -756,6 +924,18 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
 
   return {
     enter, exit, update, show,
+    /**
+     * Close one level, and say which one was closed.
+     *
+     * The overlay is two deep — an enlarged picture inside a Work — and the Unit's
+     * Back is the single owner of both. Returns `'zoom'` when it closed the
+     * enlargement and `'work'` when it left the project, so the caller can say the
+     * right thing on the LCD.
+     */
+    back() {
+      if (zoomed()) { setZoom(false); return 'zoom' }
+      exit(); return 'work'
+    },
     /** Browse to the next or previous Work without leaving the overlay. */
     step(d) { if (phase === 'held' || phase === 'in') onStep?.(d, 'request') },
     get active() { return phase !== 'idle' },
