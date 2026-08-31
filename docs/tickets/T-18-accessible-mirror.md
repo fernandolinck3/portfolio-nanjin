@@ -65,6 +65,30 @@ mark that reopens ECLIPSE, and `ABRIR O INSTAGRAM · @NAN._.JIN` on the seventh 
 one is the one that matters** — it is the prize for finding the secret and it is unreachable without a
 pointer. Do not let this ship without them.
 
+## How it stays true — this is a design requirement, not a follow-up
+
+A mirror that has to be *remembered* is a mirror that drifts. Six months from now someone adds a
+section to a case, the Screen shows it, the mirror does not, and nobody finds out because the person
+who would have noticed cannot see the Screen anyway. **Silent drift is the failure mode of this whole
+idea**, so it has to be designed out rather than documented around.
+
+Three layers, in order of strength:
+
+1. **One source, not two renderers.** The mirror renders *from* `src/content/modules.ts`, the same
+   file the Screen reads. Content added there appears in both without anyone doing anything. This is
+   the only layer that actually prevents drift; the other two catch what escapes it.
+2. **A test that fails on drift.** `src/content/modules.test.ts` already asserts things about the
+   content itself. Add the mirror to it: every Module's title and lead, every item's label, and every
+   case section's heading must be findable in the rendered mirror. Adding a Module without mirroring
+   it must turn the suite red. **A rule with no test is a wish.**
+3. **A line where the next person will actually read it.** `CLAUDE.md` — not only this ticket, which
+   is closed once this lands: *anything that changes what the Screen displays changes the mirror in
+   the same commit, and the content lives in `modules.ts` so that both read it.* Add the vocabulary
+   to `CONTEXT.md` too, since "the mirror" becomes a term this project uses.
+
+If the mirror ends up as a second hand-written copy of the content, this ticket has failed even if
+every checkbox below is ticked.
+
 ## Done when
 
 - A screen reader, with the canvas ignored, can learn who Fernando is, list the projects, read a case,
@@ -73,7 +97,8 @@ pointer. Do not let this ship without them.
 - Every control the Screen paints is reachable by Tab and Enter.
 - Changing Module, item or page announces the change — once, and only the part that changed.
 - Tests cover: all six Modules' text present at all times, `aria-current` follows the selection, the
-  mirror's title matches `__unit.nav()` after a Pad press.
+  mirror's title matches `__unit.nav()` after a Pad press, **and the drift test above**.
+- `CLAUDE.md` and `CONTEXT.md` carry the rule and the word.
 
 ## Traps
 
