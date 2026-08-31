@@ -401,7 +401,7 @@ export const MODULES: readonly Module[] = [
      * primeira coisa da tela de identidade e passa a ser desenhado como tal: em
      * blackletter, do mesmo jeito que a abertura o escreve.
      */
-    name: 'Fernando Bittencourt',
+    name: 'Fernando Linck',
     role: 'GROWTH · CRO · EXPERIÊNCIAS DIGITAIS',
     disciplines: ['ESTRATÉGIA', 'MENSAGEM', 'DESIGN', 'FRONT-END', 'ANÁLISE'],
     lead: [

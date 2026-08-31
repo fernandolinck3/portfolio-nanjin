@@ -1861,7 +1861,7 @@ function powerOn(t) {
      * out by a cursor — a dissolve at 320x180 is mush, a cursor running along a
      * line is legible at any size and is what a terminal actually does.
      */
-    const NAME = 'Fernando Bittencourt'
+    const NAME = 'Fernando Linck'
     const shown = NAME.slice(0, Math.round(NAME.length * typeIn))
     g.font = '21px UnifrakturMaguntia, serif'
     g.fillStyle = INK

@@ -1146,12 +1146,17 @@ part to work from, not from taste.
 
 **Older, still open:**
 
-9. **Two names on one object — smaller than it looks.** QUEM and the boot screen both say
-   **Fernando Bittencourt** (`modules.ts:399`). What still says **Fernando Linck** is the `<title>`,
-   the meta description, the Open Graph tags, and the LinkedIn row's display label
-   (`modules.ts:705`) — which has no `act` anyway, because he has never given the URL. The email is
-   `fernandolinck@outlook.com`. He was asked; he ruled on QUEM and not on the rest. Do not guess —
-   it is identity, not layout.
+9. ~~**Two names on one object.**~~ **Ruled 2026-08-31: Fernando Linck, everywhere.** He was asked
+   directly and chose the name the domain, the email and the metadata already used. Applied in the
+   four places that disagreed: `modules.ts` (QUEM), `prototype/screen/render.js` (the boot screen's
+   `NAME`), and the root `index.html`'s title and description — that last one is the dormant `src/`
+   entry, changed so it cannot ship the old name if `T-04` ever lands. `prototype/index.html` already
+   said Linck in every tag and was not touched. **Nothing on the object says Bittencourt any more.**
+
+   Still open beside it: the LinkedIn row has a label and **no URL**, so it does not act. And the
+   root `index.html` positions him as *"frontend developer with a marketing perspective"* while the
+   shipped page says *"growth, CRO e experiências digitais"* — two different self-descriptions in one
+   repo. Only one of them ships today. Not touched: it is positioning, which is his.
 10. **`www.nanj.in` has no certificate.** It resolves and redirects over plain HTTP; over HTTPS it
     hits GitHub's `*.github.io` cert and warns. Covering it means making `www` canonical, which is
     ugly on a four-letter domain. Deliberate, and his call.
