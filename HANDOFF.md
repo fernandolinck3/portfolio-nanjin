@@ -41,6 +41,151 @@ the packer note below) whenever Pages moves.
 **That is done.** It is on his domain, over HTTPS, rebuilt on every push. What the work is *about*
 now is the object itself, and the standing brief for that is the long list under *Open*.
 
+## What changed on 2026-08-31 — the project overlay is the architecture he asked for
+
+*Open #1, built and measured in a real tab. `prototype/focus.js` only, plus one line of
+`modules.ts`. Everything below is a number read off the running page, not an impression.*
+
+### The header is fixed because the grid has a row that can be zero
+
+The panel was one flex row: the image beside a single column that carried the number, the
+title, the summary **and** the case — and that column was the `overflow:auto` element. So
+the title scrolled away. Two flicks into Graecus and nothing on screen said which project
+was open. A header that scrolls is not a fixed header.
+
+It is now a grid of named areas, and only one of them scrolls:
+
+```
+  back   back   back      the way out
+  media  head   rail      60% image · 40% title+summary · the indicator
+  media  text   rail      the case, and the only scrollport in the panel
+```
+
+`head` and `text` share a column, so the rule under the header runs the width of the reading
+column and the case hangs off it — the Screen's own relationship between a page and its
+header rule, at full size.
+
+**Two grid traps, both hit, both the same mistake on different axes.** A track's automatic
+minimum is its content's min-content size, so `1fr` is not a promise of anything:
+
+- The scroll row needs `minmax(0, 1fr)`. Without the `0`, the row takes its size from the
+  `overflow:auto` child's *content*, the frame grows, and nothing ever scrolls.
+- The columns need `minmax(0, 3fr) minmax(0, 2fr)`. Without them, a stretched plate carrying
+  an `aspect-ratio` asked for height × 1.6 of width and took it out of the reading column,
+  **which came out 127px wide with the title on four lines.** Measured, not guessed.
+
+The rail's track is a fixed `22px` rather than `auto`, because the rail hides itself on a case
+that fits and a collapsing track moved the 60/40 split nine pixels between one project and the
+next. All three projects now measure 642 / 428 — 60.0%.
+
+### The scrollbar is drawn now, in the object's vocabulary
+
+The native scrollbar was the one piece of the operating system this object never invited in.
+It is gone (`scrollbar-width:none`, `::-webkit-scrollbar` at zero) and a rail took its place:
+**one mark per section of the case**, placed at the section's own share of the scroll height,
+the current one brass and long, a Silkscreen counter under them. The marks are buttons, so the
+rail is also the way to any section.
+
+It is a map, not a thumb — it says how many sections there are and which one is under the eye.
+It **hides itself** when the case fits, which is why Miscelânea has no rail: one section, no
+overflow, nothing to indicate. Verified: Graecus 6 marks reading `01/06` at the top and `06/06`
+at the floor, Portfólio 5, Miscelânea hidden.
+
+### The first fold holds, and it was measured rather than hardcoded
+
+His brief asks for project, context and construction **without scrolling**. Nothing names those
+headings in the code — the three projects do not share a section list (Graecus has CONTEXTO and
+BLOG, Portfólio has MOTIVO and REFERÊNCIAS), so hardcoding names would silently drop CONSTRUÇÃO
+below the fold on one of them. The fold is a *result*: at `scrollTop === 0`, the third section's
+last paragraph ends inside the port. Both real cases measure **3 of their sections complete in
+the first fold** at 883px tall, 4 at 1192.
+
+### The frame is the work's own shape, and the work has an alt
+
+The image was a `background` in a fixed 16:10 box, which is two bad fits at once: a widescreen
+capture left two hundred pixels of nothing under it, and a portrait poster floated small in the
+middle of a landscape frame. **Stretching the box to the column only moved that emptiness inside
+the border** — it was tried, it looked worse, and that is why the border now belongs to a real
+`<img>` capped by the column instead of shaped by it.
+
+Measured: the Graecus capture (1265×712) frames at 642×363, the Miscelânea poster (1080×1350)
+at 590×737. Each is framed exactly, no letterbox in either direction. Being an element rather
+than a background also gives the work an `alt` — *"Graecus — imagem 3 de 8"* — and until now the
+actual work was invisible to a screen reader, which is the wrong thing for the DOM-is-truth half
+of this panel to be missing. The counter moved out from on top of the picture and became its
+caption.
+
+### The images are shown now, not stepped through blind
+
+His words on the first build: *"as fontes fazem mais sentido e a diagramação, mas a maneira
+de interagir com as imagens ainda está ruim."* The fonts and the layout were the two things
+that had just changed, so the complaint is precisely about the one thing that had not.
+
+The mechanism: clicking the picture advanced to the next and wrapped, and that was the whole
+of what a visitor could do. Eight Graecus captures meant clicking in the dark, one at a time,
+with no way back and no idea what was coming — and a counter reading `3 / 8` tells you that
+you are lost, it does not help you.
+
+So the images get what the case got: **a map**. Every still is a thumbnail on a strip under
+the picture, the current one lit in brass, and any of them is one click away. Same principle
+as the section rail, one axis over. The picture still advances on click — that is now a
+shortcut through something visible rather than the only way through something that is not.
+The strip scrolls sideways when it is wider than the column and keeps the lit thumbnail in
+view; it is absent below two images, so Portfólio has none and Miscelânea has three.
+
+It is built once per project rather than once per still. Rebuilding eight thumbnails to
+change which one is lit throws away the element the visitor is about to click, and the
+strip's scroll position with it.
+
+**The strip is one tab stop, not eight.** Adding it took Graecus from 9 keyboard stops to 18,
+all of them between VOLTAR and the writing — reaching the case by keyboard meant nine presses
+through pictures of the same project. Roving `tabindex` puts the lit thumbnail in the tab order
+and takes the rest out: 11 stops now, and inside the strip the arrows move between *images*
+rather than between projects, because with a thumbnail focused that is what a right arrow
+plainly means. `focusables()` gained a `tabIndex >= 0` test to match — a `button` matches the
+selector whatever its tabindex, so the trap's own list disagreed with the browser's tab order.
+The ends were right by luck; they are right by construction now. Verified: first stop VOLTAR,
+last a step arrow, Shift+Tab and Tab wrap at both ends, focus returns to the opener on exit.
+
+### Mobile is his order, verified at 402×874
+
+Not on a phone — in a same-origin iframe with a real 402px viewport, because the window would
+not resize. **This is still not item 7 in *Open*; nobody has held a phone.**
+
+Back sticky at the top (y = 14 before and after a 400px scroll), then the image, then the title
+and summary, then the case. The frame itself is the scrollport, the rail is gone with the second
+column, and the prev/next arrows leave the edges of the image for a pair of **46×46** targets
+above the home indicator. No horizontal scroll, no native scrollbar.
+
+**One bug caught only here, and only by a portrait image.** `min-height:0` is the desktop rule
+that lets the plate shrink inside a fixed row; carried into the mobile grid it let the row
+compress the media block below its content, and flex-shrink then took it out of the picture and
+the strip together — a 1200×1500 capture came out **146px wide** with the thumbnails crushed to a
+19px band. Landscape stills hid it completely, because they never asked for the height. The plate
+is `align-self:start; min-height:auto` there now, and the strip and caption are `flex:0 0 auto`,
+so a squeeze can only ever fall on the picture. Measured after: 363×206 landscape, 349×436
+portrait against a 436px ceiling.
+
+### Two "em breve" removed, both of them promises the object could not keep
+
+- Miscelânea said *"A primeira seleção será publicada em breve"* while three real pieces were
+  already in `images`. A gallery that shows work and says the work is coming contradicts itself
+  on the same screen. It now says the first pieces are here and the archive is growing. Still
+  `empty: true`, still no date, because no date was decided.
+- Every other project's case ended with *"Confira o case com mais detalhes — em breve."* There
+  is no longer case, no page for it to live on and nothing scheduled. `.work-more` is empty and
+  collapses; the slot is still there for a real destination.
+
+### Left alone on purpose
+
+- **Escape, the focus trap and focus returning to the opener were already right** and were not
+  touched.
+- **The case prose is untouched.** It is in my voice, which is under *Blocked on Fernando*, and
+  writing three more cases would add to a pile he has already flagged rather than clear it.
+- **Portfólio has no images at all**, so its media column is empty — the flagship project opens
+  on a blank 60%. That is content, not layout, and it is part of Open #3.
+- `prototype/explode.js` still carries 30 uncommitted lines from the session before this one.
+
 ## What changed on 2026-08-29 — analytics, and one thing waiting on him
 
 `prototype/track.js` pushes seven events to `dataLayer` and nothing else — no tag, no
@@ -827,21 +972,21 @@ Two more from the same day, different class:
 **His standing brief, given 2026-08-28 and mostly not started.** It is long and specific; this is the
 part to work from, not from taste.
 
-1. **The project overlay's architecture.** Desktop 60% media / 40% content, a fixed textual header
-   with back-title-summary, the first fold explaining project, context and construction *without
-   scrolling*, the rest scrolling with an indicator in the object's own style rather than a white
-   scrollbar. Mobile: one column, back fixed at the top, image first. Escape, focus trap, and focus
-   returned to the project that opened it. The panel currently has the right typefaces and a blurred
-   backdrop; the architecture is still the old one.
+1. ~~**The project overlay's architecture.**~~ **Done 2026-08-31** — see the section above. Every
+   part of the brief is built and measured: 60/40, the fixed header, three sections in the first
+   fold, the drawn indicator, and his mobile order. The one thing it does not close is item 7
+   below: the phone layout was verified in a 402px iframe, not in a hand.
 2. **The accessible mirror of the LCD.** *The biggest real gap in the project.* The controls have
    accessible names but the live content lives only in the canvas. Needs a semantic HTML mirror of
    the current state — active Module, selected item, page title, shown content, position, available
    action — with short announcements for state changes rather than re-reading everything. The canvas
    stays visually sovereign; the HTML becomes the accessible representation of the same state.
 3. **Per-project case content.** Portfolio should present the system as the project — boot, modules,
-   decks, LYRA, interactions, ECLIPSE. Graecus should tie the eight captures to the WordPress build.
-   Miscelânea is a gallery in formation with little text, and **must stop saying the content is
-   coming "em breve"** now that real pieces are in it.
+   decks, LYRA, interactions, ECLIPSE, and **it has no images at all**, so the overlay opens it on an
+   empty media column. Graecus should tie the eight captures to the WordPress build. ~~Miscelânea
+   must stop saying the content is coming "em breve"~~ — done 2026-08-31, along with the same promise
+   under every other case. The prose itself is still mine, which is why it is still under *Blocked on
+   Fernando* rather than here.
 4. **Boot in 2–2.5s.** The opening is about five. Keep the ritual, make the content usable sooner,
    and run the full animation only on the first visit of a session.
 5. **PROJETOS: the SUN should reveal a short preview** of the selected project — one factual line,

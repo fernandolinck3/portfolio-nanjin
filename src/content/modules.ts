@@ -359,13 +359,18 @@ export function caseOf(id: string): readonly Section[] {
       ],
     },
   ]
+  /* Miscelânea não tem case, e a última linha desta seção prometia uma "primeira
+     seleção em breve" quando ela já tinha entrado: três peças reais estão em
+     `images`. Uma galeria que mostra obra e diz que a obra ainda vem se contradiz na
+     mesma tela. O que segue verdadeiro é que ela está em formação — isso é dito, e
+     nenhuma data é prometida, porque nenhuma foi decidida. */
   return [
     {
       heading: 'EM CONSTRUÇÃO',
       lines: [
         'Uma galeria em construção para reunir pôsteres,',
         'composições e estudos visuais em um mesmo arquivo.',
-        'A primeira seleção será publicada em breve.',
+        'As primeiras peças já estão aqui; o arquivo cresce.',
       ],
     },
   ]
