@@ -44,6 +44,7 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-15 | [Canvas controls need a DOM twin](T-15-canvas-controls-need-a-dom-twin.md) | A | — | absorbed by the accessible mirror |
 | T-16 | [An index that does not fit must say so](T-16-an-index-that-does-not-fit-must-say-so.md) | B | — | absorbed by whichever Module grows first |
 | T-17 | [PROJETOS never invites the SUN](T-17-projetos-never-invites-the-sun.md) | B | — | absorbed by the PROJETOS preview |
+| T-19 | [Split the handoff](T-19-split-the-handoff.md) | A | — | ready — branch `memoria` |
 
 ## Standing rules for every ticket
 
