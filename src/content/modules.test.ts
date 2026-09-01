@@ -248,13 +248,23 @@ describe('what the content is allowed to claim', () => {
   })
 
   /**
-   * A route with no address renders as text and must never become a link. Guessing
-   * a LinkedIn slug from a name is the invention PRODUCT.md forbids, and this is
-   * the tripwire for someone later "fixing" the missing URL.
+   * The tripwire that used to assert LINKEDIN had no route at all.
+   *
+   * It stayed inert for several sessions because guessing a slug from a name is the
+   * invention PRODUCT.md forbids. Fernando gave the address on 2026-09-01 and the row
+   * started acting in the same commit — which is the order this test exists to
+   * protect. It cannot check provenance, so it checks the shape a guess would fail:
+   * an absolute https address on the host it claims to be.
    */
-  it('never links a route whose address is not known', () => {
-    const linkedin = items.find(({ i }) => i.meta === 'LINKEDIN')!
-    expect(linkedin.i.act).toBeUndefined()
+  it('links only addresses that are real and absolute', () => {
+    const urls = items.flatMap(({ i }) => (i.act?.kind === 'url' ? [i.act.value] : []))
+    expect(urls.length).toBeGreaterThan(0)
+    for (const u of urls) expect(u).toMatch(/^https:\/\/[^/\s]+\.[^/\s]+\//)
+    const act = items.find(({ i }) => i.meta === 'LINKEDIN')!.i.act
+    expect(act).toMatchObject({ kind: 'url' })
+    /* `in` narrows: the form route carries no address, and the union says so. */
+    expect(act && 'value' in act ? act.value : '')
+      .toMatch(/^https:\/\/(www\.)?linkedin\.com\/in\//)
   })
 })
 

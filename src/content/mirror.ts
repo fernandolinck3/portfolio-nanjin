@@ -89,12 +89,34 @@ ${item.sections.map(s => `        <h4>${esc(s.heading)}</h4>
  * leitor de tela, sem virar dezessete paradas de Tab para quem enxerga. A camada de
  * DOM acende o Módulo vivo.
  */
+/**
+ * O endereço de uma rota, como endereço.
+ *
+ * O botão do item existe para dirigir o Unit — o SOL é que abre a rota, e o clique no
+ * espelho faz o mesmo caminho. Isso serve a quem tem a página aberta e não serve a
+ * mais ninguém: um ATS, um leitor de tela lendo linearmente e o Google encontram o
+ * rótulo "Fernando Linck" sob LINKEDIN e nenhum jeito de chegar lá.
+ *
+ * Então o endereço vem junto, como `<a href>`, ao lado do botão em vez de no lugar
+ * dele. Aditivo de propósito: a fiação do canvas não muda, e quem lê sem executar
+ * nada passa a ter o que seguir. `mailto:` inclusive — é a rota que o T-24 chama de
+ * primária.
+ */
+const addressOf = (item: Item) => {
+  const a = item.act
+  if (!a || (a.kind !== 'mail' && a.kind !== 'url')) return ''
+  const href = a.kind === 'mail' ? 'mailto:' + a.value : a.value
+  const text = a.kind === 'mail' ? a.value : a.value.replace(/^https?:\/\//, '')
+  return `      <p><a href="${esc(href)}">${esc(text)}</a></p>`
+}
+
 const itemHTML = (mod: Module, m: number, item: Item, i: number) => {
   const work = mod.id === 'projects' ? WORKS.find(w => w.id === item.id) : undefined
   return `
     <li>
       <h3><button type="button" ${HOOK.item}="${itemKey(m, i)}" tabindex="-1">${esc(item.label)}</button></h3>
 ${item.meta ? `      <p>${esc(item.meta)}</p>` : ''}
+${addressOf(item)}
 ${work ? `      <p>${esc([work.kind, work.client, work.year].filter(Boolean).join(' · '))}</p>
 ${para(work.blurb)}` : ''}
 ${sectionsOf(m, i, item)}

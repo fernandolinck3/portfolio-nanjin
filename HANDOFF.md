@@ -269,7 +269,7 @@ part to work from, not from taste.
   `work`, `image`, `route`, `face`), and rule on consent. Detail in `docs/log/2026-08.md`.
 - **He has not seen the image-based Decks**, nor the project overlay built on 2026-08-31. Both were
   verified in an automated tab; his judgement is the thing missing.
-- **The LinkedIn URL.** `modules.ts` has the name "Fernando Linck" and no link. Instagram has both.
+- ~~**The LinkedIn URL.**~~ **Given 2026-09-01** — `https://www.linkedin.com/in/fernandolinck/`. The row acts now; it had stayed inert rather than guess a slug, which is why there was nothing to unpick when the address arrived.
 - **The PATH glossary rename** — needs his word, and a `CONTEXT.md` entry when it lands.
 - **RACK contents** (T-13) — slot 4 still lists influences, not tools. Blocked four sessions.
 - **His own voice.** QUEM, CRITÉRIOS and Lyra's lines are mine. They are honest and they are not his.

@@ -720,13 +720,16 @@ export const MODULES: readonly Module[] = [
         act: { kind: 'url', value: 'https://instagram.com/nan._.jin' },
         sections: [{ heading: 'INSTAGRAM', lines: ['Toque na linha para abrir.'] }],
       },
-      /* Sem `act`: adivinhar um endereço do LinkedIn a partir de um nome é exatamente
-         a invenção que o PRODUCT.md proíbe. Fica como texto até ele informar. */
+      /* Ficou sem `act` por várias sessões, e de propósito: adivinhar um endereço do
+         LinkedIn a partir de um nome é exatamente a invenção que o PRODUCT.md proíbe.
+         O endereço veio dele em 2026-09-01 e a rota passou a agir no mesmo commit —
+         que é a ordem certa, e a razão de a linha ter ficado inerte em vez de chutar. */
       {
         id: 'in',
         label: 'Fernando Linck',
         meta: 'LINKEDIN',
-        sections: [{ heading: 'LINKEDIN', lines: ['Endereço ainda não informado.'] }],
+        act: { kind: 'url', value: 'https://www.linkedin.com/in/fernandolinck/' },
+        sections: [{ heading: 'LINKEDIN', lines: ['Toque na linha para abrir.'] }],
       },
     ],
     lyra: {
