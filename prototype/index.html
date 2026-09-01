@@ -93,10 +93,21 @@
   } catch (e) { /* storage blocked: no decision can be remembered, so none is assumed */ }
 </script>
 
-<!-- A four-pointed star, the same one the lamp row is cut from. Inline, because one
-     more request for 300 bytes is a request too many and a missing favicon is a
-     browser-drawn placeholder in every tab. -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230A0A0B'/%3E%3Cpath d='M16 3 L19 13 L29 16 L19 19 L16 29 L13 19 L3 16 L13 13 Z' fill='%23C9BE96'/%3E%3C/svg%3E">
+<!-- A candle, which is what the object is named after: Tenebrae is the rite where the
+     lights go out one at a time, and the three Candles on the Altar are the Vigil's
+     visible body (CONTEXT.md). It replaced a four-pointed star that cited the lamp row —
+     a true reference to a smaller thing.
+
+     Inline, because one more request for 300 bytes is a request too many and a missing
+     favicon is a browser-drawn placeholder in every tab.
+
+     Two things here are load-bearing at 16px, which is the only size that matters:
+     the two-unit gap between flame and body is what reads as "candle" rather than as a
+     blob on a stick — closing it up to tidy the shape destroys the icon — and the taper
+     a real candle has was tried and dropped, because at 16px it costs a pixel of the
+     silhouette and returns nothing the eye can see. Flame and body are the same brass:
+     a warm flame would be a third value on the most reduced surface the site has. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230A0A0B'/%3E%3Cpath d='M16 3 C18.5 7 19.5 8.5 19.5 10.5 a3.5 3.5 0 0 1-7 0 C12.5 8.5 13.5 7 16 3 Z' fill='%23C9BE96'/%3E%3Crect x='12' y='17' width='8' height='13' fill='%23C9BE96'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=Azeret+Mono:wght@400;500&family=UnifrakturMaguntia&family=Pirata+One&family=Grenze+Gotisch:wght@400;600&family=Silkscreen:wght@400;700&family=VT323&display=swap">
 <style>
   *{box-sizing:border-box} html,body{height:100%;margin:0;overflow:hidden;background:#0A0A0B}
