@@ -1,4 +1,4 @@
-# Tenebrae — Fer Bittencourt portfolio
+# Tenebrae — Fernando Linck portfolio
 
 `HANDOFF.md` carries the state of the work and the decisions already settled — read it first.
 `docs/log/` is the diary and is optional. This file carries only the traps that have cost time more

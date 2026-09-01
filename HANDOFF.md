@@ -1,4 +1,4 @@
-# Handoff — Fer Bittencourt portfolio ("Tenebrae")
+# Handoff — Fernando Linck portfolio ("Tenebrae")
 
 **Date:** 2026-08-31 · **Repo:** `~/dev/fernando-portfolio` · **Branch:** `lyra`
 **Remote:** https://github.com/fernandolinck3/tenebrae · **Live:** https://nanj.in

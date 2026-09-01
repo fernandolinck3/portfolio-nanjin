@@ -1,4 +1,4 @@
-# Context — Fer Bittencourt Portfolio ("Tenebrae")
+# Context — Fernando Linck Portfolio ("Tenebrae")
 
 The portfolio is a single physical instrument rendered in real-time WebGL, viewed top-down, on one
 screen with no page scroll. It is Fernando's first public project and its own Project 001. This file
@@ -34,6 +34,11 @@ The few degrees of damped rotation the Unit follows the pointer with. Bounded so
 and back are never exposed. There is no orbit and no inspect mode.
 _Avoid_: orbit, inspect, rotation
 
+**Os seis Módulos**:
+QUEM · PROJETOS · TRAJETO · CRITÉRIOS · HABILIDADES · CONTATO — nesta ordem, e são exatamente
+seis (ADR-0001). Os nomes vivem em `src/content/modules.ts`; se divergirem daqui, o código está
+certo e este arquivo está velho. O ECLIPSE não é um sétimo.
+
 **Screen**:
 The display set into the Plate. The only place Module content appears. It is a Part of the Unit, not
 a browser viewport — "the screen" never means the visitor's monitor.
@@ -68,11 +73,16 @@ One of the six content views — Ident, Now/Next, Project 001, Rack, Method, Out
 and the Screen renders. The Unit has exactly six; there is no seventh and no sub-navigation.
 _Avoid_: page, section, tab, slide, view
 
-**Rack**:
+**Rack** — *o nome, não o Módulo. Ver HABILIDADES.*
 The Module holding the tools and technologies Fernando actually works with — the eurorack sense of
 a rack: the set of modules you own and patch together. Every entry must be verifiable, ideally
 against this Unit itself.
 _Avoid_: crate, stack, skills, tech list
+
+> **Não existe um Módulo chamado Rack no objeto** (constatado 2026-09-01, T-25). O slot 5 é
+> **HABILIDADES**, e hoje ele lista influências em vez de ferramentas — que é precisamente o que
+> T-13 existe para corrigir, e está bloqueado nele. O termo fica aqui porque é o conteúdo que se
+> pretende; o nome do Módulo na tela é HABILIDADES.
 
 Because the Pads are the only navigation, every Module must fit the Screen exactly. Nothing scrolls.
 The one exception is Project 001, where the rows of the series are clickable — selection *within* a
@@ -203,10 +213,15 @@ _Avoid_: slider, fader (bare)
 The Unit itself, treated as Fernando's first public project. Work is numbered from here; 002 and
 onward join the same series.
 
-**Now / Next**:
-The thesis the Crossfader carries. *Now* is what is demonstrable today — frontend, marketing.
-*Next* is the stated direction — AI, automation, analytics — always future-tense, never claimed as
-experience. See ADR-0005.
+**Now / Next** — *a regra, não mais um Módulo nem o Crossfader.*
+*Now* is what is demonstrable today — frontend, marketing. *Next* is the stated direction — AI,
+automation, analytics — always future-tense, never claimed as experience. See ADR-0005 and
+`PRODUCT.md`.
+
+> **O Crossfader não carrega mais esta tese** (2026-08-28): ele virou a luz, de noite a dia
+> (`scene.js`, `wantVigil = 1 - xfVal`). E **não existe mais um Módulo Now/Next** — ele não
+> sobreviveu à reescrita da navegação. O que sobrevive é a regra de tempo verbal acima, que é de
+> conteúdo e vale em qualquer Módulo que fale de direção.
 
 **Mirror** (o espelho):
 The Screen's content as semantic HTML, in the document, in step with the canvas. Not a fallback and

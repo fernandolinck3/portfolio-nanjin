@@ -79,24 +79,40 @@ type Module =
   | { kind: 'steps';  title: string; steps: string[] }
 ```
 
-| Slot | Module | Shape | Status |
+*Corrigido em 2026-09-01 (T-25). A tabela abaixo nomeava seis Módulos que não existem
+— Ident, Now/Next, Project 001, Rack, Method, Out — com formatos que também não
+existem. Os nomes de verdade estão em `src/content/modules.ts` e são estes:*
+
+| Slot | Módulo | `layout` | Estado |
 |---|---|---|---|
-| 1 | Ident | `prose` | placeholder copy, needs a pass |
-| 2 | Now / Next | `thesis` | copy approved in substance; Next side is future-tense throughout (ADR-0005) |
-| 3 | Project 001 | `prose` | placeholder copy, needs a pass |
-| 4 | Rack | `table` | **blocked on Fernando** — currently renders influences, not tools. T-13 |
-| 5 | Method | `steps` | placeholder copy, needs a pass |
-| 6 | Out | `prose` + `mail` | contact email is real; treat as PII, keep it out of logs and fixtures |
+| 1 | QUEM | `identity` | nome, papel e disciplinas; a prosa ainda é minha (ver *Blocked on Fernando*) |
+| 2 | PROJETOS | `list` | três Works reais; os cases abrem no overlay, não em páginas |
+| 3 | TRAJETO | `nodes` | cronologia |
+| 4 | CRITÉRIOS | `index` | como ele trabalha |
+| 5 | HABILIDADES | `grid` | **onde o Rack iria.** Hoje lista influências e não ferramentas — T-13, bloqueado nele |
+| 6 | CONTATO | `list` | e-mail, Instagram, LinkedIn e o formulário (ADR-0027). O e-mail é real: trate como dado pessoal, fora de log e de fixture |
+
+**Não existe um sétimo Módulo e não haverá (ADR-0001).** O ECLIPSE não é um.
+
+**`Now / Next` saiu do objeto.** Era um Módulo com a tese que o Crossfader carregava; o
+Crossfader virou a luz em 2026-08-28 e o Módulo não sobreviveu à reescrita. O que
+**continua valendo** é a regra da ADR-0005 e do `PRODUCT.md`: o que é direção se escreve
+no futuro e nunca se afirma como experiência. A regra é de conteúdo, não daquele Módulo.
 
 ### 3.1 The Screen budget
 
-The Screen texture is 1024 × 576 and draws far smaller on the Plate. These are hard caps, not
-guidelines — over them, a Module either overflows the Screen or goes illegible:
+**A textura da Screen é 320 × 180**, não 1024 × 576. O número errado ficou aqui por
+várias sessões chamado de *"hard cap"*, e todo orçamento de caracteres calculado contra
+ele saiu 3,2× errado. `prototype/screen/render.js:6` é a fonte: `const W = 320, H = 180`.
 
-- `prose` — **4 lines**, ~52 characters each, plus **2 dim lines** at ~58 characters.
-- `thesis` — one heading and **4 lines** per side.
-- `table` — **5 rows**, three columns.
-- `steps` — **6 steps**, one line each.
+Os limites por formato **não são repetidos aqui**, e é de propósito: eles vivem em
+`SCREEN_BUDGET`, em `src/content/modules.ts`, ao lado do texto que eles limitam e com o
+raciocínio de cada número escrito junto. Duplicá-los neste arquivo foi exatamente o que
+produziu a divergência que o T-25 veio consertar — um documento que repete um número que
+o código também guarda é um documento que vai mentir na primeira mudança.
+
+Leia `SCREEN_BUDGET` antes de escrever conteúdo. O que ele diz continua sendo um teto
+duro: acima dele, um Módulo transborda a Screen ou fica ilegível.
 
 Any content change is checked at render size, not in the source file. Fine work below ~5px of texture
 weight disappears entirely.

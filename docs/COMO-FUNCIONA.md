@@ -135,15 +135,22 @@ Detalhe em `docs/analytics/README.md`.
 
 ### Curto — depende só de uma resposta tua
 
-- **O ID do GA4** (`G-XXXXXXXXXX`), para ligar a medição.
-- **O nome público.** A tela *Quem* diz *Fernando Bittencourt*; o título da aba, os
-  metadados e o LinkedIn ainda dizem *Fernando Linck*. Preciso saber qual é.
-- **Gravar o vídeo do story.** Está construído (`?film`) e nunca rodou.
+- ~~**O ID do GA4.**~~ **Resolvido** — `G-3GV5YJ7VV4`. O container está publicado, os
+  eventos chegam, e há uma barra de consentimento que só carrega a medição depois do sim
+  (ADR-0027 e `docs/analytics/README.md`).
+- ~~**O nome público.**~~ **Resolvido em 2026-08-31: Fernando Linck, em tudo.** Nada no
+  objeto diz Bittencourt.
+- ~~**O endereço do LinkedIn.**~~ **Dado em 2026-09-01.** A linha ficou inerte por várias
+  sessões em vez de chutar um endereço, e por isso não houve nada para desfazer.
+- **Gravar o vídeo do story.** Está construído (`?film`) e nunca rodou. **É o único item
+  curto que continua aberto.**
 
 ### Trabalho de verdade
 
-- **Espelho acessível do mostrador.** Hoje o conteúdo existe só dentro do desenho —
-  quem usa leitor de tela não alcança. É a maior lacuna real do projeto.
+- ~~**Espelho acessível do mostrador.**~~ **Feito em 2026-09-01.** Todo o conteúdo
+  existe como HTML de verdade, escrito na página antes de qualquer script rodar: leitor
+  de tela, busca da página, Google e sistemas de recrutamento leem tudo. Eram 465
+  caracteres legíveis; são 5.827. Era a maior lacuna real do projeto e deixou de ser.
 - **A arquitetura do painel de case**: 60% imagem, 40% texto, cabeçalho fixo, primeira
   dobra sem rolagem.
 - **Conteúdo dos cases** por projeto.
