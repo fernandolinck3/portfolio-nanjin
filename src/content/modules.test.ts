@@ -8,7 +8,7 @@
  */
 import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { GAP, MODULES, SCREEN_BUDGET, WORKS, LYRA_IDLE_MS, moduleAt, lyraAt, workById } from './modules'
+import { GAP, MODULES, SCREEN_BUDGET, WORKS, LYRA_IDLE_MS, moduleAt, lyraAt, workById, caseOf } from './modules'
 import { HOOK, itemKey, mirrorHTML } from './mirror'
 
 /**
@@ -443,5 +443,36 @@ describe('the mirror', () => {
   /** Text is text. The content has an `@`, an `&`-free path, and quotes are coming. */
   it('escapes rather than injects', () => {
     expect(mirrorHTML()).not.toMatch(/<script/i)
+  })
+})
+
+/**
+ * The fold is a promise about *which* sections, not how many.
+ *
+ * The brief asked for project, context and construction without scrolling. The build
+ * satisfied a count of three instead, and on Portfólio the third section was
+ * REFERÊNCIAS while CONSTRUÇÃO sat fourth — below the fold, on the flagship. Graecus
+ * happened to pass because its third section already was CONSTRUÇÃO, which is exactly
+ * why a count could look green while the requirement failed.
+ *
+ * Section names are not hardcoded anywhere in the renderer and must not be: the cases
+ * do not share a section list. They are asserted here, once, where a reordering that
+ * pushes construction back down fails loudly instead of silently.
+ */
+describe('the first fold carries the brief', () => {
+  for (const id of ['portfolio', 'graecus']) {
+    it(`opens ${id} with construction inside the first three sections`, () => {
+      const headings = caseOf(id).map(s => s.heading)
+      expect(headings.length).toBeGreaterThan(2)
+      expect(headings.slice(0, 3)).toContain('CONSTRUÇÃO')
+    })
+  }
+
+  /**
+   * Miscelânea is the single-section case, and it is the reason the rail stopped
+   * requiring two headings: one section that overflows still has to say so.
+   */
+  it('leaves the single-section case alone, and it is still one section', () => {
+    expect(caseOf('miscelanea').map(s => s.heading)).toEqual(['EM CONSTRUÇÃO'])
   })
 })

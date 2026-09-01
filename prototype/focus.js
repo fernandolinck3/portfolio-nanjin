@@ -253,6 +253,32 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
         "media head  rail"
         "media text  rail"; }
 
+    /**
+     * A case with no stills is a reading page, not a picture page with a hole in it.
+     *
+     * Portfólio has no images, so the 60/40 grid drew a black 55% column and the
+     * footer went on telling the visitor to click images to enlarge them. Stretching
+     * the prose across the whole frame only moves the emptiness — body copy caps
+     * itself at 62ch, so the extra width lands as dead space beside it, which is the
+     * same mistake the image frame made before it was capped by the column.
+     *
+     * So the frame narrows to the reading measure instead, and the media area leaves
+     * the grid. The rail's track stays: it is reserved rather than measured, for the
+     * same reason it always was.
+     */
+    .work-panel[data-media="0"] .work-plate,
+    .work-panel[data-media="0"] .work-hint { display:none; }
+
+    @media (min-width: 861px) {
+      .work-panel[data-media="0"] .work-frame {
+        width:min(900px, 92vw);
+        grid-template-columns:minmax(0, 1fr) 22px;
+        grid-template-areas:
+          "back  back"
+          "head  rail"
+          "text  rail"; }
+    }
+
     .work-back { grid-area:back; justify-self:start; align-self:start;
       background:rgba(10,9,8,.6); cursor:pointer; border:1px solid #4A4136; color:#C9C2B0;
       padding:11px 18px; font-size:10px; letter-spacing:.24em; transition:.18s; }
@@ -506,6 +532,9 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
       img.alt = ''
     }
     plate.dataset.many = n > 1 ? '1' : '0'
+    /* no stills at all: the media column leaves the grid rather than standing
+       there empty, and the hint that says to click them goes with it */
+    panel.dataset.media = n ? '1' : '0'
     /* the arrows walk the set, so a Work without one has no arrows at all */
     panel.dataset.shots = n > 1 ? '1' : '0'
     /* a figure with no picture in it is not a control, so it leaves the tab order */
@@ -684,10 +713,12 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
    * sections there are and which one is under the eye. The marks are buttons because
    * a map you can point at is worth more than one you can only read.
    *
-   * It hides itself unless there is both something to scroll *and* more than one
-   * section to move between. An indicator for a case that fits is furniture, and the
-   * whole reason the native scrollbar was removed was that it was furniture from
-   * somewhere else.
+   * It hides itself when the case fits, and only then. An indicator for a case that
+   * fits is furniture, and the whole reason the native scrollbar was removed was that
+   * it was furniture from somewhere else — but a case that *does* scroll must show
+   * one, whatever its section count. It used to also require two headings, which left
+   * a long single-section case scrolling with no indicator at all and no native bar to
+   * fall back on, because `scrollbar-width:none` had already taken that away.
    */
   let headTops = []
 
@@ -702,7 +733,7 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
 
     marks.innerHTML = ''
     headTops = []
-    rail.hidden = !overflows || heads.length < 2
+    rail.hidden = !overflows
     if (rail.hidden) { panel.querySelector('.work-pos').textContent = ''; return }
 
     const span = text.scrollHeight

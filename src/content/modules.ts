@@ -269,6 +269,10 @@ export const REAL_WORKS = WORKS.filter(w => !w.empty).length
  */
 export function caseOf(id: string): readonly Section[] {
   if (id === 'portfolio') return [
+  /* A ordem é o briefing, não uma preferência: ele pediu projeto, contexto e
+     construção sem rolar. CONSTRUÇÃO era a quarta seção e caía abaixo da dobra —
+     Graecus já a tinha em terceiro e passava, este case não. REFERÊNCIAS desceu
+     um lugar; ela informa, mas não é o que ele pediu que aparecesse primeiro. */
     {
       heading: 'VISÃO GERAL',
       lines: [
@@ -286,19 +290,19 @@ export function caseOf(id: string): readonly Section[] {
       ],
     },
     {
-      heading: 'REFERÊNCIAS',
-      lines: [
-        'Mapas celestes, gravuras esotéricas, mecanismos',
-        'analógicos e terminais monocromáticos, combinados como',
-        'princípios de interação e materialidade.',
-      ],
-    },
-    {
       heading: 'CONSTRUÇÃO',
       lines: [
         'Three.js cuida do objeto, dos materiais e da iluminação.',
         'Uma camada semântica em HTML mantém textos e controles',
         'legíveis, testáveis e acessíveis.',
+      ],
+    },
+    {
+      heading: 'REFERÊNCIAS',
+      lines: [
+        'Mapas celestes, gravuras esotéricas, mecanismos',
+        'analógicos e terminais monocromáticos, combinados como',
+        'princípios de interação e materialidade.',
       ],
     },
     {
