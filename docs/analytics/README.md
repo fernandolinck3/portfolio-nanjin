@@ -32,9 +32,18 @@ does not run in an automated tab.
 | `image_open` | a still is enlarged to full frame | `work`, `image` |
 | `outbound` | a route leaves the site | `route`, `kind`, `from` |
 | `eclipse_found` | the seventh state opens | `face` |
+| `contact_open` | the form is opened | `from` |
+| `contact_sent` | a message is actually delivered | `route` |
+| `contact_failed` | a send is refused or never lands | `route`, `status` |
 
 Every event also carries whichever of `utm_source`, `utm_medium`, `utm_campaign`,
 `utm_content`, `utm_term` were on the URL.
+
+**`contact_sent` is the only conversion this site has.** Everything else measures
+attention; that one measures whether attention became a conversation. Read `contact_open`
+against it as an abandonment rate, and watch `contact_failed` on its own — a form that
+fails silently looks exactly like a visitor who changed their mind, which is why the
+failure is an event and not just a message on screen.
 
 Two decisions worth keeping:
 
@@ -82,12 +91,13 @@ What it contains:
 
 - **`GA4 — Google tag`** on *Initialization — All Pages*. Opens the session and reads
   the campaign off the URL.
-- **`Eventos do objeto`**, one custom-event trigger matching all nine names by regex. Its
-  own `{{_event}}` is internal to a custom-event trigger and needs nothing enabled.
-- **`GA4 — evento do objeto`**, one tag using `{{dl.event}}` as the event name. Nine tags
-  collapse into one, and adding a tenth event later means editing the regex rather than
-  building a tag. That is not hypothetical: `image_step` and `image_open` went in
-  exactly that way, as one line of regex and one Data Layer variable.
+- **`Eventos do objeto`**, one custom-event trigger matching all twelve names by regex.
+  Its own `{{_event}}` is internal to a custom-event trigger and needs nothing enabled.
+- **`GA4 — evento do objeto`**, one tag using `{{dl.event}}` as the event name. Twelve tags
+  collapse into one, and adding a thirteenth event later means editing the regex rather
+  than building a tag. That is not hypothetical, twice over: `image_step` and `image_open`
+  went in that way, and so did the three `contact_*` events when the form landed (T-28) —
+  one line of regex and, for `status`, one Data Layer variable.
 - **`dl.*`**, a Data Layer variable per parameter.
 - **`dl.event`**, a Data Layer variable reading `event` — the event tag's name comes from
   this, **not** from the `{{Event}}` built-in.

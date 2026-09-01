@@ -12,6 +12,11 @@
  * The one rule that outranks the others here: a form that pretends to send is worse
  * than no form. Every failure path below ends in something visible, and the address
  * stays on screen underneath as the route that works when this one does not.
+ *
+ * The copy speaks in the first person, because it is Fernando's own site talking to a
+ * visitor. "Chegam para o Fernando" reads as a third party operating the page on his
+ * behalf, which is the opposite of what a portfolio is for. Keep it as "mim" and "te
+ * responder"; the object is him, not an agency writing about him.
  */
 
 /**
@@ -139,9 +144,9 @@ export function createContact({ mount, onOpen, onClose, track }) {
         <a href="mailto:fernandolinck@outlook.com">fernandolinck@outlook.com</a></p>
 
       <p class="ct-notice">Nome, e-mail e mensagem são enviados por um serviço externo
-        (Web3Forms, servidores nos EUA) e chegam à caixa de entrada do Fernando. Servem
-        só para responder você. Não ficam armazenados no serviço e não vão para mais
-        ninguém. Para corrigir ou apagar, escreva para o mesmo endereço.</p>
+        (Web3Forms, servidores nos EUA) e chegam direto para mim. Servem só para te
+        responder. Não ficam armazenados no serviço e não vão para mais ninguém. Para
+        corrigir ou apagar, escreva para o mesmo endereço.</p>
     </form>`
 
   panel.prepend(style)
@@ -202,7 +207,7 @@ export function createContact({ mount, onOpen, onClose, track }) {
       })
       const body = await res.json().catch(() => null)
       if (res.ok && body?.success) {
-        say('Enviado. Ele responde nesse e-mail.', 'ok')
+        say('Enviado. Respondo nesse e-mail.', 'ok')
         track?.('contact_sent', { route: 'form' })
         form.reset()
         setTimeout(() => { if (panel.dataset.open === '1') close() }, DONE_MS)

@@ -283,6 +283,21 @@
                     "value": "{{dl.utm_term}}"
                   }
                 ]
+              },
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameter",
+                    "value": "status"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "parameterValue",
+                    "value": "{{dl.status}}"
+                  }
+                ]
               }
             ]
           }
@@ -314,13 +329,13 @@
               {
                 "type": "TEMPLATE",
                 "key": "arg1",
-                "value": "^(module_open|item_select|page_turn|work_open|image_open|image_step|outbound|eclipse_found|boot_complete)$"
+                "value": "^(module_open|item_select|page_turn|work_open|image_open|image_step|outbound|eclipse_found|boot_complete|contact_open|contact_sent|contact_failed)$"
               }
             ]
           }
         ],
         "fingerprint": "0",
-        "notes": "Um gatilho para os nove eventos. A tag usa a variável dl.event como nome, então nove tags viram uma."
+        "notes": "Um gatilho para os doze eventos. A tag usa a variável dl.event como nome, então doze tags viram uma. contact_open/contact_sent/contact_failed entraram com o formulário (T-28): contact_sent é a única conversão real do site, e contact_failed existe porque um envio que falha em silêncio é indistinguível de um visitante que desistiu."
       }
     ],
     "variable": [
@@ -740,6 +755,32 @@
           }
         ],
         "fingerprint": "0"
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
+        "variableId": "18",
+        "name": "dl.status",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "false"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "status"
+          }
+        ],
+        "fingerprint": "0",
+        "notes": "Só contact_failed a preenche: o código HTTP, ou 'network' quando o fetch nem chegou a responder. Separa 'o serviço recusou' de 'o visitante estava sem conexão', que exigem respostas diferentes."
       }
     ],
     "fingerprint": "0"
