@@ -4152,6 +4152,8 @@ const fontsLoaded = Promise.all([
   document.fonts.load('8px Silkscreen'),
   document.fonts.load('13px VT323'),
   document.fonts.load('17px UnifrakturMaguntia'),
+  /* the boot screen borrows this face for the single `k` in the surname */
+  document.fonts.load('19px "Grenze Gotisch"'),
 ]);
 
 /* Whoever finishes last rebuilds the Plate — once, with everything it needs. */

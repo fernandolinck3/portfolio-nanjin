@@ -1885,11 +1885,33 @@ function powerOn(t) {
      */
     const NAME = 'Fernando Linck'
     const shown = NAME.slice(0, Math.round(NAME.length * typeIn))
+    /**
+     * One glyph comes from another hand, and only one.
+     *
+     * UnifrakturMaguntia's lowercase `k` carries a looped ascender that reads as
+     * an `f`, so the surname arrives as "Lincf" — at 21px, which is the size that
+     * ships, it is genuinely ambiguous. Measured before it was changed: `c` and
+     * `k` overlap 6.7px of 102, which is ordinary kerning, so this is the glyph
+     * and not the spacing, and tracking would not have touched it.
+     *
+     * Grenze Gotisch is already loaded for the Module titles, is blackletter as
+     * well, and sets an unambiguous `k`. Borrowing that one letter keeps the face
+     * Fernando chose and fixes the only letter it gets wrong. Both faces are
+     * preloaded by name in `screen.js` — an unasked-for family falls back to a
+     * roman serif, which would put a foreign letter in the middle of the word.
+     */
+    const K = NAME.length - 1
     g.font = '21px UnifrakturMaguntia, serif'
     g.fillStyle = INK
-    g.fillText(shown, 20, 88)
+    g.fillText(shown.slice(0, K), 20, 88)
+    let nameW = g.measureText(shown.slice(0, K)).width
+    if (shown.length > K) {
+      g.font = '19px "Grenze Gotisch", serif'
+      g.fillText('k', 20 + nameW, 88)
+      nameW += g.measureText('k').width
+    }
     if (typeIn < 1 && Math.floor(t * 5) % 2) {
-      g.fillRect(20 + Math.round(g.measureText(shown).width) + 3, 76, 5, 13)
+      g.fillRect(20 + Math.round(nameW) + 3, 76, 5, 13)
     }
 
     /* what he does, under the name, once it has finished arriving */
