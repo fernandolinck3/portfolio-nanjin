@@ -93,6 +93,39 @@ let INK = DAY.ink, MID = DAY.mid, DIM = DAY.dim, BG = DAY.bg, GOLD = DAY.gold
 let BODY = DAY.ink
 
 /** Mix two #rrggbb strings. Plain sRGB — these are flat fills, not light. */
+/**
+ * Blackletter, with the one glyph the face gets wrong borrowed from another hand.
+ *
+ * UnifrakturMaguntia sets a lowercase `k` with a looped ascender that reads as an
+ * `f`, so "Linck" arrives as "Lincf" — at 21px, the size that ships, it is genuinely
+ * ambiguous. Measured before it was changed: `c` and `k` overlap 6.7px of 102, which
+ * is ordinary kerning, so the glyph is the fault and tracking would not have touched
+ * it. Grenze Gotisch is already loaded for the Module titles, is blackletter too, and
+ * sets an unambiguous `k`; borrowing that single letter keeps the face Fernando chose.
+ *
+ * It is a function rather than two spliced call sites because the name is drawn in
+ * more than one place — the boot Screen and the identity Module — and fixing one of
+ * them is how this came back the first time. Any blackletter string routed through
+ * here is safe; a raw `fillText` in that face is not.
+ *
+ * Kerning across the seam is lost, which at these sizes is under a pixel. Returns the
+ * advance, because callers position a cursor off it.
+ */
+function blackletter(g, text, x, y, px) {
+  const UNI = px + 'px UnifrakturMaguntia, serif'
+  const GRE = Math.round(px * 0.92) + 'px "Grenze Gotisch", serif'
+  let dx = 0
+  /* the capturing split keeps each `k` as its own run, in order */
+  for (const run of String(text).split(/(k)/)) {
+    if (!run) continue
+    g.font = run === 'k' ? GRE : UNI
+    g.fillText(run, x + dx, y)
+    dx += g.measureText(run).width
+  }
+  g.font = UNI
+  return dx
+}
+
 function mix(a, b, k) {
   const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16)
   const at = s => (pa >> s) & 255, bt = s => (pb >> s) & 255
@@ -1013,9 +1046,8 @@ function grimoire(m, t) {
      * before a word is read.
      */
     if (m.layout === 'identity' && m.name) {
-      g.font = '22px UnifrakturMaguntia, serif'
       g.fillStyle = INK
-      g.fillText(m.name, lx, y + 6)
+      blackletter(g, m.name, lx, y + 6, 22)
       y += 16
       if (m.role) {
         g.font = '8px Silkscreen, monospace'
@@ -1900,16 +1932,8 @@ function powerOn(t) {
      * preloaded by name in `screen.js` — an unasked-for family falls back to a
      * roman serif, which would put a foreign letter in the middle of the word.
      */
-    const K = NAME.length - 1
-    g.font = '21px UnifrakturMaguntia, serif'
     g.fillStyle = INK
-    g.fillText(shown.slice(0, K), 20, 88)
-    let nameW = g.measureText(shown.slice(0, K)).width
-    if (shown.length > K) {
-      g.font = '19px "Grenze Gotisch", serif'
-      g.fillText('k', 20 + nameW, 88)
-      nameW += g.measureText('k').width
-    }
+    const nameW = blackletter(g, shown, 20, 88, 21)
     if (typeIn < 1 && Math.floor(t * 5) % 2) {
       g.fillRect(20 + Math.round(nameW) + 3, 76, 5, 13)
     }
