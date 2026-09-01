@@ -4708,10 +4708,23 @@ const post = createPost(renderer, scene, camera, { width: W(), height: H() });
  */
 const ROOM_DIM = [];
 scene.traverse(n => { if (n.isLight && n !== rake) ROOM_DIM.push([n, n.intensity]); });
-/* The form's own surface. It shares the stage with the case overlay and never opens
-   beside it: the Sun cannot reach CONTATO's rows while a Work is up. */
+/**
+ * The form's own surface, and it is mounted on the body rather than the stage.
+ *
+ * On a phone `#frame` carries `translate(100vw,0) rotate(90deg)`, and a transformed
+ * element is the containing block for everything inside it — fixed-position overlays
+ * included, as `index.html` says in as many words. A form mounted in the stage comes
+ * along for the rotation. Looking at a turned object is fine — that is the design, and
+ * a banner suggests turning the phone. Typing into one is not: the keyboard comes up in
+ * the device's orientation, so the field would sit at ninety degrees to the keys typing
+ * into it. Fernando found it on a real phone, which is the only place it can be found,
+ * and is the whole argument of Open item 7.
+ *
+ * The Unit is what is turned. A person typing is not. The mirror is outside `#frame`
+ * for exactly this reason and this follows it.
+ */
 const contact = createContact({
-  mount: document.getElementById('stage'),
+  mount: document.body,
   track,
 });
 

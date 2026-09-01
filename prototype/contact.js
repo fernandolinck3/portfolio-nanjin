@@ -13,6 +13,20 @@
  * than no form. Every failure path below ends in something visible, and the address
  * stays on screen underneath as the route that works when this one does not.
  *
+ * It is mounted on the document body, never inside `#frame`, and the reason is the
+ * software keyboard rather than legibility.
+ *
+ * On a portrait phone `#frame` is rotated ninety degrees so the Unit fills the screen,
+ * and a transformed element is the containing block for everything inside it, fixed
+ * overlays included. For *looking* at an object that is fine — you turn the phone, and
+ * the banner suggests it. For typing it is not: the keyboard comes up in the device's
+ * real orientation, so a rotated field would sit at ninety degrees to the keys typing
+ * into it. There is no head tilt that fixes that.
+ *
+ * So the Unit is what is turned; a person typing is not. `position:fixed` here is
+ * against the viewport for the same reason. The mirror is outside `#frame` on the same
+ * argument and got there first.
+ *
  * The copy speaks in the first person, because it is Fernando's own site talking to a
  * visitor. "Chegam para o Fernando" reads as a third party operating the page on his
  * behalf, which is the opposite of what a portfolio is for. Keep it as "mim" and "te
@@ -49,7 +63,7 @@ export function createContact({ mount, onOpen, onClose, track }) {
      this is a template literal, and one backtick ends it. It has broken the build
      three times, each time pointing at an unrelated line. */
   style.textContent = `
-    .ct-panel { position:absolute; inset:0; z-index:6; display:grid; place-items:center;
+    .ct-panel { position:fixed; inset:0; z-index:75; display:grid; place-items:center;
       opacity:0; pointer-events:none; transition:opacity .22s ease;
       background:rgba(6,5,4,.82); backdrop-filter:blur(14px) saturate(.75);
       font:400 14px/1.7 "Azeret Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
