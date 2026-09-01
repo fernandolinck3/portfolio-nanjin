@@ -355,6 +355,23 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
     /* the indicator: the Screen's page marks, stood on end */
     .work-rail { grid-area:rail; align-self:stretch; position:relative; width:22px; }
     .work-rail[hidden] { display:none; }
+    /**
+       "hidden" has to actually hide, and the display:grid above outranks it.
+
+       The attribute's only power is the UA's [hidden]{display:none}, which any
+       display in an author sheet beats — so a closed panel stayed display:grid,
+       invisible by opacity:0 alone, and its back button and plate stayed **in the
+       tab order**. A keyboard user met two controls belonging to an overlay that was
+       not open, ahead of the Pads, before anything else on the object. Same rule the
+       rail above already needed, for the same reason.
+
+       The measuring in fill() is unaffected: enter() clears the attribute before it
+       measures, which is what that comment is about.
+
+       No backticks anywhere in here: this sheet is a JS template literal, and one
+       would end it. That mistake is a blank page, not a warning.
+     */
+    .work-panel[hidden] { display:none; }
     .work-rail::before { content:""; position:absolute; left:50%; top:2px; bottom:24px;
       width:1px; background:#3A322A; }
     .work-marks { position:absolute; left:0; right:0; top:2px; bottom:24px;

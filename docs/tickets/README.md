@@ -41,15 +41,17 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-12 | [Faceplate artwork](T-12-faceplate-artwork.md) | C | Fernando | blocked |
 | T-13 | [RACK contents](T-13-rack-contents.md) | C | Fernando | blocked |
 | T-14 | [Publish the repo](T-14-publish-the-repo.md) | C | Fernando | blocked |
-| T-15 | [Canvas controls need a DOM twin](T-15-canvas-controls-need-a-dom-twin.md) | A | — | absorbed by T-18 |
+| T-15 | [Canvas controls need a DOM twin](T-15-canvas-controls-need-a-dom-twin.md) | A | — | **done** — absorbed by T-18 |
 | T-16 | [An index that does not fit must say so](T-16-an-index-that-does-not-fit-must-say-so.md) | B | — | absorbed by whichever Module grows first |
 | T-17 | [PROJETOS never invites the SUN](T-17-projetos-never-invites-the-sun.md) | B | — | absorbed by the PROJETOS preview |
-| T-18 | [The accessible mirror of the LCD](T-18-accessible-mirror.md) | A | — | ready — branch `espelho` |
+| T-18 | [The accessible mirror of the LCD](T-18-accessible-mirror.md) | A | — | **done** — branch `espelho` |
 | T-19 | [Split the handoff](T-19-split-the-handoff.md) | A | — | done 2026-08-31 |
 
 ## Standing rules for every ticket
 
 - Read `CONTEXT.md` for the vocabulary before writing a line. Use the Unit's words.
+- **Anything that changes what the Screen displays changes the mirror in the same commit.** Put the
+  content in `src/content/modules.ts` and both read it; see `CLAUDE.md` and T-18.
 - `SPEC.md §7` lists four decisions that look like bugs and are not. Do not fix them back.
 - Verify at render size in a real browser, not in a headless still and not in the source file.
 - If a ticket changes the Unit's anatomy, update `CONTEXT.md` in the same commit.

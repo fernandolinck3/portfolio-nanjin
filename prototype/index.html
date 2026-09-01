@@ -187,7 +187,12 @@
   </svg>
   Vire o celular para uma tela maior
 </p>
-<div id="stage"></div>
+<!-- The canvas is the object for the eye and nothing at all for a screen reader:
+     a WebGL surface has no text, no roles and no structure to offer one. It is
+     marked away explicitly so the reading of the page is the mirror's — see
+     `prototype/mirror.js` and ADR-0002 — rather than a landmark that announces
+     itself and then has nothing to say. Nothing focusable lives in here. -->
+<div id="stage" aria-hidden="true"></div>
 <!--
   The semantic layer. ADR-0002: the DOM is the truth and the Screen is a render of
   it, so every control the hand can reach has a real focusable element here with a
@@ -197,6 +202,14 @@
 
   `.sr` is off-screen; `.touch` is not. Rotary gestures and hover do not exist on a
   phone, so the same four intents get explicit buttons there.
+
+  **The controls were only ever half of it.** The other half — every word the Screen
+  displays, for all six Modules at once — is the mirror, built at runtime by
+  `prototype/mirror.js` from `src/content/mirror.ts`, and mounted on the document's
+  own root element rather than in here — do not write that element's tag in this
+  comment, for the reason the note at the top of the file gives. The mirror is
+  not written here on purpose: markup in this file would be a second copy of the
+  content, and a second copy is the drift T-18 was opened to design out.
 -->
 <nav class="sr" aria-label="Unit controls">
   <button data-act="0">Quem</button><button data-act="1">Projetos</button>

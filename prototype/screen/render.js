@@ -313,25 +313,7 @@ function flow(all, x, y, step, colour) {
  */
 function grimoireStatus() {
   g.font = '8px Silkscreen, monospace'
-  const now = performance.now()
-  if (flash && now > flashUntil) flash = ''
-
-  const m = MODULES[mod]
-  /**
-   * On an index page the standing line says nothing the page does not.
-   *
-   * It read `PROJETO 01/03 · PORTFÓLIO` under a list whose first row was already
-   * marked with a filled dot and spelled out — and in PROJETOS the list is three
-   * rows deep, so the line landed **on top of the third project**: *"em projetos, o
-   * texto inferior esquerdo tapa os projetos. Remova-o."*
-   *
-   * It stays everywhere it carries something: on a case page, where it is the only
-   * thing reporting which page of how many; on a Module with no list; and whenever a
-   * flash or a hover hint has something to say. What goes is the one case where the
-   * footer was repeating the screen back to itself.
-   */
-  const onIndex = (m.items?.length || 0) > 0 && (placeOf(mod).sec || 0) === 0
-  const line = flash || hint || (onIndex ? '' : standingLine(m))
+  const line = statusLine()
   if (!line && !overflow) return
 
   /**
@@ -396,6 +378,36 @@ function standingLine(m) {
   }
   return `${m.unit} ${String(p.sel + 1).padStart(2, '0')}/${String(n).padStart(2, '0')}`
     + ` · ${it.label}`
+}
+
+/**
+ * What the footer is saying right now.
+ *
+ * Exported because the footer has a second reader: the mirror in `prototype/mirror.js`
+ * puts this same line in the DOM, and a status line computed twice is a status line
+ * that will eventually say two things. The draw below calls it too — this is the
+ * only place the precedence lives.
+ *
+ * On an index page the standing line says nothing the page does not. It read
+ * `PROJETO 01/03 · PORTFÓLIO` under a list whose first row was already marked with a
+ * filled dot and spelled out — and in PROJETOS the list is three rows deep, so the
+ * line landed **on top of the third project**: *"em projetos, o texto inferior
+ * esquerdo tapa os projetos. Remova-o."*
+ *
+ * It stays everywhere it carries something: on a case page, where it is the only
+ * thing reporting which page of how many; on a Module with no list; and whenever a
+ * flash or a hover hint has something to say. What goes is the one case where the
+ * footer was repeating the screen back to itself.
+ *
+ * Expiring the flash here rather than in the draw is deliberate: whoever asks first
+ * gets a line that has already forgotten what timed out, and asking twice in a frame
+ * cannot produce two different answers.
+ */
+export function statusLine() {
+  if (flash && performance.now() > flashUntil) flash = ''
+  const m = MODULES[mod]
+  const onIndex = (m.items?.length || 0) > 0 && (placeOf(mod).sec || 0) === 0
+  return flash || hint || (onIndex ? '' : standingLine(m))
 }
 
 /* ---------- the stage ----------
@@ -1689,6 +1701,16 @@ export function touchLyra() { lyraSince = performance.now() }
 /** Which of the two lines is live right now — exposed so the tests can be about time. */
 export const lyraPhase = () => (performance.now() - lyraSince >= LYRA_IDLE_MS ? 'idle' : 'open')
 const lyraLines = () => lyraAt(mod)[lyraPhase()]
+
+/**
+ * The line she is actually saying, or nothing while she is not saying it.
+ *
+ * For the mirror, which has no bubble to draw and so has to be told when there is no
+ * bubble. The condition is the draw's own: a case page puts a scrim over her and the
+ * bubble goes with it (`onPage` above), so on a page the honest answer is silence
+ * rather than a line the Screen is not showing.
+ */
+export const lyraLine = () => (placeOf(mod).sec > 0 ? '' : lyraLines().join(' '))
 
 /** Which row the pointer is over, or -1. Lamps it. */
 export function setHoverWork(i) { hoverWork = i }

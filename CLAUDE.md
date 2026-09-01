@@ -25,6 +25,26 @@ goes to `docs/log/<year>-<month>.md`.
 - **Measure before optimising**, and **build and show** rather than describe. Every decision that
   stuck was settled by a render or a number, never by a paragraph.
 
+## The mirror — read this before changing anything the Screen shows
+
+Everything the Screen displays also exists in the DOM, as semantic HTML, kept in step
+with the canvas. That is **the mirror** (`CONTEXT.md` carries the word).
+
+**Anything that changes what the Screen displays changes the mirror in the same
+commit.** The way to obey that without remembering it is the way it is already built:
+the content lives in `src/content/modules.ts` and *both* read it — the Screen through
+`prototype/screen/render.js`, the mirror through `src/content/mirror.ts`. Add a
+Module, an item or a case section there and it appears in both without anyone doing
+anything. Write content anywhere else and you have made a second copy.
+
+Two consequences worth knowing before you edit:
+
+- `src/content/modules.test.ts` fails if the mirror stops covering a field. It is not
+  a style test — a rule with no test is a wish.
+- Never hide mirror content with `display:none`, `visibility:hidden` or `hidden`. Each
+  removes it from find-in-page, which is half of why it exists. ECLIPSE is the single
+  deliberate exception, because a secret Ctrl+F hands over is not a secret.
+
 ## Agent skills
 
 ### Issue tracker
