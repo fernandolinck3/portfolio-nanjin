@@ -25,13 +25,32 @@ surname at this size**, and a surname that has to be guessed at is worse than a 
 
 ## Build
 
-Try these in order and keep the first that reads, judged at render size in a real browser:
+**Keep UnifrakturMaguntia. Fernando likes the face; only the `k` is wrong.** An earlier draft of this
+ticket proposed swapping the whole face — that was taste overriding a clear brief, and it is wrong.
 
-1. **Set the name in `Grenze Gotisch`** — already loaded, already the face the Modules title
-   themselves with (`focus.js:339`), and a far more modern `k`. Smallest possible change.
-2. **Keep UnifrakturMaguntia and raise the size** so the `ck` separates at the Plate's scale.
-3. **Blackletter initials, roman lowercase** — `F` and `L` in Unifraktur, the rest in Archivo. This is
-   what the tradition actually does and what the comment at `render.js:1878` already argues for.
+Draw the name in two runs instead of one. `render.js:1890` is currently a single call:
+
+```js
+g.fillText(shown, 20, 88)                       // draws "Lincf"
+```
+
+Split it so the `k` comes from **Grenze Gotisch**, which is already loaded (`focus.js:339`) and whose
+`k` is unambiguous:
+
+```js
+g.font = '21px UnifrakturMaguntia, serif'
+g.fillText('Fernando Linc', x, y)
+const w = g.measureText('Fernando Linc').width
+g.font = '19px "Grenze Gotisch", serif'         // ~0.92x, matched by eye
+g.fillText('k', x + w, y)
+```
+
+Both faces are blackletter, so the substituted glyph does not read as a foreign letter — verified
+side by side at 21px, 63px and 150px.
+
+**The type-in cursor must keep working.** The name is typed in one character at a time
+(`NAME.slice(0, …)`) with a cursor drawn at the measured width, so the split has to handle the
+partial string — while `typeIn` is still short of the `k`, there is no second run to draw.
 
 ## Done when
 
