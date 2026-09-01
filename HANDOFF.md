@@ -66,7 +66,19 @@ Three things that config needs, each of which fails *only in a deployed build*:
   root-absolute `/works/…`, which would resolve past that subdirectory.
 
 The workbench dials are hidden behind **`?debug`**. They stay in the DOM because `scene.js` binds to
-each one by id and throws on the first missing element — do not delete them.
+each one by id and throws on the first missing element — do not delete them. Since **T-26** they also
+carry `hidden` + `aria-hidden`, because `.ctl{display:none}` hid them from the eye and from nothing
+else: `BEVEL 10 / TILE 1.00 / SEED 25` was the built page's entire readable content. The `?debug`
+script lifts `aria-hidden` when it opens the row.
+
+**The mirror is pre-rendered into `dist-site/index.html`** (T-26). `vite.site.config.ts` calls
+`mirrorIntoPage` from `src/content/mirror.ts` through `transformIndexHtml` — the *same* renderer the
+browser uses, run in node — and `prototype/mirror.js` adopts the `<main id="mirror">` it finds instead
+of building one. So the static HTML carries the portfolio for everything that runs no JavaScript (an
+ATS, a link unfurler, `curl`), and the runtime mirror still follows navigation. The page's only
+`<h1>` comes from there. Measured: **469 readable characters before, 5,675 after**; `npm run
+verify:site` now asserts six Modules, seventeen rows, one heading and the hidden workbench, because
+the property is build-only by construction and no test of the source can see it.
 
 **This contradicts ADR-0002 and T-02**, which say `src/` owns the DOM truth layer. It was flagged to
 Fernando and he has not ruled. **No ADR is written.** If he blesses it, write one; if he wants `src/`

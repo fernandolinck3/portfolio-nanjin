@@ -59,3 +59,28 @@ Also: **give the page an `<h1>`.** There is not one anywhere today.
 - **The build is not the dev server.** Verify with `npm run build:site` and `curl` against the built
   output, never in `npm run prototype`. Three bugs have shipped through that exact gap.
 - Do not add a framework or a static-site generator to do this. ADR-0004 stands.
+
+## Comments
+
+**Built 2026-09-01.** `mirrorIntoPage` in `src/content/mirror.ts` writes the mirror into the page at
+build time; `vite.site.config.ts` calls it from a `transformIndexHtml` hook with `order: 'pre'`.
+Same renderer, run earlier — `mirrorElementHTML()` is the only place the `<main id="mirror">` wrapper
+is written, and `createMirror` adopts the node it finds rather than making a second one.
+
+Measured against `dist-site/index.html`, scripts and styles stripped:
+
+| | before | after |
+|---|---|---|
+| readable characters (tags stripped) | 469 | 5,675 |
+| readable characters (honouring `hidden`) | 398 | 5,132 |
+| `<h1>` | 0 | 1 — *Fernando Linck* |
+| Modules in the static markup | 0 | 6 |
+| item rows | 0 | 17 |
+
+The workbench row now carries `hidden` + `aria-hidden`; the dials stay in the DOM, `?debug` still
+opens them and lifts `aria-hidden` with them. `npx vitest run` is 102 tests, up from 93: nine new
+ones covering the pre-render, the single heading, the hidden workbench, and — the ticket's "must not
+freeze it" — that `createMirror` adopts a pre-rendered mirror and still moves `aria-current` and the
+Tab stops on navigation. `npm run verify:site` asserts the same properties against the real build,
+by structure and volume rather than by prose, since a sentence copied out of `modules.ts` would be
+the second copy the mirror exists to prevent.
