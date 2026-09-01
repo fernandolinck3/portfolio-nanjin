@@ -54,6 +54,7 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-26 | [The robots still cannot read it](T-26-the-robots-still-cannot-read-it.md) | A | T-18 | ready — his ask |
 | T-27 | [The k in Linck](T-27-the-k-in-linck.md) | B | — | ready — small, show him the face |
 | T-28 | [A form on CONTATO](T-28-a-form-on-contato.md) | C | Fernando | blocked — needs a ruling first |
+| T-29 | [O Preview do GTM não conecta](T-29-o-preview-do-gtm-nao-conecta.md) | A | — | precisa do sintoma exato |
 
 ## Where T-21 to T-25 came from
 
