@@ -200,3 +200,78 @@ export function mirrorHTML(): string {
     eclipseHTML(),
   ].join('\n')
 }
+
+/** O id do `<main>`, e o do `<style>` que o recorta. Um lugar só para os dois lados. */
+export const MIRROR_ID = 'mirror'
+export const MIRROR_STYLE_ID = 'mirror-css'
+
+/**
+ * O recorte.
+ *
+ * Estava em `prototype/mirror.js`, que é a camada que precisa de um navegador — e
+ * o problema é que ela só existe depois que o bundle carrega. Sem esta folha na
+ * página desde o começo, o espelho pré-renderizado (ver `mirrorIntoPage`) aparece
+ * inteiro, como uma parede de texto, até o primeiro script rodar. Então ela desce
+ * para cá, junto com a marcação que ela recorta, e os dois lados — o build e o
+ * runtime — leem a mesma string.
+ *
+ * **Nem `display:none`, nem `visibility:hidden`, nem o atributo `hidden`** — cada um
+ * dos três tira o texto da busca da página, e a busca da página é metade do motivo
+ * disto existir. É uma caixa de 1px com `overflow:hidden`: diagramada, medida,
+ * encontrável, lida por qualquer leitor de tela, e invisível.
+ *
+ * O controle que recebe foco sai do recorte por `position:fixed`, que escapa do
+ * `overflow:hidden` de um ancestral — e é exatamente por isso que o espelho é
+ * montado no corpo do documento e **não dentro de `#frame`**, que carrega um
+ * `transform` no celular. Ver o topo de `prototype/mirror.js`.
+ */
+export const MIRROR_CSS = `
+#${MIRROR_ID}{position:fixed;left:0;top:0;width:1px;height:1px;overflow:hidden;
+  margin:0;padding:0;border:0;z-index:70}
+/* A control that has focus leaves the clip and says what it is. Fixed, so the 1px
+   box above cannot contain it — see the note at the top of prototype/mirror.js
+   about why the mirror is not a child of #frame. */
+#${MIRROR_ID} :is(button,a):focus{position:fixed;left:8px;top:46px;width:auto;height:auto;
+  z-index:90;padding:6px 10px;max-width:min(60ch,80vw);white-space:normal;
+  font:10px/1.4 "Azeret Mono",ui-monospace,monospace;letter-spacing:.1em;
+  background:#DEDCD3;color:#17181B;border:1px solid #000;cursor:pointer}
+`
+
+/**
+ * O espelho como um elemento, e não como o miolo de um.
+ *
+ * Existe para que o invólucro — a tag, o id — seja escrito **uma vez**. Quem monta
+ * em tempo de execução (`prototype/mirror.js`) e quem monta em tempo de build
+ * (`mirrorIntoPage`) chamam esta função, então não há dois `<main id="mirror">`
+ * digitados à mão que possam discordar.
+ */
+export const mirrorElementHTML = () => `<main id="${MIRROR_ID}">${mirrorHTML()}</main>`
+
+/**
+ * O espelho, escrito na página antes de qualquer script rodar.
+ *
+ * `T-18` entregou o espelho e ele funciona — para leitor de tela, para a busca da
+ * página e para o Google, porque os três executam JavaScript. **Um ATS não
+ * executa.** Medido na página publicada: 469 caracteres de rótulo de controle e
+ * leitura de dial, nenhum `<h1>`, nenhuma palavra dos Módulos. A audiência que o
+ * `PRODUCT.md` lista primeiro é justamente a que passa por um.
+ *
+ * Isto é o **mesmo renderizador rodando mais cedo**, e não um segundo: o build
+ * chama `mirrorHTML()` em node e cola o resultado no HTML. Em tempo de execução
+ * `prototype/mirror.js` encontra o `<main>` já pronto e o adota — ele não redesenha
+ * nada, só passa a mexer nos atributos, que é o que sempre fez. Se algum dia isto
+ * virar uma segunda cópia da marcação, o desenho está errado.
+ *
+ * A folha entra logo depois do `</style>` que a página já tem, e o `<main>` no fim
+ * do arquivo — que é exatamente onde `doc.body.appendChild` o punha. As duas
+ * âncoras são obrigatórias: um `throw` aqui para o build, o que é muito melhor do
+ * que uma página publicada sem metade do conteúdo.
+ */
+export function mirrorIntoPage(html: string): string {
+  if (!html.includes('</style>')) throw new Error('mirrorIntoPage: no </style> to anchor the mirror sheet')
+  if (html.includes(`id="${MIRROR_ID}"`)) throw new Error('mirrorIntoPage: the page already carries a mirror')
+  return html.replace(
+    '</style>',
+    `</style>\n<style id="${MIRROR_STYLE_ID}">${MIRROR_CSS}</style>`,
+  ) + `\n${mirrorElementHTML()}\n`
+}

@@ -11,9 +11,10 @@
  * automated tab, so anything that can only be seen by watching an animation cannot
  * be verified at all. State in, DOM out.
  */
+import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMirror } from './mirror.js'
-import { HOOK } from '../src/content/mirror.ts'
+import { HOOK, MIRROR_ID, MIRROR_STYLE_ID, mirrorIntoPage } from '../src/content/mirror.ts'
 import { MODULES } from '../src/content/modules.ts'
 
 /** A whole state, so a test only has to say the part it is about. */
@@ -195,3 +196,134 @@ describe('the announcements', () => {
     expect(live()).toBe('CRITÉRIOS')
   })
 })
+
+/**
+ * T-26 — the half of the mirror a machine can read without running anything.
+ *
+ * `T-18` built the mirror at runtime, which reaches a screen reader, find-in-page
+ * and Google, because all three execute JavaScript. An applicant tracking system
+ * does not: the built page carried 469 characters of control labels and dial
+ * readouts, no top-level heading, and not one word of a Module.
+ *
+ * The fix is the *same* renderer run at build time — `mirrorIntoPage`, wired into
+ * `vite.site.config.ts`. So the assertions below run that function over the real
+ * `prototype/index.html`, which is the file the build transforms, and read the
+ * result as a document. `verify:site` makes the same claims about `dist-site/` after
+ * an actual build; this suite is what fails in a second, on a laptop, before anyone
+ * gets there.
+ */
+describe('the mirror, written into the page before any script runs', () => {
+  /* from the repo root, which is vitest's cwd — `import.meta.url` is an http URL
+     under the jsdom environment and `readFileSync` will not take one */
+  const source = () => readFileSync(PAGE, 'utf8')
+  const built = () => new DOMParser().parseFromString(mirrorIntoPage(source()), 'text/html')
+
+  it('is absent from the source and present in the build', () => {
+    expect(source()).not.toContain(`id="${MIRROR_ID}"`)
+    expect(built().getElementById(MIRROR_ID)).not.toBeNull()
+  })
+
+  it('carries every Module\u2019s content as text, with no script executed', () => {
+    const text = built().getElementById(MIRROR_ID).textContent
+    for (const m of MODULES) {
+      expect(text).toContain(m.title)
+      for (const it of m.items || []) expect(text).toContain(it.label)
+    }
+    /* the number that made the ticket: 469 characters before, thousands after */
+    expect(text.replace(/\s+/g, ' ').trim().length).toBeGreaterThan(3000)
+  })
+
+  it('gives the page exactly one top-level heading, and it is his name', () => {
+    const h1s = built().querySelectorAll('h1')
+    expect(h1s.length).toBe(1)
+    /* the name is read from the identity Module, never typed here */
+    expect(h1s[0].textContent).toBe(MODULES.find(m => m.layout === 'identity').name)
+  })
+
+  it('ships the clip with the markup, so the mirror is never a wall of text', () => {
+    /* the sheet used to be created by this file's own JS, which arrives ~900kB of
+       bundle later — without it the pre-rendered mirror paints in full first */
+    const style = built().getElementById(MIRROR_STYLE_ID)
+    expect(style).not.toBeNull()
+    expect(style.textContent).toContain(`#${MIRROR_ID}`)
+  })
+
+  /**
+   * The workbench is not the portfolio.
+   *
+   * `.ctl{display:none}` took the dials away from the eye and from nothing else, so
+   * `BEVEL 10`, `TILE 1.00` and `SEED 25` were the built page's content. They cannot
+   * be deleted — `scene.js` binds every one by id and throws on the first missing
+   * element — so the row is hidden from the document instead.
+   */
+  it('hides the workbench dials from the document without removing them', () => {
+    const doc = built()
+    const hud = doc.querySelector('.hud')
+    expect(hud.hasAttribute('hidden')).toBe(true)
+    expect(hud.getAttribute('aria-hidden')).toBe('true')
+    /* still there, because scene.js binds each one by id */
+    for (const id of ['bevel', 'tile', 'seed', 'fps']) expect(doc.getElementById(id)).not.toBeNull()
+  })
+
+  it('refuses to write a second mirror into a page that has one', () => {
+    expect(() => mirrorIntoPage(mirrorIntoPage(source()))).toThrow()
+  })
+})
+
+/**
+ * The other half of T-26: pre-rendering must not freeze the mirror.
+ *
+ * Every test above this point exercises the *create* path, because `beforeEach`
+ * empties the document. The shipped page is the other one — the markup is already
+ * there when `scene.js` imports this module — and the failure it invites is a
+ * second copy of the portfolio appended under the first.
+ */
+describe('adopting a mirror the build already wrote', () => {
+  let adopted
+  beforeEach(() => {
+    document.head.innerHTML = ''
+    document.body.innerHTML = ''
+    const pre = new DOMParser().parseFromString(
+      mirrorIntoPage(readFileSync(PAGE, 'utf8')), 'text/html')
+    document.head.append(pre.getElementById(MIRROR_STYLE_ID))
+    document.body.append(pre.getElementById(MIRROR_ID))
+    adopted = createMirror({})
+  })
+
+  it('adopts the node instead of adding one', () => {
+    expect(document.querySelectorAll(`#${MIRROR_ID}`).length).toBe(1)
+    expect(adopted.el).toBe(document.getElementById(MIRROR_ID))
+    expect(document.querySelectorAll(`#${MIRROR_STYLE_ID}`).length).toBe(1)
+  })
+
+  it('still follows the instrument — the ticket\u2019s "must not freeze it"', () => {
+    adopted.sync(S({ page: 1, sel: 2 }))
+    expect(el2(1).getAttribute('aria-current')).toBe('true')
+    expect(btn2(1, 2).getAttribute('aria-current')).toBe('true')
+    expect(btn2(1, 2).tabIndex).toBe(0)
+    expect(btn2(3, 0).tabIndex).toBe(-1)
+
+    adopted.sync(S({ page: 3, sel: 0 }))
+    expect(el2(1).hasAttribute('aria-current')).toBe(false)
+    expect(el2(3).getAttribute('aria-current')).toBe('true')
+    expect(btn2(1, 2).hasAttribute('aria-current')).toBe(false)
+  })
+
+  it('wires the adopted rows to the callback', () => {
+    document.head.innerHTML = ''
+    document.body.innerHTML = ''
+    const pre = new DOMParser().parseFromString(
+      mirrorIntoPage(readFileSync(PAGE, 'utf8')), 'text/html')
+    document.body.append(pre.getElementById(MIRROR_ID))
+    const seen = []
+    const m = createMirror({ onItem: (a, b) => seen.push([a, b]) })
+    m.el.querySelector(`[${HOOK.item}="3.3"]`).click()
+    expect(seen).toEqual([[3, 3]])
+  })
+})
+
+/** The page the build transforms, from vitest's cwd. */
+const PAGE = 'prototype/index.html'
+
+const el2 = i => document.querySelector(`[${HOOK.module}="${i}"]`)
+const btn2 = (m, i) => document.querySelector(`[${HOOK.item}="${m}.${i}"]`)

@@ -162,9 +162,22 @@
   #full[hidden]{display:none}
   /* The workbench is not part of the object. It stays in the DOM because scene.js
      binds to every dial by id and would throw on the first missing element, but it
-     is only shown when the URL asks: /?debug */
+     is only shown when the URL asks: /?debug
+
+     `.ctl{display:none}` took it away from the eye and from nothing else. The row
+     carries `hidden` + `aria-hidden` as well now (T-26), because until the mirror
+     was pre-rendered the *entire* readable content of the built page was
+     `VIGIL 00 CAM 6° … BEVEL 10 … TILE 1.00 … SEED 25` — 469 characters of a
+     workbench, read as the portfolio by everything that does not run JavaScript.
+
+     `.hud[hidden]` has to be written out: `[hidden]{display:none}` is a UA rule and
+     `.hud{…display:flex}` is an author rule, so the author rule wins on origin
+     alone and the attribute would do nothing to the layout. The debug selector then
+     needs the attribute too, to out-specify the line above it. */
   .ctl{display:none}
   body[data-debug] .ctl{display:flex}
+  .hud[hidden]{display:none}
+  body[data-debug] .hud[hidden]{display:flex}
   /* The touch row. Shown where there is no hover and no rotary gesture to make —
      `hover:none` is the honest test for that, rather than a width breakpoint that
      would also catch a small window on a desktop. */
@@ -204,12 +217,19 @@
   phone, so the same four intents get explicit buttons there.
 
   **The controls were only ever half of it.** The other half — every word the Screen
-  displays, for all six Modules at once — is the mirror, built at runtime by
-  `prototype/mirror.js` from `src/content/mirror.ts`, and mounted on the document's
-  own root element rather than in here — do not write that element's tag in this
-  comment, for the reason the note at the top of the file gives. The mirror is
-  not written here on purpose: markup in this file would be a second copy of the
-  content, and a second copy is the drift T-18 was opened to design out.
+  displays, for all six Modules at once — is the mirror, built from
+  `src/content/mirror.ts` and mounted on the document's own root element rather than
+  in here — do not write that element's tag in this comment, for the reason the note
+  at the top of the file gives. The mirror is not written here on purpose: markup in
+  this file would be a second copy of the content, and a second copy is the drift
+  T-18 was opened to design out.
+
+  Since T-26 the *build* runs that same renderer and appends the result to the end
+  of this file, so the shipped HTML carries the mirror without executing anything —
+  `mirrorIntoPage` in `src/content/mirror.ts`, wired up in `vite.site.config.ts`.
+  `prototype/mirror.js` then adopts the node it finds instead of making one. The
+  page's only top-level heading arrives that way; there is none written here — and
+  writing that tag out here would put a second one in every grep of the build.
 -->
 <nav class="sr" aria-label="Unit controls">
   <button data-act="0">Quem</button><button data-act="1">Projetos</button>
@@ -226,7 +246,7 @@
   <button data-nav="back" aria-label="Voltar um nível">VOLTAR</button>
 </div>
 <pre id="err"></pre>
-<div class="hud">
+<div class="hud" hidden aria-hidden="true">
   <span class="ctl">VIGIL <input id="vigil" type="range" min="0" max="100" value="0" aria-label="Vigil"> <b id="vv">00</b></span>
   <span class="ctl">CAM <input id="tilt" type="range" min="0" max="70" value="6" aria-label="Camera tilt"> <b id="tiltv">6&deg;</b></span>
   <span class="ctl">DIST <input id="dist" type="range" min="45" max="240" value="56" aria-label="Camera distance"> <b id="distv">5.6</b></span>
@@ -253,8 +273,16 @@
 window.addEventListener('error',function(e){var d=document.getElementById('err');d.style.display='block';d.textContent+='ERR: '+(e.message||e)+' @'+(e.lineno||'')+String.fromCharCode(10);});
 </script>
 <script>
-  /* ?debug shows the dials. Read before scene.js so the first paint is already right. */
-  if (location.search.includes('debug')) document.body.dataset.debug = '1';
+  /* ?debug shows the dials. Read before scene.js so the first paint is already right.
+     The row is `hidden aria-hidden` in the markup (T-26) so a machine that reads the
+     HTML does not take the dial readouts for content; opening the workbench has to
+     lift both, or the sliders are real focusable controls inside a subtree the
+     accessibility tree was told to ignore. */
+  if (location.search.includes('debug')) {
+    document.body.dataset.debug = '1';
+    var hud = document.querySelector('.hud');
+    if (hud) hud.removeAttribute('aria-hidden');
+  }
   if (location.search.includes('turned')) document.body.dataset.turned = '1';
 </script>
 <script type="module" src="./scene.js"></script>

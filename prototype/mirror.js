@@ -10,6 +10,15 @@
  * that already guards the content, and this file can be checked in jsdom without
  * standing up three, a canvas and a WebGL context first.
  *
+ * ## The markup usually arrives before this file does
+ *
+ * Since `T-26` the build calls the very same renderer and writes the mirror into
+ * `dist-site/index.html` — a screen reader ran the JS and saw the content, but an
+ * ATS does not run JS and saw 469 characters of dial readouts. So the first thing
+ * `createMirror` does is **look for a mirror that is already there and adopt it**.
+ * It renders only when it finds none. There is no second copy of the markup on
+ * either path; both call `mirrorElementHTML()`.
+ *
  * ## What "hidden" is allowed to mean here
  *
  * **Not `display:none`, not `visibility:hidden`, not the `hidden` attribute** — each
@@ -30,20 +39,10 @@
  * transform on a phone, and a transformed ancestor is a containing block for fixed
  * descendants, which would put the clip back.
  */
-import { HOOK, itemKey, mirrorHTML } from '../src/content/mirror.ts'
+import {
+  HOOK, MIRROR_CSS, MIRROR_ID, MIRROR_STYLE_ID, itemKey, mirrorElementHTML,
+} from '../src/content/mirror.ts'
 import { MODULES } from '../src/content/modules.ts'
-
-const CSS = `
-#mirror{position:fixed;left:0;top:0;width:1px;height:1px;overflow:hidden;
-  margin:0;padding:0;border:0;z-index:70}
-/* A control that has focus leaves the clip and says what it is. Fixed, so the 1px
-   box above cannot contain it — see the note at the top of this file about why the
-   mirror is not a child of #frame. */
-#mirror :is(button,a):focus{position:fixed;left:8px;top:46px;width:auto;height:auto;
-  z-index:90;padding:6px 10px;max-width:min(60ch,80vw);white-space:normal;
-  font:10px/1.4 "Azeret Mono",ui-monospace,monospace;letter-spacing:.1em;
-  background:#DEDCD3;color:#17181B;border:1px solid #000;cursor:pointer}
-`
 
 /**
  * How long an announcement waits for the hand to stop moving.
@@ -67,14 +66,36 @@ const SETTLE_MS = 400
 export function createMirror({
   doc = document, onItem, onBack, onReopen, onClaim,
 } = {}) {
-  const style = doc.createElement('style')
-  style.textContent = CSS
-  doc.head.appendChild(style)
+  /**
+   * Adopt what the build already wrote, and only build it when nobody did.
+   *
+   * `vite.site.config.ts` runs `mirrorIntoPage` over `index.html`, so on the
+   * shipped page the sheet and the `<main>` are already in the document before this
+   * module is even fetched — which is the whole of `T-26`, because an applicant
+   * tracking system reads that HTML and never runs this file. Re-rendering here
+   * would replace a live node with an identical one for nothing, and appending
+   * would put **two copies** of the portfolio in the page.
+   *
+   * So: find them, and fall back to writing them. The fallback is not dead code —
+   * it is the path every jsdom test takes, and the path any page that embeds the
+   * mirror without the build takes.
+   */
+  if (!doc.getElementById(MIRROR_STYLE_ID)) {
+    const style = doc.createElement('style')
+    style.id = MIRROR_STYLE_ID
+    style.textContent = MIRROR_CSS
+    doc.head.appendChild(style)
+  }
 
-  const el = doc.createElement('main')
-  el.id = 'mirror'
-  el.innerHTML = mirrorHTML()
-  doc.body.appendChild(el)
+  let el = doc.getElementById(MIRROR_ID)
+  if (!el) {
+    /* through a template so the `<main id=…>` wrapper is written in exactly one
+       place — `mirrorElementHTML` — rather than here and again in the build */
+    const t = doc.createElement('template')
+    t.innerHTML = mirrorElementHTML()
+    el = t.content.firstElementChild
+    doc.body.appendChild(el)
+  }
 
   const one = sel => el.querySelector(sel)
   const live = one(`[${HOOK.live}]`)

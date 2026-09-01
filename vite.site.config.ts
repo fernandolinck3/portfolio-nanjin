@@ -1,4 +1,5 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
+import { mirrorIntoPage } from './src/content/mirror'
 
 /**
  * The shipping build — and, since 2026-08-28, the dev server as well.
@@ -26,10 +27,49 @@ import { defineConfig } from 'vite'
  *   root — the difference between deploying anywhere and deploying to one place.
  *
  * The workbench dials are still in the built DOM; `prototype/index.html` hides
- * them unless the URL asks. They cannot simply be deleted — `scene.js` binds to
- * each one by id and would throw on the first missing element.
+ * them unless the URL asks, and since `T-26` with `hidden` + `aria-hidden` so a
+ * consumer that reads the markup does not take `BEVEL 10` for page content. They
+ * cannot simply be deleted — `scene.js` binds to each one by id and would throw on
+ * the first missing element.
  */
+
+/**
+ * Write the mirror into the page at build time — `T-26`.
+ *
+ * `T-18` shipped the mirror and it works for a screen reader, for find-in-page and
+ * for Google, because all three run JavaScript. An **applicant tracking system does
+ * not**, and it is attached to the audience `PRODUCT.md` lists first. Measured on
+ * the built page before this plugin existed: 469 characters, all of it control
+ * labels and dial readouts, no `<h1>` and not one word of a Module.
+ *
+ * `mirrorIntoPage` is the *same* renderer `prototype/mirror.js` uses, called here
+ * in node instead of in a browser. `createMirror` then finds the `<main>` already
+ * in the document and adopts it, so navigation still moves it — nothing is frozen
+ * and nothing is drawn twice.
+ *
+ * `order: 'pre'` so the source arrives verbatim, before Vite has injected the module
+ * script or rewritten a single asset URL, which is what makes the two anchors
+ * (`</style>`, end of file) predictable.
+ *
+ * The guard on the path matters: `prototype/` also holds `deck-fit/index.html` and
+ * `style-test/`, which the dev server serves and which have no reason to carry a
+ * portfolio.
+ */
+function prerenderMirror(): Plugin {
+  return {
+    name: 'tenebrae:prerender-mirror',
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html, ctx) {
+        if (ctx.path.replace(/^\/+/, '') !== 'index.html') return html
+        return mirrorIntoPage(html)
+      },
+    },
+  }
+}
+
 export default defineConfig({
+  plugins: [prerenderMirror()],
   root: 'prototype',
   publicDir: '../public',
   base: './',
