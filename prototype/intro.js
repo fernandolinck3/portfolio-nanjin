@@ -70,8 +70,47 @@ export const REST = { tilt: 6, dist: 5.6, yaw: 0 }
  * self-test runs in front of you.
  */
 const TRAVEL = 3.0
-const BOOT = 5.2
+/**
+ * 1.7, not 5.2.
+ *
+ * `HOLD + BOOT` is the whole of the wait: nothing on the Screen is legible until the
+ * boot clears. It was 5.9 seconds on every load, against an audience `PRODUCT.md`
+ * describes as recruiters with ten to thirty. Between a fifth and three fifths of the
+ * attention this object gets was spent watching a percentage count itself.
+ *
+ * The four beats are unchanged and keep their proportions — they are all cut from `k`,
+ * so the tube still snaps, opens, names itself and settles, at speed. What goes is the
+ * dwell, which was never the part anyone was reading.
+ *
+ * `TRAVEL` is deliberately not cut (T-21 says so, and it is right): the flight is the
+ * part that reads as craft, the boot is the part that reads as waiting. The
+ * consequence is that the machine now finishes *before* the camera lands rather than
+ * after — the Screen is readable at 2.5s while the object is still settling around it,
+ * which is a better order for someone in a hurry and no worse for anyone else.
+ *
+ * 1.7 and not the 1.8 the ticket suggested, for one boring reason: `HOLD + BOOT` is
+ * the number the ticket actually measures, it asks for *under* 2.5, and 0.7 + 1.8 is
+ * exactly 2.5. `intro.test.js` asserts the sum rather than either part, so whoever
+ * retunes these two next is told immediately if the pair stops clearing the bar.
+ */
+const BOOT = 1.7
 const HOLD = 0.7
+
+/**
+ * A second load in the same session plays the opening at speed, rather than not at all.
+ *
+ * The once-per-session skip existed, was removed, and the reasoning written down for
+ * removing it was that "the boot *is* the arrival, it is under three seconds". It was
+ * 5.9. The other half of that argument still holds and is why this is not a skip:
+ * whoever is building this reloads constantly, and a hard skip means they never see
+ * the thing they are working on again.
+ *
+ * So a repeat gets the same four beats at 0.42x — about a second, still recognisably
+ * the object switching on. `sessionStorage`, not `localStorage`: someone coming back
+ * tomorrow is arriving, not returning.
+ */
+const REPEAT = 0.42
+const SEEN_KEY = 'tenebrae.opened'
 
 /* Slow in, slow out, and longer on the tail — a camera that stops abruptly reads
    as a cut. `easeInOutCubic` weighted toward the end. */
@@ -90,6 +129,20 @@ export function createIntro({ apply, onBoot, waitFor }) {
   waitFor?.then(() => { ready = true })
   let t = 0
   let done = false
+
+  /* Private mode and blocked storage both throw rather than return null, and neither
+     is a reason to refuse someone the opening. */
+  let repeat = false
+  try {
+    repeat = sessionStorage.getItem(SEEN_KEY) === '1'
+    sessionStorage.setItem(SEEN_KEY, '1')
+  } catch { /* no storage, every load is a first load */ }
+
+  /* Held on the instance so `replay()` can put them back: asking to see it again
+     means asking to see it, not to see it hurried. */
+  let hold = repeat ? HOLD * REPEAT : HOLD
+  let travel = repeat ? TRAVEL * REPEAT : TRAVEL
+  let boot = repeat ? BOOT * REPEAT : BOOT
   /**
    * It plays every load.
    *
@@ -117,12 +170,12 @@ export function createIntro({ apply, onBoot, waitFor }) {
       /* hold, and keep holding while the Plate is still assembling itself */
       if (!ready) { apply(OPEN); onBoot?.(0); return true }
       t += dt
-      if (t < HOLD) { apply(OPEN); onBoot?.(0); return true }
+      if (t < hold) { apply(OPEN); onBoot?.(0); return true }
 
-      const since = t - HOLD
+      const since = t - hold
 
       /* the flight */
-      const k = Math.min(1, since / TRAVEL)
+      const k = Math.min(1, since / travel)
       const e = ease(k)
       apply({
         tilt: lerp(OPEN.tilt, REST.tilt, e),
@@ -131,7 +184,7 @@ export function createIntro({ apply, onBoot, waitFor }) {
       })
 
       /* the machine, on its own clock */
-      const b = Math.min(1, since / BOOT)
+      const b = Math.min(1, since / boot)
       onBoot?.(b)
 
       /* not done until both are */
@@ -152,6 +205,7 @@ export function createIntro({ apply, onBoot, waitFor }) {
     replay() {
       t = 0
       done = false
+      hold = HOLD; travel = TRAVEL; boot = BOOT
       apply(OPEN)
       onBoot?.(0)
     },

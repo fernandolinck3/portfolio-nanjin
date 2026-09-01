@@ -1945,6 +1945,26 @@ function powerOn(t) {
       g.fillText('FRONT-END  ·  WEB DESIGN  ·  AI', 20, 106)
     }
 
+    /**
+     * That it can be skipped, said on the Screen rather than by a button.
+     *
+     * A click has always ended the opening and nothing ever said so, which makes it a
+     * secret rather than an affordance. It appears at `k > 0.28` — about 1.2s into a
+     * cold load — because before that the visitor has not yet decided they are waiting,
+     * and an escape offered too early reads as an apology for the thing you are about
+     * to show them.
+     *
+     * Silkscreen at 8px in `DIM`, in the row the Screen keeps for machine chatter. Not
+     * a browser button: nothing in this object is, and the one place a native control
+     * appears is the form, where a native control is the whole point.
+     */
+    if (k > 0.28) {
+      g.font = '8px Silkscreen, monospace'
+      g.fillStyle = DIM
+      const cue = 'TOQUE PARA PULAR'
+      g.fillText(cue, (W - g.measureText(cue).width) / 2, H - 14)
+    }
+
     /* the machine counting itself, on the leader the Rack uses for its rows */
     const CHECKS = [['PLATE', 0.40], ['DECKS', 0.55], ['PHOSPHOR', 0.70]]
     g.font = '8px Silkscreen, monospace'
