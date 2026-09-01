@@ -18,6 +18,16 @@
  *
  * It remembers in `localStorage`, not `sessionStorage`: asking again tomorrow is
  * nagging, and the answer did not expire overnight.
+ *
+ * **The wording is deliberately conventional, and it is the only place here that is.**
+ * Everywhere else this object writes in its own voice; a cookie bar is one of the few
+ * surfaces where a visitor is scanning for a familiar shape rather than reading, and
+ * an authored sentence costs them a beat to parse for no gain. Recognisable beats
+ * distinctive on this one bar.
+ *
+ * It names Google Analytics and the purpose — art. 9 wants the finality stated — and
+ * it links no privacy policy, because there is no privacy policy. A link to a page
+ * that does not exist would be the only false statement on the site.
  */
 
 const KEY = 'tenebrae.consent'
@@ -86,9 +96,8 @@ export function createConsent(onDecide) {
   bar.dataset.up = '0'
   bar.setAttribute('aria-label', 'Medição e cookies')
   bar.innerHTML = `
-    <p><b>Medição.</b> Este site pode gravar um cookie do Google Analytics para contar
-      quantas pessoas o visitam e o que olham. Nada é vendido nem compartilhado, e
-      recusar não muda nada do que você vê aqui.</p>
+    <p><b>Cookies.</b> Utilizamos cookies do Google Analytics para medir o tráfego
+      deste site. Você pode aceitar ou recusar — recusar não afeta a navegação.</p>
     <div class="cs-acts">
       <button type="button" data-yes>Aceitar</button>
       <button type="button" data-no>Recusar</button>
