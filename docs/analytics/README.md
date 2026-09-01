@@ -116,8 +116,16 @@ What it contains:
 
 **Custom parameters need registering in GA4 to appear in reports.** *Admin → Custom
 definitions → Create custom dimension*, one per parameter you want to slice by —
-`module`, `item`, `work`, `image`, `route`, `face` are the useful ones. Until then the events
-arrive and the parameters are invisible in the UI, which looks like data loss and is not.
+`module`, `item`, `work`, `image`, `route`, `face` are the useful ones, and **`status` joined
+them with the form** — without it `contact_failed` still arrives and you cannot see *why*,
+which is the whole value of the event: "the service refused" and "the visitor had no
+connection" need different answers, and one of them is not fixable. Until a parameter is
+registered the events arrive and it is invisible in the UI, which looks like data loss and
+is not.
+
+The remaining parameters the tag sends — `page`, `kind`, `from`, `ms` — are deliberately
+left unregistered. They are worth carrying on the event for later and are not worth a slot
+until a question actually needs them.
 
 Expect `eclipse_found` to be rare — it is the hardest thing on the object to reach.
 Read it as a ratio against `boot_complete`, never as an absolute count.
