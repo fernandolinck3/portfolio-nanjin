@@ -31,7 +31,7 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-02 | [DOM truth layer](T-02-dom-truth-layer.md) | A | T-01 | ready after T-01 |
 | T-03 | [Screen reads the source](T-03-screen-reads-source.md) | A | T-01 | ready after T-01 |
 | T-04 | [Scene into `src/`](T-04-scene-into-src.md) | A | T-02, T-03, track B quiet | later |
-| T-05 | [Flat Plate](T-05-flat-plate.md) | A | T-02 | ready after T-02 |
+| T-05 | [Flat Plate](T-05-flat-plate.md) | A | T-02 | tem um piso desde 2026-09-01 — ver comentário |
 | T-06 | [Portrait recomposition](T-06-portrait.md) | A | T-04 | later |
 | T-07 | [Shadows](T-07-shadows.md) | B | — | ready — biggest single win |
 | T-08 | [The window and the curtains](T-08-window-and-curtains.md) | B | — | ready |
@@ -46,14 +46,14 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-17 | [PROJETOS never invites the SUN](T-17-projetos-never-invites-the-sun.md) | B | — | absorbed by the PROJETOS preview |
 | T-18 | [The accessible mirror of the LCD](T-18-accessible-mirror.md) | A | — | **done** — branch `espelho` |
 | T-19 | [Split the handoff](T-19-split-the-handoff.md) | A | — | done 2026-08-31 |
-| T-21 | [Boot in 2–2.5s](T-21-boot-in-two-seconds.md) | B | — | ready — from the 2026-09-01 critique |
+| T-21 | [Boot in 2–2.5s](T-21-boot-in-two-seconds.md) | B | — | **done 2026-09-01** — 5,90s → 2,42s |
 | T-22 | [The Screen is five percent](T-22-the-screen-is-five-percent.md) | B | — | ready — from the 2026-09-01 critique |
-| T-23 | [Three holes in the overlay](T-23-the-overlay-has-three-holes.md) | A | T-18 merged | blocked on `espelho` |
+| T-23 | [Three holes in the overlay](T-23-the-overlay-has-three-holes.md) | A | T-18 merged | **done 2026-09-01** |
 | T-24 | [CONTATO is last, and partly dead](T-24-contato-is-last-and-partly-dead.md) | A | — | ready |
 | T-25 | [The documents describe another object](T-25-the-documents-describe-another-object.md) | A | — | ready — docs only |
-| T-26 | [The robots still cannot read it](T-26-the-robots-still-cannot-read-it.md) | A | T-18 | ready — his ask |
-| T-27 | [The k in Linck](T-27-the-k-in-linck.md) | B | — | ready — small, show him the face |
-| T-28 | [A form on CONTATO](T-28-a-form-on-contato.md) | C | Fernando | blocked — needs a ruling first |
+| T-26 | [The robots still cannot read it](T-26-the-robots-still-cannot-read-it.md) | A | T-18 | **done 2026-09-01** — 465 → 5.745 chars |
+| T-27 | [The k in Linck](T-27-the-k-in-linck.md) | B | — | **done 2026-09-01** — no ar |
+| T-28 | [A form on CONTATO](T-28-a-form-on-contato.md) | C | Fernando | **done 2026-09-01** — ADR-0027 + formulário |
 | T-29 | [O Preview do GTM não conecta](T-29-o-preview-do-gtm-nao-conecta.md) | A | — | precisa do sintoma exato |
 
 ## Where T-21 to T-25 came from
