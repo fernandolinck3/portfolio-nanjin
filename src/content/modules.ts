@@ -31,6 +31,9 @@ export type Act =
   | { kind: 'work'; value: string }
   | { kind: 'mail'; value: string }
   | { kind: 'url'; value: string }
+  /* Sem `value`: o destino do formulário é uma decisão de infraestrutura (ADR-0027),
+     não conteúdo, e não tem por que atravessar este arquivo. */
+  | { kind: 'form' }
 
 /** Uma coisa em que a LUA pode parar. */
 export type Item = {
@@ -693,6 +696,16 @@ export const MODULES: readonly Module[] = [
     lead: ['Para uma vaga, um projeto ou uma ideia incomum — escreva direto.'],
     unit: 'ROTA',
     items: [
+      /* Primeiro item porque é a rota que funciona para quem está no celular e usa
+         webmail — um `mailto:` ali não abre nada. O endereço continua logo abaixo:
+         quando o envio falha, a mensagem na tela aponta para ele. */
+      {
+        id: 'write',
+        label: 'Escrever agora',
+        meta: 'FORMULÁRIO',
+        act: { kind: 'form' },
+        sections: [{ heading: 'FORMULÁRIO', lines: ['Abre um formulário nesta página.'] }],
+      },
       {
         id: 'mail',
         label: 'fernandolinck@outlook.com',

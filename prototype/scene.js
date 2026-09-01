@@ -15,6 +15,7 @@ import { createRoomDecor } from './room-decor.js'
 import { createAltarProps } from './altar-props.js'
 import { createPost } from './post.js'
 import { createFocus } from './focus.js'
+import { createContact } from './contact.js'
 import { createIntro, REST } from './intro.js'
 import { createMirror } from './mirror.js'
 import {
@@ -3226,6 +3227,14 @@ function sunEnter() {
     if (w) { flashLcd(`ABRIR · ${w.title}`); track('work_open', { work: w.id }); focus.enter(w); syncMirror(); }
     return;
   }
+  /* The form stays on the page, so it is the one route that does not announce a
+     departure. It is also the only one that can fail visibly, which is the point. */
+  if (act.kind === 'form') {
+    flashLcd('ESCREVER');
+    track('contact_open', { from: mod().id });
+    contact.open();
+    return;
+  }
   /* A mail or a link leaves the page, so it is announced before it happens. */
   flashLcd(`ABRIR · ${it.meta || it.label}`);
   /* the only events that mean a visit turned into contact */
@@ -4699,6 +4708,13 @@ const post = createPost(renderer, scene, camera, { width: W(), height: H() });
  */
 const ROOM_DIM = [];
 scene.traverse(n => { if (n.isLight && n !== rake) ROOM_DIM.push([n, n.intensity]); });
+/* The form's own surface. It shares the stage with the case overlay and never opens
+   beside it: the Sun cannot reach CONTATO's rows while a Work is up. */
+const contact = createContact({
+  mount: document.getElementById('stage'),
+  track,
+});
+
 const focus = createFocus({
   camera,
   mount: document.getElementById('stage'),

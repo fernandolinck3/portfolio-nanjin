@@ -232,9 +232,19 @@ describe('what the content is allowed to claim', () => {
   })
 
   it('offers exactly one way out, and it is a direct address', () => {
-    const mails = items.filter(({ i }) => i.act?.kind === 'mail')
+    /* The narrowing is the point, not ceremony: `form` carries no `value`, because
+       where the form posts is infrastructure (ADR-0027) and not content. Reading
+       `.value` off a bare Act stopped compiling the moment that route existed. */
+    const mails = items.flatMap(({ i }) => (i.act?.kind === 'mail' ? [i.act] : []))
     expect(mails).toHaveLength(1)
-    expect(mails[0].i.act!.value).toMatch(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)
+    expect(mails[0].value).toMatch(/^[^@\s]+@[^@\s]+\.[^@\s]+$/)
+  })
+
+  /** The form is a route with no address, and exactly one item may hold it. */
+  it('opens the form in one place, and keeps the address beside it', () => {
+    const forms = items.filter(({ i }) => i.act?.kind === 'form')
+    expect(forms).toHaveLength(1)
+    expect(forms[0].m.id).toBe('contact')
   })
 
   /**
