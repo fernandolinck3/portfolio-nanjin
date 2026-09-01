@@ -45,6 +45,19 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-16 | [An index that does not fit must say so](T-16-an-index-that-does-not-fit-must-say-so.md) | B | — | absorbed by whichever Module grows first |
 | T-17 | [PROJETOS never invites the SUN](T-17-projetos-never-invites-the-sun.md) | B | — | absorbed by the PROJETOS preview |
 | T-19 | [Split the handoff](T-19-split-the-handoff.md) | A | — | done 2026-08-31 |
+| T-21 | [Boot in 2–2.5s](T-21-boot-in-two-seconds.md) | B | — | ready — from the 2026-09-01 critique |
+| T-22 | [The Screen is five percent](T-22-the-screen-is-five-percent.md) | B | — | ready — from the 2026-09-01 critique |
+| T-23 | [Three holes in the overlay](T-23-the-overlay-has-three-holes.md) | A | T-18 merged | blocked on `espelho` |
+| T-24 | [CONTATO is last, and partly dead](T-24-contato-is-last-and-partly-dead.md) | A | — | ready |
+| T-25 | [The documents describe another object](T-25-the-documents-describe-another-object.md) | A | — | ready — docs only |
+
+## Where T-21 to T-25 came from
+
+A two-axis code review and an Impeccable critique, both run on 2026-09-01 against the shipped site.
+They are **findings with a measurement attached**, not new ideas — each names the number that
+justifies it so nobody re-argues it from taste. The critique scored the object 25/40 and its P0
+(the portfolio serves 214 characters of text to a crawler) is already answered by T-18 on `espelho`,
+which is why no ticket here repeats it.
 
 ## Standing rules for every ticket
 
