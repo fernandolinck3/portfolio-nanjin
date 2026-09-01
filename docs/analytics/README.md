@@ -132,8 +132,30 @@ Read it as a ratio against `boot_complete`, never as an absolute count.
 
 ## Consent
 
-**There is none, and that is a decision waiting rather than an oversight.** While the
-container is empty nothing is set and there is nothing to consent to. The moment a GA4
-tag is published it writes a cookie, and LGPD makes consent the honest next step. Three
-routes: a banner, GTM's own Consent Mode, or a cookieless analytics tag. Fernando has
-not ruled.
+**Decidido em 2026-09-01: um banner, e ele é um portão.**
+
+`prototype/consent.js` pergunta antes de qualquer medição, e `prototype/index.html`
+**não busca o `gtm.js`** até alguém dizer sim. Não é Consent Mode com armazenamento
+negado, nem uma tag que dispara e se arrepende: o script ou foi buscado ou não foi.
+Não existe terceiro estado para errar.
+
+Por que um portão e não um aviso: a tag do GA4 grava cookie em quem apenas chega, e
+chegar não é um pedido. É o que separa este caso do formulário, onde o art. 7º, V
+cobre o tratamento porque o visitante pediu contato (ADR-0027). Ninguém pede para ser
+contado.
+
+**Recusar custa exatamente o que aceitar custa** — dois botões, mesmo tamanho, mesmo
+peso, mesma distância da mão. Um "não" menor ou mais cinza é padrão escuro com crachá
+de conformidade, e este objeto não mente para ninguém em lugar nenhum.
+
+A decisão fica em `localStorage`: perguntar de novo amanhã é insistência, e a resposta
+não venceu durante a noite. Armazenamento bloqueado não é lido como sim — pergunta de
+novo.
+
+**A consequência a aceitar de olhos abertos:** quem recusa não é medido de forma
+alguma. Os números passam a ser de quem aceitou, e não de todo mundo. É a ordem certa,
+e quem for ler relatório precisa saber disso para não tomar uma queda de tráfego por
+uma queda de interesse.
+
+`prototype/consent.test.js` fixa o que importa: nada é buscado enquanto a pergunta
+está na tela, o "não" não carrega nada, e o "não" é o mesmo controle que o "sim".

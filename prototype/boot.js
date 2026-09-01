@@ -12,6 +12,12 @@
  * see.
  */
 import { probe3D } from './capability.js'
+import { createConsent } from './consent.js'
+
+/* Asked on both paths and before either: the cookie question has nothing to do with
+   whether this machine can draw the Unit, and a visitor who gets the text version is
+   owed the same choice as one who gets the object. */
+createConsent()
 
 const forced = location.search.includes('flat')
 const verdict = forced ? { ok: false, reason: 'forced' } : probe3D()

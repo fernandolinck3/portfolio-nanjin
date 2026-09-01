@@ -61,21 +61,36 @@
   it there is no scene, no Screen and nothing to measure. The only thing that tag
   could ever count here is a crawler.
 
-  No consent gate yet. Everything GTM ends up setting is a decision made in the
-  container rather than here; if a GA4 tag goes in, LGPD makes a banner the honest
-  next step. See HANDOFF.md.
+  The consent gate is here now, and it is a gate rather than a notice.
+
+  A GA4 tag is published and writes a cookie, so LGPD applies to every visitor who
+  merely arrives — which is a different case from the form, where the visitor asked
+  for contact and art. 7, V covers it (ADR-0027). Nobody asked for this one.
+
+  The strongest reading is also the simplest to hold: **nothing loads until someone
+  says yes.** Not Consent Mode with storage denied, not a tag that fires and repents
+  — the script is never fetched, so there is no cookie to argue about and no state to
+  get wrong. Refusing costs the visitor nothing and costs us the measurement, which
+  is the correct way round.
+
+  `loadGTM` is left on the window so the banner can start it without a reload, on the
+  visit where consent was actually given. See `prototype/consent.js`.
 -->
 <script>
   window.dataLayer = window.dataLayer || [];
-  (function () {
+  window.loadGTM = function () {
     var GTM = 'GTM-PLPVLQH9';
-    if (!GTM || !/(^|\.)nanj\.in$/.test(location.hostname)) return;
+    if (window.__gtmUp || !GTM || !/(^|\.)nanj\.in$/.test(location.hostname)) return;
+    window.__gtmUp = true;
     window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
     var s = document.createElement('script');
     s.async = true;
     s.src = 'https://www.googletagmanager.com/gtm.js?id=' + GTM;
     document.head.appendChild(s);
-  })();
+  };
+  try {
+    if (localStorage.getItem('tenebrae.consent') === 'granted') window.loadGTM();
+  } catch (e) { /* storage blocked: no decision can be remembered, so none is assumed */ }
 </script>
 
 <!-- A four-pointed star, the same one the lamp row is cut from. Inline, because one
