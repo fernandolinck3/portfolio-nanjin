@@ -43,7 +43,21 @@ const HOLD = 1.4     // seconds held open
 const BACK = 2.0     // seconds to close
 const LOOP = OUT + HOLD + BACK
 
-const CAM = { tilt: 30, yaw: -16, dist: 6.4, pan: { x: 0, y: 0, z: 0 } }
+/**
+ * Low and to the side — the one thing an exploded diagram cannot do without.
+ *
+ * The first cut used the object's usual raked view, which on this rig is close to
+ * overhead. Layers separating *vertically* then travel straight at the eye, and
+ * moving toward a camera reads as **getting bigger**, not as coming apart:
+ * *"ficou meio confuso pelo POV topdown, não dá pra entender que os objetos tão
+ * separando."*
+ *
+ * `tilt` runs backwards here — 70 is a low camera, not a high one — and at that angle
+ * `placeCamera` aims well above the pivot on its own, so `pan.y` pulls the target back
+ * down to the middle of the column. The result: the camera sits at about the height of
+ * the Plate and looks across the stack, so a piece rising crosses the frame.
+ */
+const CAM = { tilt: 70, yaw: -22, dist: 7.6, pan: { x: 0, y: -1.05, z: 0 } }
 
 const clamp01 = v => (v < 0 ? 0 : v > 1 ? 1 : v)
 /* ease-in-out: pieces start and settle slowly, which is what makes a mechanism read
@@ -62,6 +76,21 @@ export function runExplode(unit, canvas) {
 
   unit.setFilmSize(SIZE.w, SIZE.h)
   unit.setCam(CAM)
+
+  /**
+   * The object alone, on black.
+   *
+   * A side-on camera puts the room, the wall and the candlestick straight into frame,
+   * and a diagram with scenery behind it stops being a diagram. The room's *meshes*
+   * are hidden rather than the group: the Candles are lights living inside it, and a
+   * hidden parent takes its lights with it — the object would go dark.
+   */
+  const { room, altar } = unit.roots()
+  const veiled = []
+  for (const g of [room, altar]) {
+    if (!g) continue
+    g.traverse(o => { if ((o.isMesh || o.isInstancedMesh) && o.visible) { o.visible = false; veiled.push(o) } })
+  }
 
   /* every mesh's own resting height, so the lift is an offset and never an absolute —
      putting a Part back by assignment is how you lose a position nobody wrote down */
