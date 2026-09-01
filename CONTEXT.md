@@ -207,3 +207,19 @@ onward join the same series.
 The thesis the Crossfader carries. *Now* is what is demonstrable today — frontend, marketing.
 *Next* is the stated direction — AI, automation, analytics — always future-tense, never claimed as
 experience. See ADR-0005.
+
+**Mirror** (o espelho):
+The Screen's content as semantic HTML, in the document, in step with the canvas. Not a fallback and
+not a second design — the *same state expressed twice*: once as pixels for the eye, once as markup
+for a screen reader, for find-in-page and for a crawler. All six Modules are in it at all times,
+not only the live one, because a search does not fire your events. It lives in `src/content/mirror.ts`
+(the markup) and `prototype/mirror.js` (the node, the state and the announcements), and it renders
+from `modules.ts` — the same file the Screen reads. The canvas stays visually sovereign.
+_Avoid_: fallback, a11y layer, alt text, text version, no-JS version
+
+**The mirror rule**:
+Anything that changes what the Screen displays changes the mirror in the same commit — and the way
+to obey that is to put the content in `modules.ts`, so that both read it and neither has to be
+remembered. **If the mirror and the Screen can disagree, the work is not done.** Silent drift is the
+failure mode of the whole idea: the person who would notice that the mirror lost a section is the
+one person who cannot see the Screen. See T-18, and the drift test in `src/content/modules.test.ts`.

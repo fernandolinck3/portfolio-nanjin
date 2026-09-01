@@ -16,12 +16,14 @@ import { createAltarProps } from './altar-props.js'
 import { createPost } from './post.js'
 import { createFocus } from './focus.js'
 import { createIntro, REST } from './intro.js'
+import { createMirror } from './mirror.js'
 import {
   buffer as screenBuffer, render as renderScreen, SCREEN_W, SCREEN_H, setBoot,
   setModule as setScreenModule, setVigil as setScreenVigil,
   setCrossfade as setScreenCrossfade, setFace as setScreenFace,
   setHoverWork, setPlinthWork, workRowAt,
   setFlash, setHint, selectionOf, sectionOf, setSelection, setSection, resetPlace,
+  statusLine, lyraLine,
   backBox, claimBox, claimURL, eclipseMarkBox, setEclipseFound,
   bootLevel, touchLyra, lyraPhase, pageRange,
   setEclipseSeen, setEclipseUnlocked, setEclipseOpen,
@@ -186,6 +188,16 @@ const camLimits = () => (FREECAM ? FREE_LIMITS : CAM_LIMITS);
  * from `typeof` — which an undeclared name would not.
  */
 let focusDriving = () => false;
+
+/**
+ * Push the instrument's state into the mirror.
+ *
+ * A plain `let` for the same reason as `focusDriving` above: `drawScreen()` runs at
+ * module load, roughly three thousand lines before the mirror can be built, and a
+ * `const` in its temporal dead zone would throw during boot. It is a no-op until the
+ * mirror exists and the real one is installed.
+ */
+let syncMirror = () => {};
 
 function placeCamera() {
   /* the focus flight drives the camera outright while it runs; the rig must not
@@ -1245,13 +1257,40 @@ let rite = { phase: 'idle', work: -1, k: 0, restore: 0 };
  * whole way through: Cracktro is a different model, not a mode of this one.
  *
  * `drawScreen` is kept because a dozen callers say it and they are all still
- * right to want it — but it does nothing now. The Screen animates whether or not
+ * right to want it — and it now has a job again. The Screen animates whether or not
  * anything changed (the raven flies, the Cast types, she breathes), so it is
  * repainted every frame in the render loop rather than on demand. What those
  * callers actually needed was the state setters, which they now call too.
+ *
+ * **What it does now is drive the mirror** (`prototype/mirror.js`). Every control on
+ * this object already ends by saying "the state moved" in exactly one word, and that
+ * word is this one — twenty-odd call sites that a new control is copied from. Hanging
+ * the accessible half of the object off the junction they all already use is the
+ * difference between a mirror that is maintained and a mirror that is remembered;
+ * see `T-18`. The frame loop syncs as well, so a path that forgets to say it is
+ * caught within a frame in a real browser.
  */
 setScreenFace('grimoire');
-function drawScreen() {}
+function drawScreen() { syncMirror(); }
+
+/**
+ * Paint the Screen once, now, rather than on the next frame.
+ *
+ * **`pageRange()` is written by the draw**, so anything that needs to know how many
+ * pages the live Module has must have let the Module be drawn first. The frame loop
+ * normally does that and nobody has to think about it — except in the one case where
+ * a control changes Module and opens a row in the same gesture, which only the mirror
+ * can do: a screen reader reaches the fourth criterion while PROJETOS is live, and
+ * without this the page count consulted a millisecond later is still PROJETOS'.
+ *
+ * It is also the debug hook `__unit.paintScreen()`, for the older reason that `rAF`
+ * fires zero times in an automated tab.
+ */
+function paintScreen() {
+  renderScreen(performance.now() / 1000, SCREEN_STEP);
+  display.paint();
+  screenTex.needsUpdate = true;
+}
 
 /* ---------- geometry ---------- */
 function slab(w, d, h, r, hole) {
@@ -3144,6 +3183,28 @@ function scrollBody(dir) {
 const lightName = v => (v < .28 ? 'NOITE' : v > .72 ? 'DIA' : 'CREPÚSCULO');
 
 /**
+ * Land the cursor on a row and open it — the one behaviour two controls share.
+ *
+ * A click on a name **opens** it. It used to select and then flash the position,
+ * which is what a click on a named thing least resembles. Where the item is a route
+ * or a Work it opens that; where it is a criterion or a group of tools it opens its
+ * page — *"quando o user clica em um deles, abrir a outra página."* Landing the
+ * cursor first keeps the MOON in step with what the visitor just did.
+ *
+ * It lives in a function because it now has **two** callers: a pointer on the Screen,
+ * and Enter on the same row in the mirror. Two copies of "what clicking a row does"
+ * is precisely the drift `T-18` exists to design out — a keyboard user and a mouse
+ * user pressing the same name must not reach different places.
+ */
+function openRow(row) {
+  setSelection(curPage, row);
+  const it = itemsOf()[row];
+  if (it?.act) sunEnter();
+  else if (it?.sections?.length) { drawScreen(); moveSection(1); }
+  else flashLcd(`${mod().unit} ${pad2(row + 1)}/${pad2(itemsOf().length)} · ${it?.label || ''}`);
+}
+
+/**
  * Sun centre — open, enter, activate.
  *
  * An `act` is data, not a branch the caller has to know about: `modules.ts` says
@@ -3159,7 +3220,10 @@ function sunEnter() {
   if (!act) { flashLcd(`SEM ROTA · ${it.label}`); return; }
   if (act.kind === 'work') {
     const w = WORKS.find(x => x.id === act.value);
-    if (w) { flashLcd(`ABRIR · ${w.title}`); track('work_open', { work: w.id }); focus.enter(w); }
+    /* `flashLcd` syncs, but it runs *before* the overlay opens — and opening a Work
+       is the one state change on this object that does not end in `drawScreen()`. So
+       it is said again afterwards, here and at the click that closes it. */
+    if (w) { flashLcd(`ABRIR · ${w.title}`); track('work_open', { work: w.id }); focus.enter(w); syncMirror(); }
     return;
   }
   /* A mail or a link leaves the page, so it is announced before it happens. */
@@ -3605,7 +3669,7 @@ el.addEventListener('pointerdown', e => {
     /* A click anywhere on the Unit sends the Work back. It used to be Moon-centre
        only, which was the one hub press that could not be given up without leaving
        the overlay with no way out under the mouse. */
-    if (pick(e)) focus.exit();
+    if (pick(e)) { focus.exit(); syncMirror(); }
     return;
   }
   const hit = pick(e);
@@ -3642,23 +3706,7 @@ el.addEventListener('pointerdown', e => {
       }
       if (inBox(sp, backBox())) { moonBack(); return; }
       if (inBox(sp, eclipseMarkBox())) { openEclipse(eclipse.face); return; }
-      if (row >= 0) {
-        setSelection(curPage, row);
-        const it = itemsOf()[row];
-        /**
-         * A click on a name **opens** it.
-         *
-         * It used to select and then flash the position, which is what a click on a
-         * named thing least resembles. Where the item is a route or a Work it opens
-         * that; where it is a criterion or a group of tools it opens its page —
-         * *"quando o user clica em um deles, abrir a outra página."* Landing the
-         * cursor first keeps the MOON in step with what the visitor just did.
-         */
-        if (it?.act) sunEnter();
-        else if (it?.sections?.length) { drawScreen(); moveSection(1); }
-        else flashLcd(`${mod().unit} ${pad2(row + 1)}/${pad2(itemsOf().length)} · ${it?.label || ''}`);
-        return;
-      }
+      if (row >= 0) { openRow(row); return; }
       /* not on a row: fall through, so the Screen is still somewhere you can grab
          the view from the way every other dead area of the Unit is */
     }
@@ -4219,11 +4267,7 @@ window.__unit = {
    * module instance with its own selection state, and reads it while the scene
    * drives the first. That produced a confident, entirely wrong answer once.
    */
-  paintScreen() {
-    renderScreen(performance.now() / 1000, SCREEN_STEP);
-    display.paint();
-    screenTex.needsUpdate = true;
-  },
+  paintScreen() { paintScreen(); },
   prewarm() {
     prewarmStep(performance.now() / 1000);
     while (prewarmAt < prewarmMarks.length) prewarmStep(performance.now() / 1000);
@@ -4686,6 +4730,71 @@ const focus = createFocus({
 focusDriving = () => focus.active;
 
 /**
+ * The mirror — everything the Screen shows, in the DOM, in step with it.
+ *
+ * Built here because this is the first line at which every one of its dependencies
+ * exists: `focus` was declared immediately above, and the state it reports includes
+ * whether a Work is up. `syncMirror` was a no-op until now (see its declaration near
+ * the top), which is what makes the `drawScreen()` at module load harmless.
+ *
+ * **It reads state and never content.** The words come from `modules.ts` by way of
+ * `src/content/mirror.ts`; the footer line and LYRA's line come from the Screen's own
+ * accessors. Nothing here writes a sentence a visitor will read, which is the whole
+ * reason the mirror cannot fall out of step with the Screen.
+ */
+const mirror = createMirror({
+  /**
+   * A row pressed in the mirror does exactly what a row clicked on the Screen does.
+   *
+   * With one addition the Screen cannot need: a screen reader can reach the fourth
+   * criterion while PROJETOS is the live Module, because all six Modules are in the
+   * document at all times. So the Pad is pressed first, and only then the row — the
+   * name the visitor activated is the name they get.
+   */
+  onItem(m, i) {
+    if (m !== curPage) {
+      pressPad(m);
+      /* the new Module has to be *drawn* before its rows can be opened — `openRow`
+         asks how many pages the selection has, and only the draw knows */
+      paintScreen();
+    }
+    if (itemsOf()[i]) openRow(i);
+  },
+  onBack: () => moonBack(),
+  onReopen: () => openEclipse(eclipse.face),
+  /* the anchor navigates by itself; this is only the event worth counting */
+  onClaim: () => {
+    flashLcd('ABRIR · INSTAGRAM');
+    track('outbound', { route: 'INSTAGRAM', kind: 'url', from: 'eclipse' });
+  },
+});
+
+/**
+ * What the mirror is told, and the only place it is assembled.
+ *
+ * Every field is read from the thing that owns it — `curPage` and the `place` map for
+ * the navigation, `pageRange()` for how many pages the *draw* actually produced,
+ * `statusLine()` and `lyraLine()` for the two lines the Screen writes. None of it is
+ * recomputed here, so there is nothing for a second implementation to get wrong.
+ */
+syncMirror = () => mirror.sync({
+  page: curPage,
+  sel: selectionOf(curPage),
+  sec: sectionOf(curPage),
+  pages: pageRange(),
+  focus: focus.active,
+  eclipseOpen: eclipse.open,
+  /* the same condition `moonBack` acts on: is there a level to leave? */
+  back: eclipse.open || focus.active || sectionOf(curPage) > 0,
+  /* and the same one `eclipseMarkBox()` draws the sky mark on */
+  reopen: eclipse.answered && !eclipse.open,
+  status: statusLine(),
+  lyra: lyraLine(),
+  light: `${lightName(xfVal)} · ${Math.round(xfVal * 100)}%`,
+});
+syncMirror();
+
+/**
  * Show the room, or don't.
  *
  * Everything behind the Altar — walls, ceiling, acoustic panels, both bays, the
@@ -4992,6 +5101,12 @@ function frame(t) {
     screenTex.needsUpdate = true;
     screenClock = 0;
   }
+  /* The mirror follows the Screen's own clock. `drawScreen()` is the deliberate
+     signal and this is the net under it: the footer expires a flash on a timer and
+     LYRA changes her line after six seconds of quiet, neither of which any control
+     announces, and a mirror that lags the Screen is the drift this was built to
+     prevent. It is a string compare when nothing has moved. */
+  syncMirror();
   summoning.update(smooth(rite.k), t / 1000);
   portrait.update(vigil);
   tickFps(dt);

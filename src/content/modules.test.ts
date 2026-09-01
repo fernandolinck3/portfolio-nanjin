@@ -8,7 +8,8 @@
  */
 import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { MODULES, SCREEN_BUDGET, WORKS, LYRA_IDLE_MS, moduleAt, lyraAt, workById } from './modules'
+import { GAP, MODULES, SCREEN_BUDGET, WORKS, LYRA_IDLE_MS, moduleAt, lyraAt, workById } from './modules'
+import { HOOK, itemKey, mirrorHTML } from './mirror'
 
 /**
  * These are not style tests. "Every Module fits the Screen exactly" is the
@@ -316,5 +317,131 @@ describe('the projects', () => {
     expect(capturas!.lines.length).toBeGreaterThan(0)
     const shots = workById('graecus')!.images ?? []
     expect(shots.length).toBeGreaterThanOrEqual(6)
+  })
+})
+
+/**
+ * The drift test.
+ *
+ * `T-18` asks for a mirror of the Screen in the DOM and then asks the harder
+ * question: how does it stay true six months from now, when someone adds a section
+ * to a case, the Screen shows it, and the person who would have noticed that the
+ * mirror does not cannot see the Screen anyway? **Silent drift is the failure mode
+ * of the whole idea.**
+ *
+ * The first answer is that there is one source and not two renderers — `mirror.ts`
+ * builds its markup out of the very array this file is asserting about, so content
+ * added below appears in both without anyone doing anything. That is the layer that
+ * actually prevents drift.
+ *
+ * This is the layer that catches what escapes it. Adding a Module, an item or a
+ * section without it reaching the mirror turns this suite red, which is the whole
+ * difference between a rule and a wish. It asserts against *rendered markup* rather
+ * than against the builder's structure on purpose: the question is only ever
+ * "can this string be found in the document", because that is the question a screen
+ * reader and Ctrl+F are both really asking.
+ */
+describe('the mirror', () => {
+  const html = mirrorHTML()
+  /* entities back to text, tags away: what is left is what a reader would hear */
+  const text = html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+
+  it('carries every Module, not only the live one', () => {
+    /* find-in-page and crawlers do not fire your events: all six are always there */
+    for (const m of MODULES) expect(text).toContain(m.title)
+    expect(html.match(new RegExp(HOOK.module + '=', 'g'))).toHaveLength(MODULES.length)
+  })
+
+  it('carries every lead, every dim line and every discipline', () => {
+    for (const m of MODULES) {
+      for (const l of m.lead ?? []) expect(text).toContain(l)
+      for (const d of m.dim ?? []) expect(text).toContain(d)
+      for (const d of m.disciplines ?? []) expect(text).toContain(d)
+    }
+  })
+
+  it('carries every item label, with a control to open it', () => {
+    for (const [i, m] of MODULES.entries()) {
+      for (const [j, it] of (m.items ?? []).entries()) {
+        expect(text).toContain(it.label)
+        expect(html).toContain(`${HOOK.item}="${itemKey(i, j)}"`)
+      }
+    }
+  })
+
+  /**
+   * The one that catches a case growing a section. Every heading the SUN can page
+   * to, and every line under it, has to be findable — including the ones belonging
+   * to items in Modules nobody has opened.
+   */
+  it('carries every case section, heading and prose alike', () => {
+    for (const m of MODULES) {
+      for (const it of m.items ?? []) {
+        for (const sec of it.sections) {
+          expect(text).toContain(sec.heading)
+          for (const line of sec.lines) expect(text).toContain(line)
+        }
+      }
+    }
+  })
+
+  /** A declared gap has to read as *missing*, not be silently absent. */
+  it('says so where the content is a declared gap', () => {
+    const gaps = MODULES.flatMap(m => (m.items ?? [])
+      .flatMap(i => i.sections.filter(s => !s.lines.length)))
+    if (gaps.length) expect(text).toContain(GAP)
+  })
+
+  it('carries every project blurb', () => {
+    for (const w of WORKS) for (const l of w.blurb) expect(text).toContain(l)
+  })
+
+  /**
+   * The traps, as assertions.
+   *
+   * `display:none`, `visibility:hidden` and the `hidden` attribute each remove text
+   * from find-in-page, which is half of why the mirror exists. The single permitted
+   * `hidden` is ECLIPSE, which is a secret rather than a Module (`ADR-0001`) and is
+   * meant not to be findable until it has been earned.
+   */
+  it('hides no Module from find-in-page', () => {
+    const modules = html.slice(0, html.indexOf(HOOK.eclipse))
+    expect(modules).not.toMatch(/display:\s*none|visibility:\s*hidden/)
+    expect(modules).not.toMatch(/<section[^>]*\shidden/)
+  })
+
+  it('keeps the seventh screen out of reach until it is opened', () => {
+    expect(html).toMatch(new RegExp(`<section ${HOOK.eclipse} hidden`))
+    /* and the prize is a real link, which is the whole of T-15 */
+    expect(html).toContain(`${HOOK.claim} hidden href="https://instagram.com/nan._.jin"`)
+  })
+
+  /**
+   * The prize is a control, and it sits with the controls.
+   *
+   * Left at the end of the ECLIPSE section it would be the last focusable thing in
+   * the document, behind all seventeen item buttons — reachable in principle and
+   * unreachable in practice, which is the state `T-15` was opened about.
+   */
+  it('puts the prize where a Tab key reaches it', () => {
+    const claimAt = html.indexOf(HOOK.claim)
+    const firstItemAt = html.indexOf(HOOK.item)
+    const eclipseAt = html.indexOf(HOOK.eclipse)
+    expect(claimAt).toBeGreaterThan(-1)
+    expect(claimAt).toBeLessThan(firstItemAt)
+    expect(claimAt).toBeLessThan(eclipseAt)
+  })
+
+  /** Only the announcement lives in the live region; the content stays outside it. */
+  it('gives the live region nothing to re-read', () => {
+    expect(html).toMatch(new RegExp(`<p ${HOOK.live} role="status" aria-live="polite" aria-atomic="true"></p>`))
+  })
+
+  /** Text is text. The content has an `@`, an `&`-free path, and quotes are coming. */
+  it('escapes rather than injects', () => {
+    expect(mirrorHTML()).not.toMatch(/<script/i)
   })
 })
