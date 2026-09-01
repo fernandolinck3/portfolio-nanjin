@@ -285,4 +285,7 @@ window.addEventListener('error',function(e){var d=document.getElementById('err')
   }
   if (location.search.includes('turned')) document.body.dataset.turned = '1';
 </script>
-<script type="module" src="./scene.js"></script>
+<!-- boot.js, not scene.js: importing scene.js builds the WebGL renderer at module
+     scope, so whether this machine can draw the Unit has to be decided one step
+     earlier. See prototype/capability.js. -->
+<script type="module" src="./boot.js"></script>
