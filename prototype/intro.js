@@ -46,7 +46,25 @@
  * Plate is seen at an angle — it simply contains nothing but the object.
  */
 export const OPEN = { tilt: 18, dist: 6.4, yaw: 0 }
-export const REST = { tilt: 6, dist: 5.6, yaw: 0 }
+/**
+ * 5.0, não 5.6 — um passo, não a mudança que o T-22 pede.
+ *
+ * A crítica mediu a Screen desenhando ~405px de largura em repouso: um buffer de 320
+ * a 1.27x, não inteiro, inclinado e graduado, enquanto duas rodas de ~300px não
+ * carregam informação nenhuma. O T-22 propõe tilt 4 / dist 4.6, que mede 676 e é uma
+ * recomposição de verdade.
+ *
+ * Isto é menos do que isso de propósito. Fernando pediu um zoom pequeno, e ele está
+ * certo sobre o porquê: aumentar a Screen de verdade puxa textura, tipografia e o
+ * enquadramento inteiro atrás. Aproximar a câmera não puxa nada — é o mesmo objeto,
+ * maior no quadro, e as rodas cortam nas bordas, o que as fotos de referência deste
+ * projeto todas fazem.
+ *
+ * O que fica pior e precisa dos olhos dele: o **castiçal cortado atrás** (Open 14).
+ * Ele já encosta na borda em 5.6 e encosta mais aqui. Três saídas foram oferecidas e
+ * nenhuma escolhida; este commit não escolhe por ele, só torna a escolha mais devida.
+ */
+export const REST = { tilt: 6, dist: 5.0, yaw: 0 }
 
 /**
  * Seconds. The Screen's own boot is timed against this, not the other way round.
