@@ -51,6 +51,9 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-23 | [Three holes in the overlay](T-23-the-overlay-has-three-holes.md) | A | T-18 merged | blocked on `espelho` |
 | T-24 | [CONTATO is last, and partly dead](T-24-contato-is-last-and-partly-dead.md) | A | — | ready |
 | T-25 | [The documents describe another object](T-25-the-documents-describe-another-object.md) | A | — | ready — docs only |
+| T-26 | [The robots still cannot read it](T-26-the-robots-still-cannot-read-it.md) | A | T-18 | ready — his ask |
+| T-27 | [The k in Linck](T-27-the-k-in-linck.md) | B | — | ready — small, show him the face |
+| T-28 | [A form on CONTATO](T-28-a-form-on-contato.md) | C | Fernando | blocked — needs a ruling first |
 
 ## Where T-21 to T-25 came from
 
