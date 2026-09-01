@@ -224,6 +224,58 @@ export function mirrorHTML(): string {
 }
 
 /** O id do `<main>`, e o do `<style>` que o recorta. Um lugar só para os dois lados. */
+/**
+ * O que a página é, dito em vez de deduzido.
+ *
+ * O Google lê "Fernando Linck" e "GROWTH · CRO" e *infere* que talvez isto seja uma
+ * pessoa. Um bloco `Person` afirma: é uma pessoa, este é o nome, esta é a atuação,
+ * estes são os perfis — e o `sameAs` é o que costura este site ao LinkedIn e ao
+ * Instagram como sendo o mesmo alguém.
+ *
+ * Montado a partir de `MODULES`, como todo o resto. Um JSON-LD digitado à mão é a
+ * mesma deriva de sempre com outra roupa: ele mentiria na primeira vez que ele mudasse
+ * o cargo em `modules.ts` e esquecesse deste arquivo. Nada aqui é escrito duas vezes.
+ *
+ * Não inventa nada. `jobTitle` sai do `role`, `knowsAbout` das `disciplines`, os
+ * perfis dos `act` de CONTATO que de fato existem — se o LinkedIn não tivesse
+ * endereço, ele simplesmente não apareceria, como não apareceu por várias sessões.
+ *
+ * Vai só na página do build (`mirrorIntoPage`), e não em `mirrorElementHTML`. Quem lê
+ * isto são rastreadores, que leem o HTML servido; o espelho montado em runtime já está
+ * dentro de um documento que tem o bloco. Pendurá-lo no elemento faria toda montagem em
+ * runtime carregar um `<script>` que ninguém lê — e foi o que quebrou catorze testes na
+ * primeira tentativa, porque o `<main>` deixou de ser a raiz do que a função devolve.
+ */
+export const jsonLD = () => {
+  const ident = MODULES.find(m => m.id === 'identity')
+  const contact = MODULES.find(m => m.id === 'contact')
+  const urls = (contact?.items || [])
+    .flatMap(i => (i.act?.kind === 'url' ? [i.act.value] : []))
+  const mail = (contact?.items || [])
+    .flatMap(i => (i.act?.kind === 'mail' ? [i.act.value] : []))[0]
+
+  const person: Record<string, unknown> = {
+    '@type': 'Person',
+    '@id': 'https://nanj.in/#me',
+    name: ident?.name,
+    url: 'https://nanj.in/',
+    jobTitle: ident?.role,
+    description: ident?.lead?.[0],
+    knowsAbout: ident?.disciplines,
+  }
+  if (mail) person.email = 'mailto:' + mail
+  if (urls.length) person.sameAs = urls
+
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph': [
+      person,
+      { '@type': 'WebSite', url: 'https://nanj.in/', name: ident?.name,
+        inLanguage: 'pt-BR', author: { '@id': 'https://nanj.in/#me' } },
+    ],
+  })
+}
+
 export const MIRROR_ID = 'mirror'
 export const MIRROR_STYLE_ID = 'mirror-css'
 
@@ -295,5 +347,6 @@ export function mirrorIntoPage(html: string): string {
   return html.replace(
     '</style>',
     `</style>\n<style id="${MIRROR_STYLE_ID}">${MIRROR_CSS}</style>`,
-  ) + `\n${mirrorElementHTML()}\n`
+  ) + `\n<script type="application/ld+json">${jsonLD()}</script>`
+    + `\n${mirrorElementHTML()}\n`
 }

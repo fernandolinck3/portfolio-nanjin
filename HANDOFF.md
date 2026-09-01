@@ -49,6 +49,42 @@ about to make looks like one that was already tried. You do not need it to start
 This file keeps **state and decisions**. Reasoning goes in the commit message — `git log --oneline`
 is cheap and nobody loads a commit body into context. Do not write it in both places.
 
+## Where this was left on 2026-09-01, and how to pick it up
+
+**Everything below is committed and deployed.** `origin/lyra` is the live branch; a push to it
+builds, tests and deploys to `nanj.in` in about a minute.
+
+The work happened in the worktree `~/dev/tenebrae-memoria` on branch `memoria`. **The main checkout
+at `~/dev/fernando-portfolio` needs a `git pull`** — it is several commits behind and still carries
+~30 uncommitted lines in `prototype/explode.js` from an older session, which nothing incoming
+touches.
+
+**To read what happened rather than take it on trust**, the commit bodies are long on purpose:
+
+```
+git log --oneline -25          the day, one line each
+git show <sha>                 any commit, with the reasoning
+git diff f982f45..HEAD --stat  everything since mid-afternoon
+```
+
+**What shipped on 2026-09-01**, in order: the handoff split (T-19), the accessible mirror merged and
+then pre-rendered (T-18, T-26), the `k` in Linck (T-27), three holes in the overlay (T-23), a contact
+form with its ADR (T-28, ADR-0027), a no-GPU fallback, the boot cut to 2,42s (T-21), a consent gate,
+the LinkedIn URL, the documents corrected (T-25), a `schema.org` block, and a small camera zoom.
+
+**Three things are unverified because the Chrome extension died mid-session**: the camera zoom, the
+consent bar on a phone, and the no-GPU fallback on a phone. Each needs eyes, not a test.
+
+**Two commands to see it locally:**
+
+```
+npm run build:site && npm run preview:site     the real site
+                    ?flat                       the no-GPU version
+                    ?turned                     the phone's rotated frame, on a desktop
+                    ?debug                      the workbench dials
+                    ?track                      dataLayer pushes on any host
+```
+
 ## The build ships the prototype now
 
 This changed on 2026-08-27 and it is the thing most likely to surprise you.
@@ -209,27 +245,41 @@ part to work from, not from taste.
    part of the brief is built and measured: 60/40, the fixed header, three sections in the first
    fold, the drawn indicator, and his mobile order. The one thing it does not close is item 7
    below: the phone layout was verified in a 402px iframe, not in a hand.
-2. **The accessible mirror of the LCD.** *The biggest real gap in the project.* The controls have
-   accessible names but the live content lives only in the canvas. Needs a semantic HTML mirror of
-   the current state — active Module, selected item, page title, shown content, position, available
-   action — with short announcements for state changes rather than re-reading everything. The canvas
-   stays visually sovereign; the HTML becomes the accessible representation of the same state.
+2. ~~**The accessible mirror of the LCD.**~~ **Done 2026-09-01** (T-18, then T-26). Every word is
+   real HTML, built from `modules.ts` by one renderer run at build time and adopted at runtime — not
+   a second copy. Written into `dist-site/index.html` before any script runs, so it reaches a reader
+   that never executes JavaScript. **465 readable characters became 5.827**, there is one `<h1>`, and
+   a `schema.org` `Person` block says who he is rather than leaving Google to guess. `verify:site`
+   asserts the structure on every deploy, so this cannot silently regress.
 3. **Per-project case content.** Portfolio should present the system as the project — boot, modules,
    decks, LYRA, interactions, ECLIPSE, and **it has no images at all**, so the overlay opens it on an
    empty media column. Graecus should tie the eight captures to the WordPress build. ~~Miscelânea
    must stop saying the content is coming "em breve"~~ — done 2026-08-31, along with the same promise
    under every other case. The prose itself is still mine, which is why it is still under *Blocked on
    Fernando* rather than here.
-4. **Boot in 2–2.5s.** The opening is about five. Keep the ritual, make the content usable sooner,
-   and run the full animation only on the first visit of a session.
+4. ~~**Boot in 2–2.5s.**~~ **Done 2026-09-01** (T-21). **5,90s → 2,42s**, measured by driving the
+   opening a frame at a time in `intro.test.js`, because `rAF` cannot be used to time anything here.
+   The four beats are untouched — only the dwell went. A repeat load in the same session plays at
+   0.42x rather than skipping, so whoever is building this still sees it. `TOQUE PARA PULAR` appears
+   after ~1.2s, because a click always ended the opening and nothing ever said so.
 5. **PROJETOS: the SUN should reveal a short preview** of the selected project — one factual line,
    optionally a small monochrome image — with pressing the Screen opening the full case. Today the
    SUN just moves the cursor there, because those items have no pages.
-6. **CONTATO hierarchy.** Email primary, Instagram secondary, LinkedIn only if a real URL exists.
-   Location and language in the footer. MOON selects the route, SUN executes it.
-7. **Mobile, on a real device.** The rotated frame works — the pointer mapping is verified end to
-   end via `?turned`, which forces it on a desktop — but nobody has held a phone. Touch targets are
-   46px and safe-area insets are respected; that is not the same as having tested it.
+6. **CONTATO — half done.** A form is built and live (T-28, ADR-0027), the LinkedIn URL arrived on
+   2026-09-01 and the row acts, and both addresses are real `<a href>` in the static HTML. **What is
+   left is discovery, not hierarchy:** nothing at rest says the route exists, and a visitor can spend
+   thirty seconds and leave with no way to reach him. His own suggestion, to build: a slow pulse on
+   the CONTATO lamp after ~20s of it not having been opened, stopping for good once it is. A breath,
+   not a blink — a blink reads as an alarm and nothing here is urgent. **The order stays**: CONTATO
+   closing the six is right, and moving it was never the ask.
+7. **Mobile, on a real device — and it has now found its first bug.** He held a phone on
+   2026-09-01 and the form came up sideways: it was mounted inside `#frame`, which a portrait phone
+   rotates 90°, and a transformed element is the containing block for everything in it, fixed
+   overlays included. Looking at a turned object is the design; typing into one is not, because the
+   keyboard arrives in the device's orientation. Fixed — the form, the mirror and the consent bar all
+   live on `document.body` now. **Still unseen on a phone:** the consent bar, the no-GPU fallback,
+   and whether the case overlay reads well turned (left alone deliberately — it is reading, not
+   typing, so rotating with the object is coherent).
 8. **Record the film.** `?film` is built and never run. It needs a visible window; the framing
    numbers come from geometry, not from watching it.
 
