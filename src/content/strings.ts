@@ -87,6 +87,44 @@ export function stringsFor(locale: Locale) {
     workZoomIn: t('Ampliar a imagem', 'Enlarge the image'),
     workZoomOut: t('Reduzir a imagem', 'Shrink the image'),
     /** O rodapé só aparece quando há imagens, e ensina as duas coisas que se faz com elas. */
+    /**
+     * O que cada captura mostra, tirado do nome do arquivo.
+     *
+     * O `alt` dizia "imagem 2 de 5" — útil para saber que as outras existem, e
+     * inútil para dizer o que está na tela. Vinte e duas capturas de sites reais e
+     * nenhuma se descrevia: nem para um leitor de tela, nem para a busca de imagens,
+     * nem para um modelo.
+     *
+     * As descrições saem do sufixo do arquivo (`cmpinox-produtos.jpg`), que é dado
+     * que já existe e não uma legenda inventada. O que o nome não cobre continua
+     * sendo só o número, porque descrever uma captura que ninguém olhou seria pior
+     * que não descrever.
+     */
+    shotOf: {
+      home: t('página inicial', 'home page'),
+      sobre: t('página sobre', 'about page'),
+      servicos: t('página de serviços', 'services page'),
+      services: t('página de serviços', 'services page'),
+      produtos: t('catálogo de produtos', 'product catalogue'),
+      tabelas: t('tabelas técnicas', 'technical tables'),
+      processo: t('página de processo', 'process page'),
+      resultados: t('página de resultados', 'results page'),
+      contato: t('página de contato', 'contact page'),
+      mobile: t('versão mobile', 'mobile version'),
+      objeto: t('o objeto em repouso', 'the object at rest'),
+      quem: t('a Tela em QUEM', 'the Screen on WHO'),
+      projetos: t('a Tela em PROJETOS', 'the Screen on PROJECTS'),
+      criterios: t('a Tela em CRITÉRIOS', 'the Screen on CRITERIA'),
+      flat: t('a versão em texto, sem GPU', 'the text version, with no GPU'),
+      open: t('o overlay de um case aberto', 'an open case overlay'),
+      hero: t('a home, o topo', 'the home page, above the fold'),
+      archive: t('o arquivo do blog', 'the blog archive'),
+      article: t('um artigo', 'an article'),
+      cta: t('a chamada para ação', 'the call to action'),
+      metodologia: t('página de metodologia', 'methodology page'),
+    } as Record<string, string>,
+    shotFallback: t('imagem do projeto', 'project image'),
+
     workHint: t(
       'clique na imagem para ampliar · ← → para percorrer as imagens',
       'click the image to enlarge · ← → to move through them',

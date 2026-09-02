@@ -112,6 +112,18 @@ export type Module = {
     locality: string
     region: string
     country: string
+    /**
+     * Onde mais ele existe, **só para a máquina**.
+     *
+     * `sameAs` sai daqui e das rotas do CONTATO somadas. A separação é o ponto: o
+     * CONTATO é o que o visitante vê e onde ele pode agir, e pôr o GitHub lá é uma
+     * decisão de produto que é do Fernando. Isto é apenas identidade — o que costura
+     * a conta ao `Person` para o Google e para um motor generativo.
+     *
+     * O perfil aponta de volta para `nanj.in` no campo Website, o que é o que torna
+     * a afirmação recíproca. Uma ponta sozinha é alegação; duas, confirmação.
+     */
+    alsoAt: readonly string[]
     worksFor: readonly { name: string; from: string; to: string }[]
   }
   /**
@@ -691,10 +703,29 @@ const MODULES_PT: readonly Module[] = [
     dim: ['Porto Alegre, Brasil.'],
     entity: {
       jobTitle: 'Growth, CRO e experiências digitais',
-      knowsAbout: ['Estratégia', 'Mensagem', 'Design', 'Front-end', 'Análise'],
+      /**
+       * Os termos que alguém digita, não as cinco palavras que a tela desenha.
+       *
+       * Isto era `disciplines` — Estratégia, Mensagem, Design, Front-end, Análise —
+       * que é a hierarquia **desenhada** sob o nome na tela de identidade. Como termo
+       * de busca elas não servem: ninguém procura "Mensagem", e um motor generativo
+       * não consegue responder "o Fernando sabe CRO?" a partir dela.
+       *
+       * Os termos reais já existiam no portfólio, no Módulo HABILIDADES, e nenhuma
+       * máquina os recebia. Aqui eles chegam. **Nada disto aparece na tela** —
+       * `knowsAbout` é só `schema.org`, então a troca não custa nada ao objeto.
+       */
+      knowsAbout: [
+        'CRO', 'Otimização de conversão', 'Testes A/B', 'Experimentação',
+        'Análise de funil', 'Pesquisa quantitativa e qualitativa',
+        'Growth marketing', 'Landing pages', 'Copy de conversão',
+        'UX/UI', 'Figma', 'Sistemas de design',
+        'Front-end', 'HTML', 'CSS', 'JavaScript', 'WordPress',
+      ],
       locality: 'Porto Alegre',
       region: 'Rio Grande do Sul',
       country: 'Brasil',
+      alsoAt: ['https://github.com/fernandolinck3'],
       /* As mesmas três etapas que o TRAJETO desenha, com as mesmas datas. */
       worksFor: [
         { name: 'Nelogica', from: '2024', to: '2026' },

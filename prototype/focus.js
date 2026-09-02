@@ -525,9 +525,15 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
       img.src = asset(shots[at])
       /* the alt says which of how many, because the plate steps through them and a
          reader who cannot see it otherwise has no idea the others exist */
+      /* O que a captura mostra vem do sufixo do arquivo — `cmpinox-produtos.jpg` diz
+         "catálogo de produtos". O número fica junto, porque quem não vê a fileira não
+         sabe que as outras existem. Sem sufixo conhecido, só o número: descrever uma
+         captura que ninguém olhou seria pior que não descrever. */
+      const slug = String(shots[at]).replace(/\.[a-z]+$/i, '').split(/[/-]/).pop()
+      const what = UI.shotOf[slug] || UI.shotFallback
       img.alt = n > 1
-        ? `${current.title} — imagem ${at + 1} de ${n}`
-        : `${current.title} — imagem do projeto`
+        ? `${current.title} — ${what}, ${at + 1} de ${n}`
+        : `${current.title} — ${what}`
     } else {
       img.removeAttribute('src')
       img.alt = ''

@@ -33,6 +33,9 @@ import { DEFAULT_LOCALE, LOCALE, langFor, other, pathFor, type Locale } from './
 
 /** A raiz do site, com barra. Escrita uma vez porque aparece em cinco lugares aqui. */
 const SITE = 'https://nanj.in/'
+
+/** O dia do build, em ISO. Ver `dateModified` abaixo. */
+const BUILT_AT = new Date().toISOString().slice(0, 10)
 import { stringsFor, type Strings } from './strings'
 import { translate } from './en'
 
@@ -308,7 +311,9 @@ export const jsonLD = (locale: Locale = DEFAULT_LOCALE) => {
     knowsAbout: e?.knowsAbout ?? ident?.disciplines,
   }
   if (mail) person.email = 'mailto:' + mail
-  if (urls.length) person.sameAs = urls
+  /* as rotas visíveis do CONTATO mais as contas que só a máquina precisa saber */
+  const sameAs = [...urls, ...(e?.alsoAt ?? [])]
+  if (sameAs.length) person.sameAs = sameAs
   if (e) {
     person.address = {
       '@type': 'PostalAddress',
@@ -332,6 +337,39 @@ export const jsonLD = (locale: Locale = DEFAULT_LOCALE) => {
     }
   }
 
+  /**
+   * Os projetos como entidade, e não só como texto na página.
+   *
+   * O grafo declarava a pessoa e nada do trabalho. Para "quem é Fernando Linck" isso
+   * bastava; para **"o que o Fernando construiu"** — que é a pergunta que um motor
+   * generativo recebe de quem contrata — não havia resposta estruturada nenhuma.
+   *
+   * `CreativeWork` e não `WebSite`: dois dos sete não são sites, e o tipo tem de
+   * caber em todos. `about` carrega o `kind`, que já é o termo pelo qual alguém
+   * procuraria — "Site de advocacia" é uma busca real. `creator` aponta para o mesmo
+   * `@id` da pessoa, que é o que costura o trabalho a quem o fez.
+   *
+   * Só entram os que têm obra: `empty` marca o estado vazio honesto, e declarar como
+   * trabalho publicado algo que ainda não existe seria a invenção que o `PRODUCT.md`
+   * proíbe.
+   */
+  const works = contentFor(locale).works
+    .filter(w => !w.empty)
+    .map(w => {
+      const o: Record<string, unknown> = {
+        '@type': 'CreativeWork',
+        '@id': `${page}#work-${w.id}`,
+        name: w.title,
+        about: w.kind,
+        creator: { '@id': SITE + '#me' },
+        inLanguage: langFor(locale),
+      }
+      if (w.year) o.dateCreated = w.year
+      if (w.client) o.sourceOrganization = { '@type': 'Organization', name: w.client }
+      if (w.blurb?.length) o.abstract = w.blurb.join(' ')
+      return o
+    })
+
   return JSON.stringify({
     '@context': 'https://schema.org',
     '@graph': [
@@ -348,6 +386,10 @@ export const jsonLD = (locale: Locale = DEFAULT_LOCALE) => {
         url: page,
         name: ident?.name,
         inLanguage: langFor(locale),
+        /* Sinal de atualização. `BUILT_AT` é a data do build e não uma data digitada,
+           que envelheceria calada — e é dia, não instante: um `dateModified` que muda
+           a cada deploy diz "mudou" quando nada de substantivo mudou. */
+        dateModified: BUILT_AT,
         mainEntity: { '@id': SITE + '#me' },
         isPartOf: { '@id': SITE + '#site' },
       },
@@ -356,6 +398,7 @@ export const jsonLD = (locale: Locale = DEFAULT_LOCALE) => {
          que costura as duas versões como sendo o mesmo alguém. */
       { '@type': 'WebSite', '@id': SITE + '#site', url: SITE, name: ident?.name,
         inLanguage: langFor(locale), author: { '@id': SITE + '#me' } },
+      ...works,
     ],
   })
 }

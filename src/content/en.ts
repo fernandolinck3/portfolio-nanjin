@@ -65,14 +65,27 @@ export const EN: Readonly<Record<string, string>> = {
   /* Os fatos no registro que uma máquina lê — ver `entity` em modules.ts. Nomes de
      lugar e de empresa não mudam; o cargo e as disciplinas mudam. */
   'Growth, CRO e experiências digitais': 'Growth, CRO and digital product experiences',
-  'Estratégia': 'Strategy',
-  'Mensagem': 'Messaging',
+
+  /* Os termos de `knowsAbout`. Vários são iguais nas duas línguas — CRO, Figma,
+     WordPress, os nomes de linguagem — e estão aqui pelo mesmo motivo que o nome dele:
+     entrada idêntica é a diferença entre "decidiram não traduzir" e "esqueceram". */
+  'CRO': 'CRO',
+  'Otimização de conversão': 'Conversion rate optimization',
+  'Testes A/B': 'A/B testing',
+  'Experimentação': 'Experimentation',
+  'Landing pages': 'Landing pages',
+  'Copy de conversão': 'Conversion copywriting',
+  'UX/UI': 'UX/UI',
+  'Figma': 'Figma',
+  'Sistemas de design': 'Design systems',
+  'HTML': 'HTML',
+  'CSS': 'CSS',
+  'JavaScript': 'JavaScript',
+  'WordPress': 'WordPress',
   'Front-end': 'Front-end',
-  'Análise': 'Analytics',
   'Porto Alegre': 'Porto Alegre',
   'Rio Grande do Sul': 'Rio Grande do Sul',
   'Brasil': 'Brazil',
-  'Design': 'Design',
   'A unidade despertou.': 'The unit has woken.',
   'Comece aqui.': 'Start here.',
   'As teclas escolhem': 'The keys choose',
