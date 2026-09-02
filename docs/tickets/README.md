@@ -56,6 +56,7 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-28 | [A form on CONTATO](T-28-a-form-on-contato.md) | C | Fernando | **done 2026-09-01** — ADR-0027 + formulário |
 | T-29 | [O Preview do GTM não conecta](T-29-o-preview-do-gtm-nao-conecta.md) | A | — | precisa do sintoma exato |
 | T-30 | [Nine controls and no legend](T-30-the-object-has-no-legend.md) | B | — | ready — 11 dos 15 pontos perdidos na crítica |
+| T-31 | [O portfólio em inglês](T-31-o-portfolio-em-ingles.md) | A | — | precisa de três decisões dele |
 
 ## Where T-21 to T-25 came from
 
