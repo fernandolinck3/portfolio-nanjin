@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from 'vite'
 import { localizePage } from './src/build/page'
+import { generatedFiles } from './src/build/files'
 import { DEFAULT_LOCALE, LOCALES } from './src/content/locale'
 
 /**
@@ -106,6 +107,13 @@ function localizedPages(): Plugin {
         const html = localizePage(bare, locale, { draft: DRAFT.includes(locale) })
         if (locale === DEFAULT_LOCALE) { main.source = html; continue }
         this.emitFile({ type: 'asset', fileName: `${locale}/index.html`, source: html })
+      }
+
+      /* robots, sitemap e llms.txt saem daqui e não de `public/`: escritos à mão eles
+         mentiriam no dia em que nascesse uma terceira página, do lado que ninguém
+         relê — ninguém abre um sitemap para conferir. */
+      for (const [fileName, source] of Object.entries(generatedFiles())) {
+        this.emitFile({ type: 'asset', fileName, source })
       }
     } },
   }

@@ -69,6 +69,15 @@ export const pathFor = (locale: Locale): string => (locale === 'en' ? '/en/' : '
 export const langFor = (locale: Locale): string => (locale === 'en' ? 'en' : 'pt-BR')
 
 /**
+ * O mesmo idioma, na forma que o Open Graph usa.
+ *
+ * OG quer `xx_XX` e não uma tag BCP 47: `pt_BR`, `en_US`. Trocar o hífen por
+ * sublinhado resolvia o português por acaso — `pt-BR` vira `pt_BR` — e deixava o
+ * inglês como `en`, que o Facebook não reconhece e simplesmente ignora.
+ */
+export const ogFor = (locale: Locale): string => (locale === 'en' ? 'en_US' : 'pt_BR')
+
+/**
  * O outro idioma, e como chamá-lo.
  *
  * O nome de uma língua se escreve **nela mesma** — "English", não "Inglês". Quem

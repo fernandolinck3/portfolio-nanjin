@@ -147,4 +147,39 @@ for (const page of PAGES) {
     (page.draft ? ', noindex (draft)' : ''))
 }
 
-console.log(`verify:site — ${PAGES.length} pages, each reciprocal in hreflang`)
+/**
+ * Os três arquivos que um buscador pede, e que existem só no build.
+ *
+ * Os três eram 404 até 2026-09-02. São derivados da lista de locales, então nada no
+ * repositório os contém e nenhum teste de unidade os vê — como o próprio espelho,
+ * isto é uma propriedade de o build ter rodado.
+ */
+const FILES = [
+  { file: 'dist-site/robots.txt', has: ['Sitemap: https://nanj.in/sitemap.xml', 'Allow: /'] },
+  { file: 'dist-site/sitemap.xml', has: [
+    'http://www.sitemaps.org/schemas/sitemap/0.9',
+    '<loc>https://nanj.in/</loc>', '<loc>https://nanj.in/en/</loc>',
+    'hreflang="x-default"',
+  ] },
+  { file: 'dist-site/llms.txt', has: ['# Fernando Linck', '## Projetos', '## Contato'] },
+  { file: 'dist-site/en/llms.txt', has: ['# Fernando Linck', '## Projects', '## Contact'] },
+]
+
+for (const f of FILES) {
+  let body
+  try { body = readFileSync(f.file, 'utf8') }
+  catch { fail(`${f.file} was not written — a crawler asks for it and gets a 404`) }
+  for (const needle of f.has) {
+    if (!body.includes(needle)) fail(`${f.file} is missing ${JSON.stringify(needle)}`)
+  }
+  console.log(`verify:site — ${f.file.replace('dist-site/', '')} (${body.length} bytes)`)
+}
+
+/* A URL de cada página tem de estar no sitemap, ou ela existe e ninguém a submete. */
+const sitemap = readFileSync('dist-site/sitemap.xml', 'utf8')
+for (const page of PAGES) {
+  if (!sitemap.includes(`<loc>${page.canonical}</loc>`))
+    fail(`${page.name} is built and indexable but absent from the sitemap`)
+}
+
+console.log(`verify:site — ${PAGES.length} pages, each reciprocal in hreflang and in the sitemap`)

@@ -286,31 +286,80 @@ export const jsonLD = (locale: Locale = DEFAULT_LOCALE) => {
     .flatMap(i => (i.act?.kind === 'url' ? [i.act.value] : []))
   const mail = (contact?.items || [])
     .flatMap(i => (i.act?.kind === 'mail' ? [i.act.value] : []))[0]
+  const e = ident?.entity
+  const page = SITE + pathFor(locale).slice(1)
 
+  /**
+   * O cargo e as disciplinas vêm de `entity`, não de `role` e `disciplines`.
+   *
+   * Aqueles são a forma **desenhada** — caixa alta e ponto médio, porque é assim que
+   * a Screen grava um cargo. Isso vazava para cá e um motor de busca recebia
+   * `GROWTH · CRO · EXPERIÊNCIAS DIGITAIS`, que não se parece com uma profissão. O
+   * fallback existe para o dia em que um Módulo de identidade não declarar `entity`:
+   * a forma desenhada é pior que a natural e melhor que nada.
+   */
   const person: Record<string, unknown> = {
     '@type': 'Person',
-    '@id': 'https://nanj.in/#me',
+    '@id': SITE + '#me',
     name: ident?.name,
     url: SITE,
-    jobTitle: ident?.role,
+    jobTitle: e?.jobTitle ?? ident?.role,
     description: ident?.lead?.[0],
-    knowsAbout: ident?.disciplines,
+    knowsAbout: e?.knowsAbout ?? ident?.disciplines,
   }
   if (mail) person.email = 'mailto:' + mail
   if (urls.length) person.sameAs = urls
+  if (e) {
+    person.address = {
+      '@type': 'PostalAddress',
+      addressLocality: e.locality,
+      addressRegion: e.region,
+      addressCountry: e.country,
+    }
+    /* O TRAJETO já desenha isto; até agora nenhuma máquina o recebia. `worksFor` é o
+       emprego atual e `alumniOf` seria escola — os anteriores vão como `Role`, que é
+       o tipo que o schema.org tem para "este cargo, entre estas datas". */
+    const [now, ...before] = e.worksFor
+    if (now) person.worksFor = { '@type': 'Organization', name: now.name }
+    if (before.length) {
+      person.hasOccupation = e.worksFor.map(w => ({
+        '@type': 'Role',
+        roleName: e.jobTitle,
+        startDate: w.from,
+        endDate: w.to,
+        worksFor: { '@type': 'Organization', name: w.name },
+      }))
+    }
+  }
 
   return JSON.stringify({
     '@context': 'https://schema.org',
     '@graph': [
       person,
+      /**
+       * `ProfilePage` é a forma que o Google documenta para uma página que **é** o
+       * perfil de alguém, e é o que um motor generativo procura para responder "quem
+       * é Fernando Linck". Antes havia só `Person` solto e `WebSite`: a pessoa estava
+       * declarada, mas nada dizia que esta página é sobre ela.
+       */
+      {
+        '@type': 'ProfilePage',
+        '@id': page + '#page',
+        url: page,
+        name: ident?.name,
+        inLanguage: langFor(locale),
+        mainEntity: { '@id': SITE + '#me' },
+        isPartOf: { '@id': SITE + '#site' },
+      },
       /* Uma WebSite por página construída, cada uma no seu idioma. O `@id` do Person
          é o mesmo nas duas de propósito: são duas páginas e **uma** pessoa, e é isso
          que costura as duas versões como sendo o mesmo alguém. */
-      { '@type': 'WebSite', url: SITE + pathFor(locale).slice(1), name: ident?.name,
-        inLanguage: langFor(locale), author: { '@id': 'https://nanj.in/#me' } },
+      { '@type': 'WebSite', '@id': SITE + '#site', url: SITE, name: ident?.name,
+        inLanguage: langFor(locale), author: { '@id': SITE + '#me' } },
     ],
   })
 }
+
 
 export const MIRROR_ID = 'mirror'
 export const MIRROR_STYLE_ID = 'mirror-css'

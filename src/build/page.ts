@@ -42,7 +42,7 @@
  */
 
 import { mirrorIntoPage } from '../content/mirror'
-import { DEFAULT_LOCALE, langFor, pathFor, type Locale } from '../content/locale'
+import { DEFAULT_LOCALE, LOCALES, langFor, ogFor, pathFor, type Locale } from '../content/locale'
 import { stringsFor, type Strings } from '../content/strings'
 
 const SITE = 'https://nanj.in'
@@ -158,7 +158,7 @@ export function localizePage(html: string, locale: Locale, opts: { draft?: boole
   out = setAttr(out, '<html', 'lang', langFor(locale))
   out = setAttr(out, '<meta name="description"', 'content', s.pageDescription)
   out = setAttr(out, '<link rel="canonical"', 'href', SITE + path)
-  out = setAttr(out, '<meta property="og:locale"', 'content', langFor(locale).replace('-', '_'))
+  out = setAttr(out, '<meta property="og:locale"', 'content', ogFor(locale))
   out = setAttr(out, '<meta property="og:url"', 'content', SITE + path)
   out = setAttr(out, '<meta property="og:title"', 'content', s.pageTitle)
   out = setAttr(out, '<meta property="og:description"', 'content', s.ogDescription)
@@ -166,6 +166,13 @@ export function localizePage(html: string, locale: Locale, opts: { draft?: boole
   const title = out.match(/<title>[^<]*<\/title>/)
   if (!title) throw new Error('localizePage: a página não tem <title>')
   out = out.replace(title[0], `<title>${esc(s.pageTitle)}</title>`)
+
+  /* `og:locale:alternate` é como se diz "existe outra versão" para quem lê Open
+     Graph e não `hreflang` — um desdobrador de link no Slack, no WhatsApp, no
+     LinkedIn. Um por idioma que não é o desta página. */
+  const alternates = LOCALES.filter(l => l !== locale)
+    .map(l => `<meta property="og:locale:alternate" content="${ogFor(l)}">`).join('\n')
+  out = out.replace('<meta property="og:site_name"', alternates + '\n<meta property="og:site_name"')
 
   out = out.replace('<link rel="canonical"', hreflangHTML() + '\n<link rel="canonical"')
 
