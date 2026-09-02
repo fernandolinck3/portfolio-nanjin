@@ -47,7 +47,7 @@
  */
 export const OPEN = { tilt: 18, dist: 6.4, yaw: 0 }
 /**
- * 4.2 — o T-22, medido em vez de citado.
+ * 4.6 — o T-22 até onde o crossfader deixa.
  *
  * A crítica mediu a Screen desenhando ~405px em repouso e prescreveu `tilt 4 /
  * dist 4.6`, dizendo que isso mede 676px. **A prescrição está errada.** A projeção
@@ -56,16 +56,32 @@ export const OPEN = { tilt: 18, dist: 6.4, yaw: 0 }
  * a 1280x800, o repouso antigo de 5.6 dá 401px, que é o ~405 que ela mediu. No
  * mesmo viewport, dist 4.6 dá **494px, não 676**. Chegar a 676 custa dist 3.4.
  *
- *   dist 5.6 -> 401px (1.25x)    dist 4.2 -> 544px (1.70x)
+ *   dist 5.6 -> 401px (1.25x)    dist 4.6 -> 494px (1.54x)
  *   dist 5.0 -> 452px (1.41x)    dist 3.4 -> 683px (2.14x)
  *
  * **E o tilt quase não entra nesta conta.** A Screen é um plano deitado e o tilt gira
  * a câmera na vertical, então ele muda a altura projetada, não a largura. Quem manda
  * é a distância — por isso este commit move dist e deixa tilt em 6.
  *
- * 4.2 e não 3.4 porque o alvo do ticket custa as rodas inteiras: a 3.4 elas viram
- * lascas na borda. "Deixe as rodas cortarem" não é o mesmo que apagá-las, e o objeto
- * inteiro é o argumento. A 4.2 elas cortam e continuam lendo como rodas.
+ * Não 3.4, que é o alvo do ticket, porque ele custa as rodas inteiras: a 3.4 elas
+ * viram lascas na borda. "Deixe as rodas cortarem" não é o mesmo que apagá-las, e o
+ * objeto inteiro é o argumento.
+ *
+ * E não 4.2, que foi a primeira tentativa e durou uma olhada. **O que corta primeiro
+ * não é a roda, é o crossfader** — ele está em z 1.16, na frente de tudo, e o cap tem
+ * .26 de profundidade, então a borda real do objeto está em z 1.29. A 4.2 sobram 2px
+ * entre o cap e a borda de baixo do quadro: cortado na prática, e qualquer janela mais
+ * baixa come o resto. A medição que aprovou o 4.2 modelou o fader como um ponto em
+ * z 1.16 em vez de como um corpo, e foi só isso que ela errou.
+ *
+ * Margem do cap até a borda de baixo, por altura de janela:
+ *
+ *   dist 4.2 ->  2px em qualquer janela   (cortado)
+ *   dist 4.6 -> 35px a 700 · 53px a 1050
+ *   dist 5.0 -> 63px a 700 · 95px a 1050
+ *
+ * A sombra de contato do cap não está no modelo, então a margem real é um pouco menor
+ * que a da tabela.
  *
  * Duas coisas que a medição revelou e este commit **não** resolve:
  *
@@ -73,7 +89,7 @@ export const OPEN = { tilt: 18, dist: 6.4, yaw: 0 }
  *   é (0, .35, 0) e a Screen está no fundo da Plate, então aproximar sobe a Screen no
  *   quadro. Isso pede um `pan.y`, que é outra decisão e não vai junto às cegas.
  * - **O número certo depende da altura da janela, não da largura**, porque o FOV do
- *   three.js é vertical. 4.2 dá 1.70x numa janela de 800px de altura e 2.23x numa de
+ *   three.js é vertical. 4.6 dá 1.54x numa janela de 800px de altura e 2.03x numa de
  *   1050. Uma distância fixa não pode acertar as duas; a resposta honesta é dist em
  *   função da altura do viewport, e isso continua aberto no T-22.
  *
@@ -81,7 +97,7 @@ export const OPEN = { tilt: 18, dist: 6.4, yaw: 0 }
  * Ele já encostava na borda em 5.6 e encosta mais aqui. Três saídas foram oferecidas
  * e nenhuma escolhida; este commit não escolhe por ele, só torna a escolha mais devida.
  */
-export const REST = { tilt: 6, dist: 4.2, yaw: 0 }
+export const REST = { tilt: 6, dist: 4.6, yaw: 0 }
 
 /**
  * Seconds. The Screen's own boot is timed against this, not the other way round.
