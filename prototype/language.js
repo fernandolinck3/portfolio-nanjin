@@ -31,7 +31,7 @@
  */
 
 import { LOCALE, other } from '../src/content/locale.ts'
-import { stringsFor } from '../src/content/strings.ts'
+import { UI } from '../src/content/strings.ts'
 
 const KEY = 'tenebrae.lang.asked'
 
@@ -89,8 +89,6 @@ export function offerLanguage() {
   if (asked() || !prefersTheOther()) return false
 
   const o = other(LOCALE)
-  /* na língua de quem precisa da linha, não na da página */
-  const s = stringsFor(o.locale)
 
   const style = document.createElement('style')
   style.textContent = CSS
@@ -98,13 +96,14 @@ export function offerLanguage() {
 
   const bar = document.createElement('aside')
   bar.className = 'lg-bar'
-  bar.lang = o.lang
-  bar.setAttribute('aria-label', s.languageLabel)
+  bar.setAttribute('aria-label', UI.languageLabel)
+  /* A frase e o "ficar" na língua da página; o nome da língua oferecida nela mesma,
+     e marcado com `lang` para que um leitor de tela o pronuncie como o que é. */
   bar.innerHTML = `
-    <p>${s.languageOffer}</p>
+    <p>${UI.languageOffer}</p>
     <div class="lg-acts">
-      <a href="${o.path}" hreflang="${o.lang}">${s.languageGo}</a>
-      <button type="button" data-stay>${s.languageStay}</button>
+      <a href="${o.path}" hreflang="${o.lang}" lang="${o.lang}">${o.name}</a>
+      <button type="button" data-stay>${UI.languageStay}</button>
     </div>`
 
   /* Mora no body e não no #frame: um telefone em pé aplica rotate(90deg) ali, e um

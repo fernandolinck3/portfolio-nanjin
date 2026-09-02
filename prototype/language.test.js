@@ -30,11 +30,20 @@ describe('a oferta da outra língua', () => {
     expect(bar()).toBeTruthy()
   })
 
-  it('fala a língua que oferece, não a da página', async () => {
+  it('fala a língua da página, não a que oferece', async () => {
     const { offerLanguage } = await load('pt-BR', ['en-US'])
     offerLanguage()
-    expect(bar().lang).toBe('en')
-    expect(bar().textContent).toContain('English')
+    /* a frase segue a página: uma linha solta em inglês aqui leria como defeito */
+    expect(bar().querySelector('p').textContent).toContain('também está em inglês')
+    expect(bar().querySelector('[data-stay]').textContent).toBe('Ficar')
+  })
+
+  it('mas o nome da língua fica nela mesma, e marcado como tal', async () => {
+    const { offerLanguage } = await load('pt-BR', ['en-US'])
+    offerLanguage()
+    const a = bar().querySelector('a')
+    expect(a.textContent).toBe('English')
+    expect(a.getAttribute('lang')).toBe('en')
   })
 
   it('não aparece para quem já está na língua que prefere', async () => {
@@ -48,10 +57,11 @@ describe('a oferta da outra língua', () => {
     expect(offerLanguage()).toBe(false)
   })
 
-  it('funciona na direção contrária — inglês oferecendo português', async () => {
+  it('funciona na direção contrária, e ali a frase é inglesa', async () => {
     const { offerLanguage } = await load('en', ['pt-BR'])
     expect(offerLanguage()).toBe(true)
-    expect(bar().lang).toBe('pt-BR')
+    expect(bar().querySelector('p').textContent).toContain('also available in Portuguese')
+    expect(bar().querySelector('a').textContent).toBe('Português')
     expect(bar().querySelector('a').getAttribute('href')).toBe('/')
   })
 

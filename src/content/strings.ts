@@ -186,22 +186,28 @@ export function stringsFor(locale: Locale) {
     languageLabel: t('Idioma', 'Language'),
 
     /**
-     * A oferta da outra língua, e ela é lida **na** outra língua.
+     * A oferta da outra língua, **na língua desta página**.
      *
-     * Quem precisa desta linha é, por definição, quem não lê a língua da página em
-     * que caiu. Por isso quem a renderiza pede `stringsFor(o.locale)` e não `UI`: a
-     * frase de oferta do inglês mora no lado inglês da tabela e é o que um visitante
-     * de navegador inglês vê **na página portuguesa**.
+     * A primeira versão escrevia a oferta na língua oferecida, com o argumento de que
+     * quem precisa da linha não lê a página onde caiu. O argumento até se sustentava
+     * — a barra só nasce para quem prefere a outra língua, e essa pessoa lê as duas —
+     * mas o resultado era uma página em inglês com uma frase solta em português.
      *
-     * Oferta e não redirecionamento, pelo motivo escrito no T-31: trocar a página por
-     * baixo de quem chegou quebra link compartilhado — alguém manda `nanj.in` para um
-     * contato e o contato cai em outro lugar — e confunde crawler.
+     * *"a barra tem que estar sempre no idioma que o resto do portfólio está"*, e ele
+     * está certo: coerência da página vale mais do que otimizar para o caso alvo,
+     * ainda mais quando o caso alvo entende as duas de qualquer jeito. Uma frase fora
+     * da língua lê como defeito para todo mundo que não é o alvo — inclusive para um
+     * recrutador passando o olho.
+     *
+     * **O nome da língua é a exceção e continua nela mesma.** O botão diz "Português",
+     * nunca "Portuguese": é convenção firme de seletor de idioma e é a única palavra
+     * que a pessoa reconhece sem ler o resto. Ele não vem daqui — vem de
+     * `other().name`, que é onde os nomes das línguas moram.
      */
     languageOffer: t(
-      'Este site também está em português.',
-      'This site is also available in English.',
+      'Este site também está em inglês.',
+      'This site is also available in Portuguese.',
     ),
-    languageGo: t('Ler em português', 'Read in English'),
     languageStay: t('Ficar', 'Stay'),
 
     /**
