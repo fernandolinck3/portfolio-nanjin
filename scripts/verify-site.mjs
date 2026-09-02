@@ -43,7 +43,7 @@ const PAGES = [
   { file: 'dist-site/index.html', name: '/', lang: 'pt-BR', canonical: 'https://nanj.in/',
     base: null, other: '/en/', draft: false },
   { file: 'dist-site/en/index.html', name: '/en/', lang: 'en', canonical: 'https://nanj.in/en/',
-    base: '../', other: '/', draft: true },
+    base: '../', other: '/', draft: false },
 ]
 
 for (const page of PAGES) {

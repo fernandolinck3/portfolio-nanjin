@@ -65,11 +65,16 @@ import { DEFAULT_LOCALE, LOCALES } from './src/content/locale'
  * e as URLs de asset já estão dentro, que é exatamente o que uma segunda página
  * precisa e o que uma cópia da fonte não teria.
  *
- * `draft` marca as línguas ainda não traduzidas com `noindex`. A lista está aqui e
- * não em `page.ts` porque é estado do projeto e não da função: quando o inglês
- * estiver traduzido, isto vira um array vazio e some.
+ * `draft` marca com `noindex` as línguas que ainda não podem ser indexadas. A lista
+ * está aqui e não em `page.ts` porque é estado do projeto e não da função.
+ *
+ * **Está vazia desde 2026-09-02**, quando Fernando leu a página em inglês e aprovou.
+ * Ela ficou cheia de propósito enquanto o conteúdo era português — uma `/en/` assim
+ * seria conteúdo duplicado para o Google e uma mentira para quem clicou "English" —
+ * e esvaziá-la foi um ato explícito, não um efeito colateral de a tradução compilar.
+ * Uma língua nova entra aqui até alguém a ler.
  */
-const DRAFT: readonly string[] = ['en']
+const DRAFT: readonly string[] = []
 
 function localizedPages(): Plugin {
   return {
