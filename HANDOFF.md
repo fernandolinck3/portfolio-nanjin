@@ -72,8 +72,10 @@ then pre-rendered (T-18, T-26), the `k` in Linck (T-27), three holes in the over
 form with its ADR (T-28, ADR-0027), a no-GPU fallback, the boot cut to 2,42s (T-21), a consent gate,
 the LinkedIn URL, the documents corrected (T-25), a `schema.org` block, and a small camera zoom.
 
-**Three things are unverified because the Chrome extension died mid-session**: the camera zoom, the
-consent bar on a phone, and the no-GPU fallback on a phone. Each needs eyes, not a test.
+**Two things are unverified because the Chrome extension died mid-session**: the resting framing
+and the consent bar on a phone. Each needs eyes, not a test. **The no-GPU fallback is not one of
+them** — Fernando confirmed on 2026-09-02 that he had already seen and approved it; this file said
+otherwise for a day.
 
 **Two commands to see it locally:**
 
@@ -277,7 +279,7 @@ part to work from, not from taste.
    rotates 90°, and a transformed element is the containing block for everything in it, fixed
    overlays included. Looking at a turned object is the design; typing into one is not, because the
    keyboard arrives in the device's orientation. Fixed — the form, the mirror and the consent bar all
-   live on `document.body` now. **Still unseen on a phone:** the consent bar, the no-GPU fallback,
+   live on `document.body` now. **Still unseen on a phone:** the consent bar,
    and whether the case overlay reads well turned (left alone deliberately — it is reading, not
    typing, so rotating with the object is coherent).
 8. **Record the film.** `?film` is built and never run. It needs a visible window; the framing

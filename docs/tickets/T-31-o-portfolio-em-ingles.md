@@ -16,11 +16,26 @@ principal ou a segunda. Hoje o objeto responde a pergunta por omissão: `<html l
 seis Módulos em português, o que restringe as duas audiências ao Brasil sem que ninguém tenha
 escolhido isso.
 
-**A arquitetura já está pronta para receber.** Todo o texto vive em `src/content/modules.ts` e tem
-exatamente dois leitores — a Screen por `prototype/screen/render.js`, o espelho por
-`src/content/mirror.ts`. Não há texto solto em nenhum outro lugar, então isto é uma mudança em um
-arquivo e não uma caçada. É o dividendo do T-01 e do T-18, e é a razão pela qual este ticket é
-viável agora e teria sido brutal seis semanas atrás.
+**Metade da arquitetura já está pronta.** O conteúdo dos Módulos vive todo em
+`src/content/modules.ts` e tem exatamente dois leitores — a Screen por
+`prototype/screen/render.js`, o espelho por `src/content/mirror.ts`. Essa metade é o dividendo do
+T-01 e do T-18 e teria sido brutal seis semanas atrás.
+
+**A outra metade não está, e a primeira versão deste ticket dizia que estava.** A moldura da
+página é português espalhado por seis arquivos, cerca de quarenta strings visíveis que nenhum
+`modules.ts` alcança:
+
+| Onde | O quê |
+|---|---|
+| `prototype/index.html` | a fileira `.touch` (`ANTERIOR`, `PRÓXIMO`, `ABRIR`, `VOLTAR`) e seus quatro `aria-label`, o aviso `#turn` de virar o telefone, o `<title>`, a `meta description` e o próprio `lang` |
+| `prototype/focus.js` | `VOLTAR`, `Ampliar/Reduzir a imagem`, `Seções do case`, `Imagem anterior/Próxima imagem`, `Imagens do projeto` e o rodapé que ensina a operar as imagens |
+| `prototype/contact.js` | o painel inteiro: `Escrever`, os três rótulos de campo, `Enviar`, `Voltar`, o honeypot, o texto de fallback e o aviso do art. 9º |
+| `prototype/consent.js` | a barra de cookie e os dois botões — que precisam continuar sendo a **fórmula reconhecível** em inglês também, pelo mesmo motivo que foram reescritos para ela |
+| `prototype/flat.js` | `Escrever` e a nota do piso sem GPU |
+
+Isto não é uma caçada — a lista acima é a caçada, e está feita. Mas é **seis arquivos e não um**, e
+um `src/content/strings.ts` precisa existir para a moldura do mesmo jeito que o `modules.ts` existe
+para o conteúdo. Sem ele, a segunda língua nasce espalhada e a terceira é impossível.
 
 ## A decisão que decide as outras: página, não toggle
 
