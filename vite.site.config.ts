@@ -1,5 +1,5 @@
 import { defineConfig, type Plugin } from 'vite'
-import { localizePage } from './src/content/page'
+import { localizePage } from './src/build/page'
 import { DEFAULT_LOCALE, LOCALES } from './src/content/locale'
 
 /**

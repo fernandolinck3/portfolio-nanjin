@@ -84,12 +84,15 @@ export function runExplode(unit, canvas) {
    * and a diagram with scenery behind it stops being a diagram. The room's *meshes*
    * are hidden rather than the group: the Candles are lights living inside it, and a
    * hidden parent takes its lights with it — the object would go dark.
+   *
+   * Nada é guardado para desfazer porque não há saída deste modo: `?explode` dedica a
+   * página inteira à tomada, com a HUD fora e o fundo preto. Uma lista do que foi
+   * escondido existiu aqui por uma sessão sem nunca ser lida.
    */
   const { room, altar } = unit.roots()
-  const veiled = []
   for (const g of [room, altar]) {
     if (!g) continue
-    g.traverse(o => { if ((o.isMesh || o.isInstancedMesh) && o.visible) { o.visible = false; veiled.push(o) } })
+    g.traverse(o => { if (o.isMesh || o.isInstancedMesh) o.visible = false })
   }
 
   /* every mesh's own resting height, so the lift is an offset and never an absolute —

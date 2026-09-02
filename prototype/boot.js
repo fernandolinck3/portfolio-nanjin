@@ -24,7 +24,31 @@ const verdict = forced ? { ok: false, reason: 'forced' } : probe3D()
 
 if (verdict.ok) {
   await import('./scene.js')
+  await guardTheContext()
 } else {
   const { flatten } = await import('./flat.js')
   flatten(verdict.reason)
+}
+
+/**
+ * A cena está de pé, e a GPU ainda pode ir embora.
+ *
+ * `probe3D` responde uma pergunta de partida. Esta é a de meio de sessão, e a
+ * resposta do navegador quando ninguém escuta é um retângulo preto permanente com o
+ * portfólio inteiro atrás dele. O piso de texto já existe para o caso de não haver
+ * GPU; não haver GPU **mais** é o mesmo destino.
+ *
+ * O import é dinâmico e só acontece na perda, então quem nunca perde o contexto —
+ * quase todo mundo — não baixa o `flat.js` por causa disto. É o mesmo motivo pelo
+ * qual ele já era um chunk separado.
+ */
+async function guardTheContext() {
+  const canvas = document.querySelector('#stage canvas')
+  if (!canvas) return
+  const { onContextLost } = await import('./context-loss.js')
+  onContextLost(canvas, async () => {
+    console.warn('[tenebrae] WebGL context lost — falling back to the text version')
+    const { flatten } = await import('./flat.js')
+    flatten('context-lost')
+  })
 }

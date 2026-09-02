@@ -1,6 +1,11 @@
 /**
  * Uma fonte, duas páginas.
  *
+ * Mora em `src/build/` e não em `src/content/` porque não é conteúdo: é montagem de
+ * página. `content/` guarda o que o objeto **diz** — os Módulos, a moldura, o
+ * dicionário, o espelho que os escreve. Isto pega o resultado e o transforma no
+ * arquivo que o Vite publica, e o único que o chama é `vite.site.config.ts`.
+ *
  * `prototype/index.html` é escrito uma vez, em português. Este arquivo é o que o
  * transforma na página de um idioma qualquer: troca o `lang`, o título, a descrição,
  * o `canonical` e o bloco Open Graph, costura as duas versões com `hreflang`, e
@@ -36,9 +41,9 @@
  * nenhuma no documento, e `verify:site` falha se aparecer.
  */
 
-import { mirrorIntoPage } from './mirror'
-import { DEFAULT_LOCALE, langFor, pathFor, type Locale } from './locale'
-import { stringsFor, type Strings } from './strings'
+import { mirrorIntoPage } from '../content/mirror'
+import { DEFAULT_LOCALE, langFor, pathFor, type Locale } from '../content/locale'
+import { stringsFor, type Strings } from '../content/strings'
 
 const SITE = 'https://nanj.in'
 
