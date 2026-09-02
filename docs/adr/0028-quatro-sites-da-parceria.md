@@ -14,14 +14,12 @@ fácil de reverter que existe.
 Em 2026-09-02 ele pediu os quatro sites feitos em parceria com **Eduardo Braga**: `cmpinox.com.br`,
 `maiarateixeira.adv.br`, `aneliseporto.com.br` e `helderrodrigues.com.br`. O levantamento técnico
 dos quatro está em `research/cases-parceria-eduardo-braga.md` do repositório privado
-`nanjin-notas` — é auditoria de autoria de um parceiro nomeado e saiu do público em
-2026-09-02.
+`nanjin-notas`, para onde as notas de trabalho saíram em 2026-09-02.
 
 Duas perguntas precisavam de resposta antes de escrever uma linha.
 
-**Autoria.** Dois dos quatro têm repositório público, e em ambos 100% dos commits são do Eduardo. Um
-recrutador que clique vê isso. Perguntado, Fernando respondeu: *"Trabalhei junto com o Eduardo, só
-está no github dele mesmo. Não precisamos adicionar o github."*
+**Autoria.** O trabalho foi feito em parceria, e o repositório de dois dos quatro está sob a conta
+do parceiro. A decisão que saiu disso está abaixo: creditar a parceria e não linkar repositório.
 
 **Espaço.** O `SCREEN_BUDGET` declarava `items.max: 6`. Com sete projetos, o teste falhou.
 
@@ -77,5 +75,5 @@ podendo pousar o cursor numa linha que não foi desenhada. Nada hoje tem itens s
 morder, e o limite por layout impede que morda por acidente — mas a regra de Fernando, *"nenhum item
 pode parecer cortado ou oculto"*, ainda não é verdade por construção.
 
-**A prosa dos quatro cases é minha, não dele.** É honesta e é checável, e continua sendo mais uma
-entrada na lista de *Blocked on Fernando* que já inclui QUEM, CRITÉRIOS e as falas da LYRA.
+**O texto dos quatro cases ainda espera revisão.** É checável linha a linha contra o que os sites
+fazem, e continua na fila de revisão junto com QUEM, CRITÉRIOS e as falas da LYRA.
