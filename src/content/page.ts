@@ -90,13 +90,28 @@ function swapChrome(html: string, locale: Locale): string {
   let out = html
   for (const key of CHROME) {
     const pt = String(from[key])
-    if (!out.includes(pt)) {
-      throw new Error(
-        `localizePage: "${pt}" (${key}) não está no index.html. ` +
-        'A marcação e strings.ts divergiram — conserte os dois, não remova a checagem.',
-      )
-    }
-    out = out.split(pt).join(String(to[key]))
+    const en = String(to[key])
+
+    /* Casar o elemento ou o atributo inteiro, nunca a substring solta.
+       A primeira versão fazia `split(pt).join(en)` na página toda, e "ABRIR" —
+       o rótulo de uma das quatro teclas de toque — trocou também **dentro** de
+       "ABRIR O INSTAGRAM · @NAN._.JIN", o prêmio do eclipse, que virou "OPEN O
+       INSTAGRAM". Um rótulo curto é substring de alguma frase mais longa; é só
+       questão de qual. */
+    const attr = `aria-label="${pt}"`
+    const text = `>${pt}<`
+    if (out.includes(attr)) { out = out.split(attr).join(`aria-label="${en}"`); continue }
+    if (out.includes(text)) { out = out.split(text).join(`>${en}<`); continue }
+
+    /* O aviso de virar o aparelho é texto solto entre um `<svg>` e o fim do `<p>`,
+       então não casa nenhuma das duas formas. É longo o bastante para não ser
+       substring de nada, e a checagem abaixo prova que ele existe. */
+    if (out.includes(pt)) { out = out.split(pt).join(en); continue }
+
+    throw new Error(
+      `localizePage: "${pt}" (${key}) não está no index.html. ` +
+      'A marcação e strings.ts divergiram — conserte os dois, não remova a checagem.',
+    )
   }
   return out
 }

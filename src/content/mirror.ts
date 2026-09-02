@@ -34,6 +34,7 @@ import { DEFAULT_LOCALE, LOCALE, langFor, other, pathFor, type Locale } from './
 /** A raiz do site, com barra. Escrita uma vez porque aparece em cinco lugares aqui. */
 const SITE = 'https://nanj.in/'
 import { stringsFor, type Strings } from './strings'
+import { translate } from './en'
 
 /** Texto vira texto, nunca marcação — o conteúdo tem `&`, `<` e aspas. */
 const esc = (s: string) =>
@@ -78,10 +79,10 @@ const para = (lines: readonly string[]) => `<p>${esc(lines.join(' '))}</p>`
  * aparece aqui exatamente como aparece na Tela. Uma lacuna que o espelho silencia
  * vira uma ausência, que é a única coisa que ela não pode ser.
  */
-const sectionsOf = (m: number, i: number, item: Item) => `
+const sectionsOf = (m: number, i: number, item: Item, gap: string) => `
       <div ${HOOK.case}="${itemKey(m, i)}">
 ${item.sections.map(s => `        <h4>${esc(s.heading)}</h4>
-        ${s.lines.length ? para(s.lines) : `<p>${esc(GAP)}</p>`}`).join('\n')}
+        ${s.lines.length ? para(s.lines) : `<p>${esc(gap)}</p>`}`).join('\n')}
       </div>`
 
 /**
@@ -117,8 +118,8 @@ const addressOf = (item: Item) => {
   return `      <p><a href="${esc(href)}">${esc(text)}</a></p>`
 }
 
-const itemHTML = (mod: Module, m: number, item: Item, i: number) => {
-  const work = mod.id === 'projects' ? WORKS.find(w => w.id === item.id) : undefined
+const itemHTML = (mod: Module, m: number, item: Item, i: number, c: Content) => {
+  const work = mod.id === 'projects' ? c.works.find(w => w.id === item.id) : undefined
   return `
     <li>
       <h3><button type="button" ${HOOK.item}="${itemKey(m, i)}" tabindex="-1">${esc(item.label)}</button></h3>
@@ -126,19 +127,19 @@ ${item.meta ? `      <p>${esc(item.meta)}</p>` : ''}
 ${addressOf(item)}
 ${work ? `      <p>${esc([work.kind, work.client, work.year].filter(Boolean).join(' · '))}</p>
 ${para(work.blurb)}` : ''}
-${sectionsOf(m, i, item)}
+${sectionsOf(m, i, item, c.gap)}
     </li>`
 }
 
 /** Um Módulo inteiro. Os seis estão sempre no documento; só um está vivo. */
-const moduleHTML = (mod: Module, m: number) => `
+const moduleHTML = (mod: Module, m: number, c: Content) => `
   <section ${HOOK.module}="${m}" aria-labelledby="mirror-m${m}">
     <h2 id="mirror-m${m}">${esc(mod.title)}</h2>
 ${mod.name ? `    <p>${esc(mod.name)}</p>` : ''}
 ${mod.role ? `    <p>${esc(mod.role)}</p>` : ''}
 ${mod.disciplines?.length ? `    <ul>${mod.disciplines.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : ''}
 ${mod.lead?.length ? mod.lead.map(l => `    <p>${esc(l)}</p>`).join('\n') : ''}
-${mod.items?.length ? `    <ul>${mod.items.map((it, i) => itemHTML(mod, m, it, i)).join('')}
+${mod.items?.length ? `    <ul>${mod.items.map((it, i) => itemHTML(mod, m, it, i, c)).join('')}
     </ul>` : ''}
 ${mod.dim?.length ? `    <p>${esc(mod.dim.join(' '))}</p>` : ''}
   </section>`
@@ -158,7 +159,7 @@ ${mod.dim?.length ? `    <p>${esc(mod.dim.join(' '))}</p>` : ''}
  * Tab para chegar ao prêmio. Prosa fica aqui; o controle fica com os outros
  * controles, logo no alto. Ver `stateHTML`.
  */
-const eclipseHTML = () => `
+const eclipseHTML = (ECLIPSE: Content['eclipse']) => `
   <section ${HOOK.eclipse} hidden aria-labelledby="mirror-eclipse">
     <h2 id="mirror-eclipse">${esc(ECLIPSE.moon.tag)} · ${esc(ECLIPSE.sun.tag)}</h2>
     <p>${esc(ECLIPSE.found)}</p>
@@ -176,15 +177,12 @@ const eclipseHTML = () => `
  * de tela encontra um punhado de botões chamados "Roda da Lua" e nenhuma pista de
  * que eles percorrem a lista logo abaixo.
  */
-const headHTML = () => {
-  const id = MODULES.find(m => m.layout === 'identity')
+const headHTML = (modules: readonly Module[], s: Strings) => {
+  const id = modules.find(m => m.layout === 'identity')
   return `
   <h1>${esc(id?.name || '')}</h1>
 ${id?.role ? `  <p>${esc(id.role)}</p>` : ''}
-  <p>Portfólio apresentado como um instrumento. As seis teclas acima escolhem o
-  módulo, a LUA percorre a lista e o SOL abre o que estiver selecionado. Tudo que a
-  tela do instrumento mostra está escrito abaixo, e os seis módulos estão sempre
-  aqui — inclusive os que não estão acesos.</p>`
+  <p>${esc(s.mirrorLead)}</p>`
 }
 
 /**
@@ -201,7 +199,7 @@ ${id?.role ? `  <p>${esc(id.role)}</p>` : ''}
  * que ninguém alcança, e alcançá-lo sem um ponteiro é a metade de `T-15` que mais
  * importa — daí ele estar aqui e não no fim da sétima tela.
  */
-const stateHTML = (s: Strings) => `
+const stateHTML = (s: Strings, eclipse: Content['eclipse']) => `
   <p ${HOOK.live} role="status" aria-live="polite" aria-atomic="true"></p>
   <dl>
     <dt>${esc(s.state)}</dt><dd ${HOOK.status}></dd>
@@ -212,7 +210,7 @@ const stateHTML = (s: Strings) => `
   <p>
     <button type="button" ${HOOK.back} hidden>${esc(s.backOneLevel)}</button>
     <button type="button" ${HOOK.reopen} hidden>${esc(s.reopenEclipse)}</button>
-    <a ${HOOK.claim} hidden href="${esc(ECLIPSE.claim.url)}" rel="noopener" target="_blank">${esc(ECLIPSE.claim.label)}</a>
+    <a ${HOOK.claim} hidden href="${esc(eclipse.claim.url)}" rel="noopener" target="_blank">${esc(eclipse.claim.label)}</a>
   </p>`
 
 /**
@@ -221,13 +219,27 @@ const stateHTML = (s: Strings) => `
  * Devolve marcação e não um nó: quem chama decide onde ela mora, e o teste de
  * deriva pode lê-la sem um navegador.
  */
+/**
+ * O conteúdo no idioma pedido.
+ *
+ * `pt-BR` devolve o próprio `MODULES` — mesma referência, sem cópia nem travessia,
+ * porque a esmagadora maioria das renderizações é a página padrão e ela não deve
+ * pagar nada por existir uma segunda língua.
+ */
+type Content = { modules: readonly Module[]; eclipse: typeof ECLIPSE; gap: string; works: typeof WORKS }
+
+const contentFor = (locale: Locale): Content => locale === DEFAULT_LOCALE
+  ? { modules: MODULES, eclipse: ECLIPSE, gap: GAP, works: WORKS }
+  : { modules: translate(MODULES), eclipse: translate(ECLIPSE), gap: translate(GAP), works: translate(WORKS) }
+
 export function mirrorHTML(locale: Locale = LOCALE): string {
+  const c = contentFor(locale)
   return [
-    headHTML(),
+    headHTML(c.modules, stringsFor(locale)),
     langHTML(locale),
-    stateHTML(stringsFor(locale)),
-    MODULES.map((m, i) => moduleHTML(m, i)).join('\n'),
-    eclipseHTML(),
+    stateHTML(stringsFor(locale), c.eclipse),
+    c.modules.map((m, i) => moduleHTML(m, i, c)).join('\n'),
+    eclipseHTML(c.eclipse),
   ].join('\n')
 }
 
@@ -255,8 +267,9 @@ export function mirrorHTML(locale: Locale = LOCALE): string {
  * primeira tentativa, porque o `<main>` deixou de ser a raiz do que a função devolve.
  */
 export const jsonLD = (locale: Locale = DEFAULT_LOCALE) => {
-  const ident = MODULES.find(m => m.id === 'identity')
-  const contact = MODULES.find(m => m.id === 'contact')
+  const mods = contentFor(locale).modules
+  const ident = mods.find(m => m.id === 'identity')
+  const contact = mods.find(m => m.id === 'contact')
   const urls = (contact?.items || [])
     .flatMap(i => (i.act?.kind === 'url' ? [i.act.value] : []))
   const mail = (contact?.items || [])

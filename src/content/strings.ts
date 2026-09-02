@@ -170,6 +170,19 @@ export function stringsFor(locale: Locale) {
       'This is the text version. The portfolio is a 3D instrument and your browser has no graphics acceleration available, so it was not loaded — the content below is the same.',
     ),
 
+    /**
+     * A única prosa autoral do espelho, e ela fala do instrumento e não do portfólio.
+     *
+     * Sem ela, um leitor de tela encontra um punhado de botões chamados "Roda da Lua"
+     * e nenhuma pista de que eles percorrem a lista logo abaixo. LUA e SOL ficam sem
+     * tradução aqui pelo mesmo motivo que em `en.ts`: são os nomes gravados nos
+     * controles, e o inglês não deve mandar procurar um controle que não existe.
+     */
+    mirrorLead: t(
+      'Portfólio apresentado como um instrumento. As seis teclas acima escolhem o módulo, a LUA percorre a lista e o SOL abre o que estiver selecionado. Tudo que a tela do instrumento mostra está escrito abaixo, e os seis módulos estão sempre aqui — inclusive os que não estão acesos.',
+      'A portfolio presented as an instrument. The six keys above choose the module, the LUA walks the list and the SOL opens whatever is selected. Everything the instrument’s screen shows is written out below, and all six modules are always here — including the ones that are not lit.',
+    ),
+
     languageLabel: t('Idioma', 'Language'),
 
     /**

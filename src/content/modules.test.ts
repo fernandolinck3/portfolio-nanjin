@@ -8,7 +8,8 @@
  */
 import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { GAP, MODULES, SCREEN_BUDGET, WORKS, LYRA_IDLE_MS, moduleAt, lyraAt, workById, caseOf } from './modules'
+import { GAP, MODULES, SCREEN_BUDGET, WORKS, LYRA_IDLE_MS, moduleAt, lyraAt, workById, caseOf, ECLIPSE, type Module } from './modules'
+import { EN, translate, visibleStrings } from './en'
 import { HOOK, itemKey, mirrorHTML } from './mirror'
 
 /**
@@ -494,5 +495,71 @@ describe('the first fold carries the brief', () => {
    */
   it('leaves the single-section case alone, and it is still one section', () => {
     expect(caseOf('miscelanea').map(s => s.heading)).toEqual(['EM CONSTRUÇÃO'])
+  })
+})
+
+/**
+ * A tradução, e a regra que a impede de envelhecer em silêncio.
+ *
+ * `strings.ts` tem a garantia do compilador: `t(pt, en)` exige as duas metades, então
+ * uma moldura sem tradução não compila. `modules.ts` não pôde ter isso — envolver 755
+ * linhas de dados aninhados numa função por script é a operação que quebra um arquivo
+ * calado, e este é o único lugar onde o conteúdo existe. O dicionário em `en.ts` é a
+ * troca dessa garantia por esta suíte.
+ *
+ * O que estes testes protegem é uma coisa só: **uma frase escrita em português depois
+ * de hoje não pode chegar à página em inglês sem que alguém a tenha traduzido.**
+ */
+describe('o portfólio em inglês', () => {
+  const everything = () => {
+    const all = new Set<string>()
+    for (const v of [MODULES, WORKS, ECLIPSE, GAP]) visibleStrings(v, '', all)
+    for (const w of WORKS) visibleStrings(caseOf(w.id), '', all)
+    return all
+  }
+
+  it('traduz toda string visível — uma frase nova em português falha aqui, não na página', () => {
+    const missing = [...everything()].filter(s => !(s in EN))
+    expect(missing, `sem tradução em en.ts:\n  ${missing.join('\n  ')}`).toEqual([])
+  })
+
+  it('não guarda traduções órfãs de frases que o português já não diz', () => {
+    const live = everything()
+    const orphans = Object.keys(EN).filter(k => !live.has(k))
+    expect(orphans, `chaves em en.ts que ninguém usa:\n  ${orphans.join('\n  ')}`).toEqual([])
+  })
+
+  it('preserva a forma: mesmos campos, e o mesmo número de linhas em cada bloco', () => {
+    const shape = (v: unknown): unknown =>
+      Array.isArray(v) ? v.map(shape)
+        : v && typeof v === 'object'
+          ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, shape(x)]))
+          : typeof v
+    expect(shape(translate(MODULES))).toEqual(shape(MODULES))
+    expect(shape(translate(WORKS))).toEqual(shape(WORKS))
+  })
+
+  it('não traduz endereços, ids nem handles — isso quebraria as rotas, não o idioma', () => {
+    const en = translate(MODULES)
+    const routes = (ms: readonly Module[]) => ms.flatMap(m => (m.items ?? []).flatMap(i => i.act ? [JSON.stringify(i.act)] : []))
+    expect(routes(en)).toEqual(routes(MODULES))
+  })
+
+  it('cabe no mesmo orçamento de tela que o português', () => {
+    for (const m of translate(MODULES)) {
+      for (const l of m.lead ?? []) expect(l.length, `lead de ${m.id}: "${l}"`).toBeLessThanOrEqual(SCREEN_BUDGET.lead.paraChars)
+      for (const d of m.dim ?? []) expect(d.length, `dim de ${m.id}: "${d}"`).toBeLessThanOrEqual(SCREEN_BUDGET.dim.lineChars)
+      expect(m.hint.length, `hint de ${m.id}`).toBeLessThanOrEqual(SCREEN_BUDGET.hintChars)
+      for (const it of m.items ?? []) {
+        expect(it.label.length, `label "${it.label}"`).toBeLessThanOrEqual(SCREEN_BUDGET.items.labelChars)
+        if (it.meta) expect(it.meta.length, `meta "${it.meta}"`).toBeLessThanOrEqual(SCREEN_BUDGET.items.metaChars)
+      }
+    }
+    for (const w of WORKS) {
+      for (const s of translate(caseOf(w.id))) {
+        expect(s.heading.length, `heading "${s.heading}"`).toBeLessThanOrEqual(SCREEN_BUDGET.section.headingChars)
+        for (const l of s.lines) expect(l.length, `linha "${l}"`).toBeLessThanOrEqual(SCREEN_BUDGET.section.lineChars)
+      }
+    }
   })
 })
