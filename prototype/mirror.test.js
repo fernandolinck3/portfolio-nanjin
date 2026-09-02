@@ -12,7 +12,7 @@
  * be verified at all. State in, DOM out.
  */
 import { readFileSync } from 'node:fs'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest'
 import { createMirror } from './mirror.js'
 import { HOOK, MIRROR_ID, MIRROR_STYLE_ID, mirrorIntoPage } from '../src/content/mirror.ts'
 import { MODULES } from '../src/content/modules.ts'
@@ -327,3 +327,61 @@ const PAGE = 'prototype/index.html'
 
 const el2 = i => document.querySelector(`[${HOOK.module}="${i}"]`)
 const btn2 = (m, i) => document.querySelector(`[${HOOK.item}="${m}.${i}"]`)
+
+/**
+ * O idioma tem de chegar ao **objeto**, e não só ao espelho.
+ *
+ * Esta suíte existe por causa de um bug que passou por typecheck, por 125 testes,
+ * pelo build e pelo verify:site, e foi encontrado por ele abrindo a página: a
+ * `/en/` servia um espelho em inglês e uma Tela em português. `render.js` importa
+ * `MODULES` como valor, e `MODULES` era o português cru — a tradução tinha chegado
+ * ao HTML que ninguém olha e parado antes da única coisa que o visitante olha.
+ *
+ * Nada estático podia ver isso. O espelho está no HTML e o verify:site o lê; a Tela
+ * é uma textura de canvas e não há marcação para inspecionar. O que dá para afirmar
+ * é o degrau anterior: **o que `modules.ts` entrega a quem o importa, na página em
+ * inglês.** Se isso estiver em inglês, todo consumidor está.
+ *
+ * `resetModules` é obrigatório e é o ponto todo: `LOCALE` é resolvido na importação,
+ * então o `lang` precisa estar no documento **antes** do módulo ser carregado. Um
+ * teste que importasse no topo do arquivo mediria sempre o padrão e passaria sempre.
+ */
+describe('o idioma alcança quem desenha, não só quem escreve', () => {
+  const load = async lang => {
+    document.documentElement.setAttribute('lang', lang)
+    vi.resetModules()
+    return import('../src/content/modules.ts')
+  }
+
+  afterEach(() => { document.documentElement.setAttribute('lang', 'pt-BR') })
+
+  it('entrega os Módulos em inglês quando a página é inglesa', async () => {
+    const { MODULES } = await load('en')
+    expect(MODULES.map(m => m.title)).toContain('SKILLS')
+    expect(MODULES.map(m => m.title)).not.toContain('HABILIDADES')
+  })
+
+  it('entrega os Módulos em português quando a página é portuguesa', async () => {
+    const { MODULES } = await load('pt-BR')
+    expect(MODULES.map(m => m.title)).toContain('HABILIDADES')
+  })
+
+  it('traduz o que o SOL abre — os cases, não só a lista', async () => {
+    const { caseOf } = await load('en')
+    expect(caseOf('portfolio').map(s => s.heading)).toContain('BUILD')
+  })
+
+  it('traduz a lacuna declarada, que é a frase mais honesta do objeto', async () => {
+    const { GAP } = await load('en')
+    expect(GAP).toBe('Not recorded yet.')
+  })
+
+  it('não traduz endereço nem id, ou a página em inglês perde as rotas', async () => {
+    const { MODULES, WORKS } = await load('en')
+    const contact = MODULES.find(m => m.id === 'contact')
+    const acts = contact.items.map(i => i.act).filter(Boolean)
+    expect(acts.some(a => a.kind === 'mail' && a.value.includes('@'))).toBe(true)
+    expect(acts.some(a => a.kind === 'url' && a.value.startsWith('https://'))).toBe(true)
+    expect(WORKS.map(w => w.id)).toEqual(['portfolio', 'graecus', 'miscelanea'])
+  })
+})

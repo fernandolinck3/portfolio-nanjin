@@ -23,6 +23,9 @@
  * ausência silenciosa.
  */
 
+import { LOCALE } from './locale'
+import { EN, translate } from './en'
+
 /** Uma página de um Item, alcançada girando o SOL. `lines` vazio é uma lacuna registrada. */
 export type Section = { heading: string; lines: readonly string[] }
 
@@ -145,7 +148,7 @@ export const SCREEN_BUDGET = {
  * Duas faces porque há dois caminhos: descer a luz para a noite acorda a LUA, subir
  * para o dia acorda o SOL. O texto muda; o que ele diz, não.
  */
-export const ECLIPSE = {
+const ECLIPSE_PT = {
   moon: {
     tag: 'ECLIPSE DA LUA',
     lines: ['Você levou a luz de volta ao escuro,', 'e a sétima marca acendeu.'],
@@ -179,7 +182,7 @@ export const LYRA_IDLE_MS = 6000
  * Uma string, em um lugar, para que toda lacuna leia igual e para que encontrar
  * todas seja uma busca por um símbolo em vez de por seis formulações.
  */
-export const GAP = 'Ainda não registrado.'
+const GAP_PT = 'Ainda não registrado.'
 
 const gap = (heading: string): Section => ({ heading, lines: [] })
 
@@ -207,7 +210,7 @@ export type Work = {
  * foi de **recorte**, não de retratação, e um recorte é a coisa mais fácil de
  * reverter que existe.
  */
-export const WORKS: readonly Work[] = [
+const WORKS_PT: readonly Work[] = [
   {
     no: '001',
     id: 'portfolio',
@@ -260,7 +263,7 @@ export const WORKS: readonly Work[] = [
 ]
 
 /** Quantos dos projetos já têm obra publicada. */
-export const REAL_WORKS = WORKS.filter(w => !w.empty).length
+export const REAL_WORKS = WORKS_PT.filter(w => !w.empty).length
 
 /**
  * O case de um projeto, como as Sections que o SOL percorre.
@@ -270,7 +273,7 @@ export const REAL_WORKS = WORKS.filter(w => !w.empty).length
  * silenciosamente ausente. Miscelânea não tem case: o estado vazio é o conteúdo
  * verdadeiro, e inventar títulos, datas ou obras seria a única forma de errar aqui.
  */
-export function caseOf(id: string): readonly Section[] {
+function caseOfPT(id: string): readonly Section[] {
   if (id === 'portfolio') return [
   /* A ordem é o briefing, não uma preferência: ele pediu projeto, contexto e
      construção sem rolar. CONSTRUÇÃO era a quarta seção e caía abaixo da dobra —
@@ -385,7 +388,7 @@ export function caseOf(id: string): readonly Section[] {
 
 /* ---------------- os módulos ---------------- */
 
-export const MODULES: readonly Module[] = [
+const MODULES_PT: readonly Module[] = [
   /**
    * 1 — QUEM.
    *
@@ -433,7 +436,7 @@ export const MODULES: readonly Module[] = [
     /* Sem `lead`. Três títulos dizem o que são; o texto acima deles só empurrava o
        terceiro contra o rodapé. */
     unit: 'PROJETO',
-    items: WORKS.map(w => ({
+    items: WORKS_PT.map(w => ({
       id: w.id,
       label: w.title.toUpperCase(),
       meta: w.kind.toUpperCase(),
@@ -738,6 +741,33 @@ export const MODULES: readonly Module[] = [
     },
   },
 ]
+
+/**
+ * O conteúdo, no idioma **desta página**.
+ *
+ * Aqui é onde a segunda língua chega a todo mundo. `LOCALE` sai do `<html lang>` que
+ * o build escreveu, então numa página `/en/` estes exports já vêm em inglês e nenhum
+ * consumidor precisou saber que existe um segundo idioma: `scene.js`, `render.js`,
+ * `flat.js`, `focus.js` e `mirror.js` seguem importando `MODULES` como sempre.
+ *
+ * A primeira tentativa traduziu **só o espelho**, e o resultado foi uma página em
+ * inglês cuja Tela — a única coisa que o visitante de fato olha — continuava em
+ * português. O idioma tinha chegado ao HTML que ninguém vê e parado antes do objeto.
+ *
+ * Em `node` não há documento, `LOCALE` é o padrão, e estes são o português cru. É o
+ * que os testes leem e o que o build passa para `translate()` ao montar a outra
+ * página, então a fonte continua sendo uma só em qualquer caminho.
+ */
+export const MODULES: readonly Module[] = LOCALE === 'en' ? translate(MODULES_PT) : MODULES_PT
+export const WORKS: readonly Work[] = LOCALE === 'en' ? translate(WORKS_PT) : WORKS_PT
+export const ECLIPSE = (LOCALE === 'en' ? translate(ECLIPSE_PT) : ECLIPSE_PT) as typeof ECLIPSE_PT
+export const GAP: string = LOCALE === 'en' ? (EN[GAP_PT] ?? GAP_PT) : GAP_PT
+
+/** O case de um projeto, no idioma desta página. */
+export function caseOf(id: string): readonly Section[] {
+  const pt = caseOfPT(id)
+  return LOCALE === 'en' ? translate(pt) : pt
+}
 
 /** O Módulo vivo. Slots são 1-based; o estado que os move é 0-based. */
 export function moduleAt(index: number): Module {
