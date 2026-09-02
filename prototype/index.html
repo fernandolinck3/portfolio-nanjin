@@ -107,7 +107,19 @@
      a real candle has was tried and dropped, because at 16px it costs a pixel of the
      silhouette and returns nothing the eye can see. Flame and body are the same brass:
      a warm flame would be a third value on the most reduced surface the site has. -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230A0A0B'/%3E%3Cpath d='M16 3 C18.5 7 19.5 8.5 19.5 10.5 a3.5 3.5 0 0 1-7 0 C12.5 8.5 13.5 7 16 3 Z' fill='%23C9BE96'/%3E%3Crect x='12' y='17' width='8' height='13' fill='%23C9BE96'/%3E%3C/svg%3E">
+<!-- Arquivos, e não um `data:` URI, porque o Google não consegue rastrear um data URI:
+     a exigência dele é que o **Googlebot-Image rastreie o arquivo do favicon**, e um
+     data URI não tem URL para rastrear. O ícone aparecia certo na aba do navegador e
+     vazio na busca, que é como isso passa despercebido — e `/favicon.ico` respondia 404,
+     então nem o caminho convencional existia. SVG também não serve: a lista de formatos
+     aceitos do Google é BMP, GIF, ICO, PNG, JPEG, PPM e TIFF. O `.svg` fica em `public/`
+     como fonte do desenho e não é declarado aqui, para o Google não escolher justamente
+     o formato que ele não lê.
+     O `.ico` traz 16, 32 e 48 renderizados um a um a partir do SVG — o vão de duas
+     unidades entre chama e corpo é legível em cada um, em vez de virar borrão num
+     downscale de 192 para 16. -->
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="192x192" href="/favicon.png">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=Azeret+Mono:wght@400;500&family=UnifrakturMaguntia&family=Pirata+One&family=Grenze+Gotisch:wght@400;600&family=Silkscreen:wght@400;700&family=VT323&display=swap">
 <style>
   *{box-sizing:border-box} html,body{height:100%;margin:0;overflow:hidden;background:#0A0A0B}

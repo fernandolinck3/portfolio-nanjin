@@ -175,6 +175,33 @@ for (const f of FILES) {
   console.log(`verify:site — ${f.file.replace('dist-site/', '')} (${body.length} bytes)`)
 }
 
+/**
+ * O favicon tem de ser um **arquivo**, e o arquivo tem de existir.
+ *
+ * Era um `data:` URI até 2026-09-02, e `/favicon.ico` respondia 404. A aba do
+ * navegador mostrava a vela normalmente — por isso ninguém viu — enquanto a busca do
+ * Google mostrava um círculo vazio: a exigência dele é que o Googlebot-Image
+ * **rastreie o arquivo**, e um data URI não tem URL para rastrear.
+ *
+ * Também não vale SVG: a lista de formatos que o Google aceita é BMP, GIF, ICO, PNG,
+ * JPEG, PPM e TIFF. Declarar o `.svg` aqui seria oferecer a ele o único formato que
+ * ele não lê, então o teste recusa os dois erros de uma vez.
+ */
+const home = readFileSync('dist-site/index.html', 'utf8')
+const icons = [...home.matchAll(/<link[^>]+rel="[^"]*\bicon\b[^"]*"[^>]*>/g)].map(m => m[0])
+if (!icons.length) fail('the home page declares no favicon at all')
+for (const tag of icons) {
+  if (/href="data:/.test(tag)) fail(`favicon is a data: URI, which Googlebot-Image cannot crawl — ${tag}`)
+  if (/image\/svg/.test(tag)) fail(`favicon is offered as SVG, which Google does not read — ${tag}`)
+}
+for (const f of ['favicon.ico', 'favicon.png']) {
+  let bytes
+  try { bytes = readFileSync(`dist-site/${f}`).length }
+  catch { fail(`dist-site/${f} was not written — the search result gets an empty circle`) }
+  if (bytes < 200) fail(`dist-site/${f} is ${bytes} bytes, which is not an icon`)
+  console.log(`verify:site — ${f} (${bytes} bytes)`)
+}
+
 /* A URL de cada página tem de estar no sitemap, ou ela existe e ninguém a submete. */
 const sitemap = readFileSync('dist-site/sitemap.xml', 'utf8')
 for (const page of PAGES) {
