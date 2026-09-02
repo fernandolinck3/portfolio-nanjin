@@ -18,11 +18,17 @@
  * mirror in it, and `npx vitest run` proves the transform, not that Vite still calls
  * it. This file is where the two meet.
  *
- * `T-31` added the third. One source now produces `/` and `/en/`, and the second
- * page has a failure mode the first cannot have: `base: './'` makes every asset URL
- * relative, so a page one directory down needs `../assets/…` or it loads **nothing**
- * — no scene, no script, a static mirror and a dead object. Nothing in the test
- * suite can see that, because it is a property of where the file was written.
+ * `T-31` added the third, and it took two tries. One source now produces `/` and
+ * `/en/`, and the second page has a failure mode the first cannot have: `base: './'`
+ * makes every URL relative, so a page one directory down resolves them against
+ * `/en/` and gets nothing.
+ *
+ * The first fix rewrote the markup — and the markup is not where most of those URLs
+ * are. `scene.js` fetches `ornament/plate.png` and `deck-faces.js` builds
+ * `./decks/<face>.png` in JavaScript, so the English page loaded, drew, and arrived
+ * with no Plate engraving and no Deck faces. What fixes the whole class is one
+ * `<base href="../">`, which is checked here — including that it comes **before** the
+ * module script, because a URL is resolved when the parser reaches it.
  *
  * Everything below is asserted as structure and volume, never as prose. A sentence
  * from `modules.ts` copied into this file would be exactly the second copy of the
@@ -35,9 +41,9 @@ const fail = m => { console.error('verify:site — ' + m); process.exit(1) }
 /** The pages the build is expected to have written, and what makes each one itself. */
 const PAGES = [
   { file: 'dist-site/index.html', name: '/', lang: 'pt-BR', canonical: 'https://nanj.in/',
-    assets: './assets/', other: '/en/', draft: false },
+    base: null, other: '/en/', draft: false },
   { file: 'dist-site/en/index.html', name: '/en/', lang: 'en', canonical: 'https://nanj.in/en/',
-    assets: '../assets/', other: '/', draft: true },
+    base: '../', other: '/', draft: true },
 ]
 
 for (const page of PAGES) {
@@ -54,12 +60,28 @@ for (const page of PAGES) {
   if (at < 0 || at > 1024)
     bad(`charset is at byte ${at}, past the 1024 the parser reads before guessing`)
 
-  /* The one failure only the second page can have. A page in a subdirectory that
-     keeps `./assets/` looks perfect in the markup and loads nothing at all. */
+  /* The one failure only a subdirectory page can have, and it is invisible in the
+     markup: every relative URL — the script, and every asset JavaScript fetches at
+     runtime — resolves against the directory the file is in. */
+  const baseTag = html.match(/<base\b[^>]*href="([^"]*)"/)
+  if (page.base === null) {
+    if (baseTag) bad(`the root page carries <base href="${baseTag[1]}"> and must not`)
+  } else {
+    if (!baseTag) bad(`no <base href="${page.base}"> — every relative URL would resolve under ${page.name}`)
+    if (baseTag[1] !== page.base) bad(`<base> is "${baseTag[1]}", expected "${page.base}"`)
+    /* Both offsets must come from the same string: `live` has the comments stripped,
+       so an index taken from it is not comparable to one taken from `html`. */
+    const firstScript = html.search(/<script\b/)
+    if (firstScript >= 0 && html.indexOf('<base') > firstScript)
+      bad('<base> comes after the first script — a URL is resolved when the parser reaches it')
+  }
+
+  /* `<base>` retargets in-page anchors too, so one would point at the other page. */
+  const anchors = [...html.matchAll(/href="(#[^"]*)"/g)].map(m => m[1])
+  if (anchors.length) bad(`in-page anchors would break under <base>: ${anchors.join(', ')}`)
+
   const script = live.match(/<script\b[^>]*type="module"[^>]*src="([^"]+)"/)
   if (!script) bad('the module script has no src')
-  if (!script[1].startsWith(page.assets))
-    bad(`the script is at "${script[1]}" but this page needs "${page.assets}…" — it would 404`)
 
   const lang = html.match(/<html[^>]*\blang="([^"]*)"/)
   if (!lang || lang[1] !== page.lang) bad(`lang is "${lang?.[1]}", expected "${page.lang}"`)
@@ -119,7 +141,8 @@ for (const page of PAGES) {
   if (!/\bhidden\b/.test(hud[0]) || !/aria-hidden="true"/.test(hud[0]))
     bad(`the workbench row is not hidden from the document: ${hud[0]}`)
 
-  console.log(`verify:site — ${page.name} lang=${page.lang}, assets ${page.assets}…, ` +
+  console.log(`verify:site — ${page.name} lang=${page.lang}, ` +
+    `${page.base ? `base ${page.base}` : 'no base'}, ` +
     `6 Modules, ${rows} rows, ${text.length} readable characters, one <h1>` +
     (page.draft ? ', noindex (draft)' : ''))
 }

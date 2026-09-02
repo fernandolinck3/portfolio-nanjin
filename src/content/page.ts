@@ -10,19 +10,30 @@
  * segunda fonte que o `CLAUDE.md` inteiro existe para impedir: ela divergiria na
  * primeira mudança, e a divergência apareceria só na língua que ninguém relê.
  *
- * ## A armadilha que quase passou
+ * ## A armadilha, e por que a primeira correção não bastou
  *
  * `vite.site.config.ts` usa `base: './'`, e por um bom motivo — é o que faz a mesma
  * saída funcionar tanto na raiz de um domínio quanto num subcaminho tipo
  * `/tenebrae/`. Mas os assets saem como `./assets/index-xxxx.js`, e uma página em
- * `/en/index.html` resolveria isso para `/en/assets/…`, que não existe. A página em
- * inglês carregaria **nada**: sem cena, sem script, um espelho estático e mais nada.
+ * `/en/index.html` resolveria isso para `/en/assets/…`, que não existe.
  *
- * `descend()` reescreve `="./` para `="../` nessa página, e só nela. Continua
- * relativo — a propriedade do subcaminho sobrevive — e passa a apontar um nível
- * acima, que é onde os assets de fato estão. Isto vale para **um** nível de
- * profundidade; um dia com `/pt/` e `/en/` irmãos, a conta continua a mesma, mas se
- * alguma língua ganhar duas pastas de profundidade isto tem de crescer junto.
+ * A primeira correção reescreveu `="./` para `="../` no HTML dessa página. Consertou
+ * o script e **não consertou o objeto**: `scene.js` faz `fetch('ornament/plate.png')`
+ * e `deck-faces.js` monta `./decks/<face>.png` em JavaScript, onde nenhuma reescrita
+ * de marcação chega. A página carregava, desenhava, e vinha sem a gravura da Plate e
+ * sem as faces dos Decks — *"the texturas arent loading"*.
+ *
+ * Reescrever marcação só alcança marcação. `<base href="../">` alcança tudo: o
+ * script, o `fetch`, a `<img>` que alguém criar amanhã. É o mecanismo que existe
+ * exatamente para isto, e por isso a reescrita saiu — as duas juntas se cancelariam,
+ * com `../assets/` resolvido contra `../` virando `/../assets/`.
+ *
+ * Ele entra logo depois do `<meta charset>`, que é a primeira coisa do arquivo. A
+ * posição é obrigatória e não estética: uma URL é resolvida quando o parser a
+ * encontra, então um `<base>` depois do script não alcança o script.
+ *
+ * Uma âncora interna (`href="#…"`) passaria a apontar para a outra página. Não há
+ * nenhuma no documento, e `verify:site` falha se aparecer.
  */
 
 import { mirrorIntoPage } from './mirror'
@@ -45,8 +56,15 @@ function setAttr(html: string, find: string, attr: string, value: string): strin
   return html.slice(0, i) + tag.replace(re, `$1${esc(value)}$2`) + html.slice(end)
 }
 
-/** Sobe um nível em toda URL relativa da página. Ver a armadilha no topo. */
-const descend = (html: string) => html.replace(/="\.\//g, '="../')
+/** A raiz do site, vista de uma página um nível abaixo. Ver a armadilha no topo. */
+const BASE_TAG = '<base href="../">'
+
+function rootBase(html: string): string {
+  const at = html.indexOf('<meta charset')
+  if (at < 0) throw new Error('localizePage: sem <meta charset> para ancorar o <base>')
+  const end = html.indexOf('>', at) + 1
+  return html.slice(0, end) + '\n' + BASE_TAG + html.slice(end)
+}
 
 /**
  * As duas versões apontando uma para a outra, mais `x-default`.
@@ -152,8 +170,8 @@ export function localizePage(html: string, locale: Locale, opts: { draft?: boole
       '<meta name="robots" content="noindex,follow">\n<link rel="canonical"')
   }
 
-  /* a página raiz fica onde os assets estão; qualquer outra está um nível abaixo */
-  return locale === DEFAULT_LOCALE ? out : descend(out)
+  /* a página raiz já está onde tudo está; qualquer outra precisa dizer onde é a raiz */
+  return locale === DEFAULT_LOCALE ? out : rootBase(out)
 }
 
 /** Onde cada página é escrita, relativo à raiz do build. */
