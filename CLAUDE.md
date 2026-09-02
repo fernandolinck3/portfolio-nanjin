@@ -20,6 +20,11 @@ goes to `docs/log/<year>-<month>.md`.
   session, each time with an error pointing at an unrelated line.
 - **Resizing the browser window does not reach the page.** To test a mobile breakpoint, load the site
   in a same-origin `<iframe>` sized 402×874 — that gets a real viewport and real media queries.
+- **The site is two pages, and the second one is one directory down.** `base: './'` makes every
+  URL relative, so anything under `/en/` resolves against `/en/`. Rewriting the markup is *not*
+  enough — `scene.js` fetches `ornament/plate.png` and `deck-faces.js` builds `./decks/…` in
+  JavaScript, and the English page shipped once with no Plate engraving and no Deck faces because
+  of it. One `<base href="../">`, before the first script, covers markup and runtime alike.
 - **`public/CNAME` holds the domain.** A deploy that arrives without it clears the custom domain
   silently.
 - **Measure before optimising**, and **build and show** rather than describe. Every decision that
@@ -41,6 +46,12 @@ Two consequences worth knowing before you edit:
 
 - `src/content/modules.test.ts` fails if the mirror stops covering a field. It is not
   a style test — a rule with no test is a wish.
+- **The object speaks two languages, and a new sentence has to speak both.** Content
+  stays Portuguese in `modules.ts`; `src/content/en.ts` maps it and `translate()`
+  swaps the leaves, resolved once on import off `<html lang>`. A Portuguese sentence
+  with no entry in `en.ts` fails the same suite. Chrome — buttons, notices, form —
+  lives in `src/content/strings.ts` as `t(pt, en)`, where a missing half will not
+  compile.
 - Never hide mirror content with `display:none`, `visibility:hidden` or `hidden`. Each
   removes it from find-in-page, which is half of why it exists. ECLIPSE is the single
   deliberate exception, because a secret Ctrl+F hands over is not a secret.

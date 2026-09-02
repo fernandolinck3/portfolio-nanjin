@@ -47,7 +47,7 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-18 | [The accessible mirror of the LCD](T-18-accessible-mirror.md) | A | — | **done** — branch `espelho` |
 | T-19 | [Split the handoff](T-19-split-the-handoff.md) | A | — | done 2026-08-31 |
 | T-21 | [Boot in 2–2.5s](T-21-boot-in-two-seconds.md) | B | — | **done 2026-09-01** — 5,90s → 2,42s |
-| T-22 | [The Screen is five percent](T-22-the-screen-is-five-percent.md) | B | — | ready — from the 2026-09-01 critique |
+| T-22 | [The Screen is five percent](T-22-the-screen-is-five-percent.md) | B | — | **done 2026-09-02** — dist 5.6 → 4.6, Screen 401 → 494px |
 | T-23 | [Three holes in the overlay](T-23-the-overlay-has-three-holes.md) | A | T-18 merged | **done 2026-09-01** |
 | T-24 | [CONTATO is last, and partly dead](T-24-contato-is-last-and-partly-dead.md) | A | — | ready |
 | T-25 | [The documents describe another object](T-25-the-documents-describe-another-object.md) | A | — | **done 2026-09-01** — `ecf4807` |
@@ -56,7 +56,7 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-28 | [A form on CONTATO](T-28-a-form-on-contato.md) | C | Fernando | **done 2026-09-01** — ADR-0027 + formulário |
 | T-29 | [O Preview do GTM não conecta](T-29-o-preview-do-gtm-nao-conecta.md) | A | — | precisa do sintoma exato |
 | T-30 | [Nine controls and no legend](T-30-the-object-has-no-legend.md) | B | — | ready — 11 dos 15 pontos perdidos na crítica |
-| T-31 | [O portfólio em inglês](T-31-o-portfolio-em-ingles.md) | A | — | precisa de três decisões dele |
+| T-31 | [O portfólio em inglês](T-31-o-portfolio-em-ingles.md) | A | — | **done 2026-09-02** — `/` e `/en/`, indexáveis |
 
 ## Where T-21 to T-25 came from
 

@@ -49,43 +49,61 @@ about to make looks like one that was already tried. You do not need it to start
 This file keeps **state and decisions**. Reasoning goes in the commit message — `git log --oneline`
 is cheap and nobody loads a commit body into context. Do not write it in both places.
 
-## Where this was left on 2026-09-01, and how to pick it up
+## Where this was left on 2026-09-02, and how to pick it up
 
 **Everything below is committed and deployed.** `origin/lyra` is the live branch; a push to it
-builds, tests and deploys to `nanj.in` in about a minute.
+builds, tests and deploys to `nanj.in` in about a minute. The working tree is clean and the main
+checkout is current — the `explode.js` lines an older session left uncommitted went in as `276c561`.
 
-The work happened in the worktree `~/dev/tenebrae-memoria` on branch `memoria`. **The main checkout
-at `~/dev/fernando-portfolio` needs a `git pull`** — it is several commits behind and still carries
-~30 uncommitted lines in `prototype/explode.js` from an older session, which nothing incoming
-touches.
+**The site is now two pages.**
+
+> **https://nanj.in** · **https://nanj.in/en/**
+
+One source produces both. `src/content/page.ts` turns `prototype/index.html` into the page for a
+locale; the Vite plugin emits them in `generateBundle`. There is no second `index.html` on disk and
+there must never be. `verify:site` asserts both pages on every deploy.
 
 **To read what happened rather than take it on trust**, the commit bodies are long on purpose:
 
 ```
-git log --oneline -25          the day, one line each
+git log --oneline -40          the two days, one line each
 git show <sha>                 any commit, with the reasoning
-git diff f982f45..HEAD --stat  everything since mid-afternoon
 ```
 
 **What shipped on 2026-09-01**, in order: the handoff split (T-19), the accessible mirror merged and
 then pre-rendered (T-18, T-26), the `k` in Linck (T-27), three holes in the overlay (T-23), a contact
 form with its ADR (T-28, ADR-0027), a no-GPU fallback, the boot cut to 2,42s (T-21), a consent gate,
-the LinkedIn URL, the documents corrected (T-25), a `schema.org` block, and a small camera zoom.
+the LinkedIn URL, the documents corrected (T-25), and a `schema.org` block.
 
-**Two things are unverified because the Chrome extension died mid-session**: the resting framing
-and the consent bar on a phone. Each needs eyes, not a test. **The no-GPU fallback is not one of
-them** — Fernando confirmed on 2026-09-02 that he had already seen and approved it; this file said
-otherwise for a day.
+**What shipped on 2026-09-02**: the candle favicon, the resting framing (T-22), and the English
+portfolio (T-31) — machine, chrome and content, in three commits, now indexable.
+
+**One thing wants his eyes**: the consent bar on a phone. It only appears where no answer is stored,
+so it takes a private window. The Chrome extension has been down since 2026-09-01 and nothing
+automated can reach it.
 
 **Two commands to see it locally:**
 
 ```
 npm run build:site && npm run preview:site     the real site
+                    /en/                        the English page
                     ?flat                       the no-GPU version
                     ?turned                     the phone's rotated frame, on a desktop
                     ?debug                      the workbench dials
                     ?track                      dataLayer pushes on any host
 ```
+
+## The two languages, in one paragraph
+
+Content lives in `src/content/modules.ts`, in Portuguese, and **is not translated in place**.
+`src/content/en.ts` maps Portuguese to English and `translate()` swaps the leaves. `modules.ts`
+resolves the page's language on import off `<html lang>`, so every consumer — `scene.js`,
+`render.js`, `flat.js`, `focus.js`, `mirror.js` — keeps importing `MODULES` and gets the right
+language without knowing a second one exists. The chrome is different: `src/content/strings.ts`
+holds it as `t(pt, en)` pairs, where a missing translation is a compile error. Content has no such
+guarantee, so `modules.test.ts` supplies it — a Portuguese sentence with no entry in `en.ts` fails
+the suite. **LUA and SOL are deliberately untranslated**: they are the names engraved on the
+controls, and T-30 is where that gets revisited.
 
 ## The build ships the prototype now
 

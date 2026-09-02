@@ -41,3 +41,29 @@ be believed — the reference photographs that started this project are all crop
 - **The clipped back candlestick** (Open item 14) gets worse at a tighter framing. Three options were
   offered and none chosen — this ticket will force that decision. Surface it, do not silently pick.
 - Do not scale the Screen texture up to compensate. The buffer is 320×180 on purpose (ADR-0022).
+
+---
+
+## Fechado em 2026-09-02, e não pelo número que este ticket pediu
+
+`REST` foi de `dist 5.6` para `4.6`. A Screen sai de **401px para 494px**, de 1.25x do buffer para
+1.54x, medido a 1280x800 — o viewport em que a crítica mediu os ~405px que abriram este ticket.
+
+**A receita deste ticket estava errada.** Ele prescreve `tilt 4 / dist 4.6` afirmando que isso mede
+676px. Refazendo a projeção com a geometria real — `PerspectiveCamera(38)`, a abertura de
+1.84 × 1.035 em (0, .272, -.50) — e calibrando contra a única medição que existia, `dist 4.6` dá
+494px no mesmo viewport. Chegar a 676 custa `dist 3.4`.
+
+**E o `tilt` quase não entra na conta.** A Screen é um plano deitado e o tilt gira a câmera na
+vertical: ele muda a altura projetada, não a largura. Quem manda é a distância.
+
+Três coisas ficaram sabidas e não resolvidas, e valem um ticket novo se alguém quiser os 2.11x:
+
+- **O que corta primeiro é o crossfader, não a roda.** Ele está em z 1.16 e o cap tem .26 de
+  profundidade, então a borda do objeto está em z 1.29 — a peça mais à frente da Plate inteira. A
+  `dist 4.2` sobram 2px entre o cap e a borda de baixo do quadro. Foi tentado e ele viu na tela.
+- **Sobra uma faixa vazia embaixo da Screen** conforme a câmera chega, porque o `lookAt` é
+  (0, .35, 0) e a Screen está no fundo da Plate. Isso pede um `pan.y`.
+- **O número certo depende da altura da janela, não da largura**, porque o FOV do three.js é
+  vertical. `4.6` dá 1.54x numa janela de 800px de altura e 2.03x numa de 1050. Uma distância fixa
+  não acerta as duas; a resposta honesta é `dist` em função da altura do viewport.
