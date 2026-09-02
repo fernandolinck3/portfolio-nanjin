@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from 'vite'
-import { mirrorIntoPage } from './src/content/mirror'
+import { localizePage } from './src/content/page'
+import { DEFAULT_LOCALE, LOCALES } from './src/content/locale'
 
 /**
  * The shipping build — and, since 2026-08-28, the dev server as well.
@@ -55,21 +56,58 @@ import { mirrorIntoPage } from './src/content/mirror'
  * `style-test/`, which the dev server serves and which have no reason to carry a
  * portfolio.
  */
-function prerenderMirror(): Plugin {
+/**
+ * Uma fonte, duas páginas — ver `src/content/page.ts`.
+ *
+ * O `transformIndexHtml` continua fazendo a página **padrão**, porque é ela que o
+ * Vite conhece e cujos assets ele injeta. As outras línguas são emitidas em
+ * `generateBundle`, a partir do HTML já processado: nesse ponto o script do módulo
+ * e as URLs de asset já estão dentro, que é exatamente o que uma segunda página
+ * precisa e o que uma cópia da fonte não teria.
+ *
+ * `draft` marca as línguas ainda não traduzidas com `noindex`. A lista está aqui e
+ * não em `page.ts` porque é estado do projeto e não da função: quando o inglês
+ * estiver traduzido, isto vira um array vazio e some.
+ */
+const DRAFT: readonly string[] = ['en']
+
+function localizedPages(): Plugin {
   return {
-    name: 'tenebrae:prerender-mirror',
-    transformIndexHtml: {
-      order: 'pre',
-      handler(html, ctx) {
-        if (ctx.path.replace(/^\/+/, '') !== 'index.html') return html
-        return mirrorIntoPage(html)
-      },
-    },
+    name: 'tenebrae:localized-pages',
+    /**
+     * Tudo acontece em `generateBundle`, e não em `transformIndexHtml`, de propósito.
+     *
+     * A primeira tentativa injetava o espelho em `transformIndexHtml` e depois
+     * *removia* o espelho português por regex para reescrevê-lo em inglês. Isso é
+     * um analisador de HTML escrito com expressão regular, que é a categoria de
+     * código que funciona até o dia em que não funciona — e falharia calado, com
+     * uma página servindo dois espelhos ou nenhum.
+     *
+     * Aqui a página já saiu do Vite com o script do módulo e as URLs de asset
+     * dentro, e nenhuma língua foi escrita ainda. Cada idioma parte do **mesmo**
+     * HTML limpo. Nada é desfeito porque nada foi feito duas vezes.
+     */
+    /* `order: 'post'` não é detalhe: o `index.html` é emitido pelo próprio plugin de
+       HTML do Vite dentro de `generateBundle`, então um hook sem ordem roda antes de
+       a página existir e não acha nada. */
+    generateBundle: { order: 'post', handler(_options, bundle) {
+      const main = bundle['index.html']
+      if (!main || main.type !== 'asset') {
+        throw new Error('localizedPages: index.html não saiu do build — saiu ' + Object.keys(bundle).filter(k => k.endsWith('.html')).join(', '))
+      }
+      const bare = String(main.source)
+
+      for (const locale of LOCALES) {
+        const html = localizePage(bare, locale, { draft: DRAFT.includes(locale) })
+        if (locale === DEFAULT_LOCALE) { main.source = html; continue }
+        this.emitFile({ type: 'asset', fileName: `${locale}/index.html`, source: html })
+      }
+    } },
   }
 }
 
 export default defineConfig({
-  plugins: [prerenderMirror()],
+  plugins: [localizedPages()],
   root: 'prototype',
   publicDir: '../public',
   base: './',

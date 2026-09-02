@@ -29,6 +29,11 @@
  * previne a deriva; o teste em `modules.test.ts` só pega o que escapar dela.
  */
 import { ECLIPSE, GAP, MODULES, WORKS, type Item, type Module } from './modules'
+import { DEFAULT_LOCALE, LOCALE, langFor, other, pathFor, type Locale } from './locale'
+
+/** A raiz do site, com barra. Escrita uma vez porque aparece em cinco lugares aqui. */
+const SITE = 'https://nanj.in/'
+import { stringsFor, type Strings } from './strings'
 
 /** Texto vira texto, nunca marcação — o conteúdo tem `&`, `<` e aspas. */
 const esc = (s: string) =>
@@ -57,6 +62,8 @@ export const HOOK = {
   reopen: 'data-mirror-reopen',
   claim: 'data-mirror-claim',
   eclipse: 'data-mirror-eclipse',
+  /** O link para a outra língua. Um `<a href>` de verdade, não um botão. */
+  lang: 'data-mirror-lang',
 } as const
 
 /** `"1.0"` — o endereço de um item, e a única forma dele nos dois arquivos. */
@@ -194,17 +201,17 @@ ${id?.role ? `  <p>${esc(id.role)}</p>` : ''}
  * que ninguém alcança, e alcançá-lo sem um ponteiro é a metade de `T-15` que mais
  * importa — daí ele estar aqui e não no fim da sétima tela.
  */
-const stateHTML = () => `
+const stateHTML = (s: Strings) => `
   <p ${HOOK.live} role="status" aria-live="polite" aria-atomic="true"></p>
   <dl>
-    <dt>Estado</dt><dd ${HOOK.status}></dd>
-    <dt>Posição</dt><dd ${HOOK.position}></dd>
-    <dt>Luz</dt><dd ${HOOK.light}></dd>
+    <dt>${esc(s.state)}</dt><dd ${HOOK.status}></dd>
+    <dt>${esc(s.position)}</dt><dd ${HOOK.position}></dd>
+    <dt>${esc(s.light)}</dt><dd ${HOOK.light}></dd>
     <dt>LYRA</dt><dd ${HOOK.lyra}></dd>
   </dl>
   <p>
-    <button type="button" ${HOOK.back} hidden>Voltar um nível</button>
-    <button type="button" ${HOOK.reopen} hidden>Reabrir o eclipse</button>
+    <button type="button" ${HOOK.back} hidden>${esc(s.backOneLevel)}</button>
+    <button type="button" ${HOOK.reopen} hidden>${esc(s.reopenEclipse)}</button>
     <a ${HOOK.claim} hidden href="${esc(ECLIPSE.claim.url)}" rel="noopener" target="_blank">${esc(ECLIPSE.claim.label)}</a>
   </p>`
 
@@ -214,10 +221,11 @@ const stateHTML = () => `
  * Devolve marcação e não um nó: quem chama decide onde ela mora, e o teste de
  * deriva pode lê-la sem um navegador.
  */
-export function mirrorHTML(): string {
+export function mirrorHTML(locale: Locale = LOCALE): string {
   return [
     headHTML(),
-    stateHTML(),
+    langHTML(locale),
+    stateHTML(stringsFor(locale)),
     MODULES.map((m, i) => moduleHTML(m, i)).join('\n'),
     eclipseHTML(),
   ].join('\n')
@@ -246,7 +254,7 @@ export function mirrorHTML(): string {
  * runtime carregar um `<script>` que ninguém lê — e foi o que quebrou catorze testes na
  * primeira tentativa, porque o `<main>` deixou de ser a raiz do que a função devolve.
  */
-export const jsonLD = () => {
+export const jsonLD = (locale: Locale = DEFAULT_LOCALE) => {
   const ident = MODULES.find(m => m.id === 'identity')
   const contact = MODULES.find(m => m.id === 'contact')
   const urls = (contact?.items || [])
@@ -258,7 +266,7 @@ export const jsonLD = () => {
     '@type': 'Person',
     '@id': 'https://nanj.in/#me',
     name: ident?.name,
-    url: 'https://nanj.in/',
+    url: SITE,
     jobTitle: ident?.role,
     description: ident?.lead?.[0],
     knowsAbout: ident?.disciplines,
@@ -270,8 +278,11 @@ export const jsonLD = () => {
     '@context': 'https://schema.org',
     '@graph': [
       person,
-      { '@type': 'WebSite', url: 'https://nanj.in/', name: ident?.name,
-        inLanguage: 'pt-BR', author: { '@id': 'https://nanj.in/#me' } },
+      /* Uma WebSite por página construída, cada uma no seu idioma. O `@id` do Person
+         é o mesmo nas duas de propósito: são duas páginas e **uma** pessoa, e é isso
+         que costura as duas versões como sendo o mesmo alguém. */
+      { '@type': 'WebSite', url: SITE + pathFor(locale).slice(1), name: ident?.name,
+        inLanguage: langFor(locale), author: { '@id': 'https://nanj.in/#me' } },
     ],
   })
 }
@@ -319,7 +330,24 @@ export const MIRROR_CSS = `
  * (`mirrorIntoPage`) chamam esta função, então não há dois `<main id="mirror">`
  * digitados à mão que possam discordar.
  */
-export const mirrorElementHTML = () => `<main id="${MIRROR_ID}">${mirrorHTML()}</main>`
+/**
+ * O caminho para a outra língua, no espelho e não na Plate.
+ *
+ * Ele nasce aqui de propósito. O objeto tem nove controles sem legenda (T-30) e um
+ * décimo, posto com pressa, piora aquele ticket em vez de resolver este. No espelho
+ * ele é um `<a href>` de verdade: funciona sem script, sobrevive a um leitor linear,
+ * e é a única forma que um crawler segue — que é metade do motivo de existir uma
+ * segunda página. Onde ele vive **no objeto** continua sendo decisão do Fernando.
+ */
+const langHTML = (locale: Locale) => {
+  const o = other(locale)
+  const s = stringsFor(locale)
+  return `<p><a ${HOOK.lang} href="${o.path}" hreflang="${o.lang}" lang="${o.lang}"`
+    + ` aria-label="${esc(s.languageLabel)}: ${esc(o.name)}">${esc(o.name)}</a></p>`
+}
+
+export const mirrorElementHTML = (locale: Locale = LOCALE) =>
+  `<main id="${MIRROR_ID}">${mirrorHTML(locale)}</main>`
 
 /**
  * O espelho, escrito na página antes de qualquer script rodar.
@@ -341,12 +369,12 @@ export const mirrorElementHTML = () => `<main id="${MIRROR_ID}">${mirrorHTML()}<
  * âncoras são obrigatórias: um `throw` aqui para o build, o que é muito melhor do
  * que uma página publicada sem metade do conteúdo.
  */
-export function mirrorIntoPage(html: string): string {
+export function mirrorIntoPage(html: string, locale: Locale = DEFAULT_LOCALE): string {
   if (!html.includes('</style>')) throw new Error('mirrorIntoPage: no </style> to anchor the mirror sheet')
   if (html.includes(`id="${MIRROR_ID}"`)) throw new Error('mirrorIntoPage: the page already carries a mirror')
   return html.replace(
     '</style>',
     `</style>\n<style id="${MIRROR_STYLE_ID}">${MIRROR_CSS}</style>`,
-  ) + `\n<script type="application/ld+json">${jsonLD()}</script>`
-    + `\n${mirrorElementHTML()}\n`
+  ) + `\n<script type="application/ld+json">${jsonLD(locale)}</script>`
+    + `\n${mirrorElementHTML(locale)}\n`
 }
