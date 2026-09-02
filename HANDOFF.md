@@ -93,6 +93,32 @@ npm run build:site && npm run preview:site     the real site
                     ?track                      dataLayer pushes on any host
 ```
 
+## Two agents, two worktrees — read this before editing content
+
+Since 2026-09-02 the work is split, because it collided once: two sessions wrote
+`src/content/modules.ts` in the same checkout, one of them mid-flight with five red
+tests, and neither could commit without shipping or clobbering the other.
+
+| Where | Branch | Whose |
+|---|---|---|
+| `~/dev/fernando-portfolio` | `lyra` | SEO, GEO, the build, the mirror, the languages |
+| `~/dev/tenebrae-telas` | `telas` | the project screens and the copy |
+
+**Only `lyra` deploys.** `pages.yml` fires on pushes to it and nothing else, so work
+on `telas` reaches the site by merge and not by accident. That is the protection: on
+2026-09-02 it is what kept a `modules.ts` with seven projects and five failing tests
+off the live site.
+
+**Pending, and waiting on him:** he is finishing a pass on the copy with the other
+agent. When it lands, this side picks it up for the SEO reading — better search terms
+in `description`, in each Module's `hint` and in `llms.txt`. Nothing here should touch
+`modules.ts` until that merge.
+
+**One thing needed from him:** a GitHub URL, if he has one. `sameAs` carries Instagram
+and LinkedIn; for someone who writes code, GitHub is the strongest signal tying the
+identity together — and nobody here invents a profile URL, for the same reason the
+LinkedIn row stayed inert for four sessions.
+
 ## The two languages, in one paragraph
 
 Content lives in `src/content/modules.ts`, in Portuguese, and **is not translated in place**.
