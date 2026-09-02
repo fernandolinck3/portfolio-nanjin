@@ -90,6 +90,31 @@ export type Module = {
   role?: string
   disciplines?: readonly string[]
   /**
+   * Os mesmos fatos, no registro que uma máquina lê.
+   *
+   * **Não é uma segunda cópia do conteúdo** — é a mesma coisa numa forma diferente,
+   * e a diferença é tipográfica e não factual. `role` é `GROWTH · CRO · EXPERIÊNCIAS
+   * DIGITAIS` porque é assim que a Screen **desenha** um cargo: caixa alta, ponto
+   * médio, gravado. Isso vazou para o `schema.org` e, para o Google e para um motor
+   * generativo, virou uma string estranha em vez de uma profissão.
+   *
+   * Derivar um do outro foi considerado e descartado: `toLowerCase` produz
+   * "experiências digitais" ou "Experiências Digitais" conforme a heurística, e
+   * nenhuma das duas está certa em português. Um humano escreve as cinco linhas uma
+   * vez; um algoritmo erraria em cada mudança.
+   *
+   * O emprego e o lugar já existiam no portfólio — TRAJETO lista os empregadores,
+   * QUEM diz a cidade — e a máquina não recebia nenhum dos dois.
+   */
+  entity?: {
+    jobTitle: string
+    knowsAbout: readonly string[]
+    locality: string
+    region: string
+    country: string
+    worksFor: readonly { name: string; from: string; to: string }[]
+  }
+  /**
    * A visão geral. **Sempre na tela, nunca atrás de uma roda.**
    *
    * Um índice que já se explica pelos próprios nomes não precisa de um: PROJETOS
@@ -128,10 +153,41 @@ export const SCREEN_BUDGET = {
    */
   lead: { lines: 5, paraChars: 96 },
   dim: { lines: 2, lineChars: 62 },
-  items: { max: 6, labelChars: 34, metaChars: 34 },
+  /**
+   * Quantos itens uma lista comporta — **por layout**, porque os quatro desenhos não
+   * comportam o mesmo. `drawGrid` corta em quatro (`slice(0, 4)`) e `drawNodes` em três
+   * (`Math.min(items.length, 3)`); `drawList` e `drawIndex` não cortam nada. Um número
+   * só para os quatro era conservador em dois e otimista nos outros dois, que é o
+   * assunto do T-16.
+   *
+   * `list: 7` foi **medido em 2026-09-02**, não estimado: com os quatro sites da
+   * parceria, PROJETOS passou a ter sete itens e a Tela foi exportada da textura
+   * (960x540) com o índice inteiro desenhado, legível e sem aviso de excesso. A
+   * aritmética dizia 4px de folga e a aritmética é onde este projeto já errou —
+   * ver `docs/adr/0028-quatro-sites-da-parceria.md`.
+   *
+   * Isto **não fecha o T-16**: o ticket também quer que cada desenho conte no
+   * `overflow` o que não coube, e `drawGrid` e `drawNodes` continuam cortando em
+   * silêncio. Este limite apenas para de mentir sobre o que cada um mostra.
+   */
+  items: { max: 7, labelChars: 34, metaChars: 34, byLayout: { list: 7, index: 6, grid: 4, nodes: 3 } },
   section: { max: 6, lines: 5, lineChars: 58, headingChars: 20 },
   hintChars: 62,
 } as const
+
+/**
+ * Quantos itens um layout mostra, com o teto geral como piso da resposta.
+ *
+ * `byLayout` não nomeia `identity`, porque uma tela de identidade não tem lista. Isso
+ * fazia todo chamador indexar um objeto estreito com uma chave larga e cair no
+ * `?? max` — que funciona e **não compila**: o `vitest` transpila sem checar tipos,
+ * então a suíte ficava verde enquanto o `typecheck` do CI quebrava, que é o caminho
+ * exato que o `pages.yml` documenta.
+ *
+ * A resposta mora aqui, uma vez, ao lado dos números que ela lê.
+ */
+export const itemsMaxFor = (layout: Layout): number =>
+  (SCREEN_BUDGET.items.byLayout as Partial<Record<Layout, number>>)[layout] ?? SCREEN_BUDGET.items.max
 
 /**
  * O que a sétima tela diz — e por que ela deixou de ser um formulário.
@@ -201,13 +257,15 @@ export type Work = {
 }
 
 /**
- * Três projetos, e apenas três.
+ * Sete projetos.
  *
- * Decisão de Fernando em 2026-08-28. As quatro entradas que saíram — Bandas de
- * Bollinger, R U MINE?, Rifa Handbanners e Parize — eram trabalho real e checável,
- * com imagens, e continuam em `public/works/`. Não foram apagadas porque a decisão
- * foi de **recorte**, não de retratação, e um recorte é a coisa mais fácil de
- * reverter que existe.
+ * Eram três por decisão de Fernando em 2026-08-28 — um recorte, não uma retratação.
+ * Em 2026-09-02 ele pediu os quatro sites feitos em parceria com Eduardo Braga, e o
+ * recorte foi desfeito exatamente como se previa que seria: acrescentando linhas.
+ * Ver `docs/adr/0028-quatro-sites-da-parceria.md`.
+ *
+ * As quatro entradas que saíram em agosto — Bandas de Bollinger, R U MINE?, Rifa
+ * Handbanners e Parize — continuam em `public/works/` e continuam fora daqui.
  */
 const WORKS_PT: readonly Work[] = [
   {
@@ -246,6 +304,80 @@ const WORKS_PT: readonly Work[] = [
   },
   {
     no: '003',
+    id: 'cmpinox',
+    title: 'CMP Inox',
+    kind: 'Site institucional',
+    year: '2024',
+    client: 'CMP Inox',
+    images: [
+      '/works/cmpinox-home.jpg',
+      '/works/cmpinox-produtos.jpg',
+      '/works/cmpinox-tabelas.jpg',
+      '/works/cmpinox-contato.jpg',
+      '/works/cmpinox-mobile.jpg',
+    ],
+    blurb: [
+      'Site institucional de uma distribuidora de aço inox,',
+      'com catálogo, tabelas técnicas e orçamento.',
+    ],
+  },
+  {
+    no: '004',
+    id: 'maiara',
+    title: 'Maiara Teixeira',
+    kind: 'Site de advocacia',
+    client: 'Maiara Teixeira Advocacia',
+    images: [
+      '/works/maiara-home.jpg',
+      '/works/maiara-servicos.jpg',
+      '/works/maiara-processo.jpg',
+      '/works/maiara-contato.jpg',
+      '/works/maiara-mobile.jpg',
+    ],
+    blurb: [
+      'Site de uma advocacia de direito imobiliário e',
+      'sucessões, com agendamento e tema claro e escuro.',
+    ],
+  },
+  {
+    no: '005',
+    id: 'anelise',
+    title: 'Anelise Porto',
+    kind: 'Site de advocacia',
+    client: 'Anelise Porto Advocacia',
+    images: [
+      '/works/anelise-home.jpg',
+      '/works/anelise-servicos.jpg',
+      '/works/anelise-processo.jpg',
+      '/works/anelise-cta.jpg',
+      '/works/anelise-mobile.jpg',
+    ],
+    blurb: [
+      'Site de uma advocacia generalista, com seis áreas',
+      'do direito e contato direto por WhatsApp.',
+    ],
+  },
+  {
+    no: '006',
+    id: 'helder',
+    title: 'Hélder Rodrigues',
+    kind: 'Landing page',
+    year: '2026',
+    client: 'Hélder Rodrigues',
+    images: [
+      '/works/helder-home.jpg',
+      '/works/helder-resultados.jpg',
+      '/works/helder-metodologia.jpg',
+      '/works/helder-servicos.jpg',
+      '/works/helder-mobile.jpg',
+    ],
+    blurb: [
+      'Landing page de um personal trainer, desenhada no',
+      'Figma e construída em React.',
+    ],
+  },
+  {
+    no: '007',
     id: 'miscelanea',
     title: 'Miscelânea',
     kind: 'Galeria de artes',
@@ -368,6 +500,192 @@ function caseOfPT(id: string): readonly Section[] {
       ],
     },
   ]
+  /* Os quatro da parceria com Eduardo Braga. Cada um diz como foi construído porque é
+     a única coisa que os distingue: são quatro clientes pequenos com o mesmo pedido, e
+     quatro decisões de construção diferentes. Nenhum reivindica número de conversão ou
+     tráfego — nenhum dos quatro tem dado público, e dizer isso é mais barato do que
+     ser desmentido. A linha da parceria fica em todos, sempre com o mesmo texto. */
+  if (id === 'cmpinox') return [
+    {
+      heading: 'VISÃO GERAL',
+      lines: [
+        'Site institucional de uma distribuidora de aço',
+        'inoxidável com mais de trinta anos de mercado.',
+        'Catálogo, tabelas técnicas e pedido de orçamento.',
+      ],
+    },
+    {
+      heading: 'CONTEXTO',
+      lines: [
+        'Quem compra aço inox chega sabendo a liga e a bitola',
+        'de que precisa. O site tinha de responder à',
+        'especificação antes de argumentar sobre a empresa.',
+      ],
+    },
+    {
+      heading: 'CONSTRUÇÃO',
+      lines: [
+        'Projeto no Webflow com o sistema de classes',
+        'Client-First, exportado e servido como estático.',
+        'Sem CMS a manter e sem banco no caminho.',
+      ],
+    },
+    {
+      heading: 'MEDIÇÃO',
+      lines: [
+        'O GA4 entrou no mesmo dia da primeira versão e em',
+        'todas as páginas, não como etapa posterior. O',
+        'formulário pede segmento e canal de contato, e',
+        'qualifica antes do primeiro telefonema. Não há',
+        'dados públicos de conversão ou tráfego.',
+      ],
+    },
+    {
+      heading: 'PARCERIA',
+      lines: ['Trabalho feito em parceria com Eduardo Braga.'],
+    },
+    {
+      heading: 'CAPTURAS',
+      lines: [
+        'Home, catálogo, tabelas de composição química,',
+        'contato e a home em mobile.',
+      ],
+    },
+  ]
+  if (id === 'maiara') return [
+    {
+      heading: 'VISÃO GERAL',
+      lines: [
+        'Site de uma advocacia especializada em direito',
+        'imobiliário e sucessões, em Cachoeirinha, RS.',
+      ],
+    },
+    {
+      heading: 'CONTEXTO',
+      lines: [
+        'Quem procura advogado para um inventário ou a compra',
+        'de um imóvel decide por confiança. A página precisa',
+        'mostrar competência antes de pedir o contato.',
+      ],
+    },
+    {
+      heading: 'CONSTRUÇÃO',
+      lines: [
+        'HTML, CSS e JavaScript escritos à mão, sem framework',
+        'e sem etapa de build. Uma página com âncoras, servida',
+        'estática — o conteúdo vem dentro do HTML. Tem tema',
+        'claro e escuro, navegação mobile própria e um FAQ',
+        'que abre no lugar.',
+      ],
+    },
+    {
+      heading: 'CONVERSÃO',
+      lines: [
+        'Formulário de contato e WhatsApp com a mensagem já',
+        'escrita, para o visitante não começar de uma tela',
+        'em branco. Não há dados públicos de conversão.',
+      ],
+    },
+    {
+      heading: 'PARCERIA',
+      lines: ['Trabalho feito em parceria com Eduardo Braga.'],
+    },
+    {
+      heading: 'CAPTURAS',
+      lines: [
+        'Home, áreas do direito, como funciona, contato e a',
+        'home em mobile.',
+      ],
+    },
+  ]
+  if (id === 'anelise') return [
+    {
+      heading: 'VISÃO GERAL',
+      lines: [
+        'Site de uma advocacia generalista em Cachoeirinha,',
+        'RS, com seis áreas do direito em uma página.',
+      ],
+    },
+    {
+      heading: 'CONTEXTO',
+      lines: [
+        'Seis áreas competem pela mesma atenção. Listar todas',
+        'com o mesmo peso não ajuda a escolher, e esconder',
+        'qualquer uma perde o cliente que veio por ela.',
+      ],
+    },
+    {
+      heading: 'CONSTRUÇÃO',
+      lines: [
+        'HTML, CSS e JavaScript à mão, sem framework. As áreas',
+        'abrem no lugar, uma de cada vez, e a página inteira',
+        'chega dentro do HTML servido.',
+      ],
+    },
+    {
+      heading: 'CONVERSÃO',
+      lines: [
+        'Uma rota só, repetida: falar agora no WhatsApp. Sem',
+        'formulário, porque a resposta rápida é o argumento.',
+        'Não há dados públicos de conversão.',
+      ],
+    },
+    {
+      heading: 'PARCERIA',
+      lines: ['Trabalho feito em parceria com Eduardo Braga.'],
+    },
+    {
+      heading: 'CAPTURAS',
+      lines: [
+        'Home, áreas do direito, como funciona, chamada final',
+        'e a home em mobile.',
+      ],
+    },
+  ]
+  if (id === 'helder') return [
+    {
+      heading: 'VISÃO GERAL',
+      lines: [
+        'Landing page de um personal trainer, construída em',
+        'React a partir de um desenho feito no Figma.',
+      ],
+    },
+    {
+      heading: 'CONTEXTO',
+      lines: [
+        'Treino personalizado é um serviço que só se avalia',
+        'depois de contratado. A página vende o método, e o',
+        'método precisava ficar visível numa tela.',
+      ],
+    },
+    {
+      heading: 'CONSTRUÇÃO',
+      lines: [
+        'React com Vite e Tailwind, em treze componentes.',
+        'O desenho veio antes do código e está versionado',
+        'junto dele, o que mantém os dois conferíveis.',
+      ],
+    },
+    {
+      heading: 'MÉTODO NA TELA',
+      lines: [
+        'Avaliação, plano, monitorização e ajuste aparecem',
+        'como etapas, ao lado de um painel de números.',
+        'O que é vendido é mostrado, não descrito.',
+      ],
+    },
+    {
+      heading: 'PARCERIA',
+      lines: ['Trabalho feito em parceria com Eduardo Braga.'],
+    },
+    {
+      heading: 'CAPTURAS',
+      lines: [
+        'Home, resultados, metodologia, serviços e a home',
+        'em mobile.',
+      ],
+    },
+  ]
   /* Miscelânea não tem case, e a última linha desta seção prometia uma "primeira
      seleção em breve" quando ela já tinha entrado: três peças reais estão em
      `images`. Uma galeria que mostra obra e diz que a obra ainda vem se contradiz na
@@ -417,6 +735,19 @@ const MODULES_PT: readonly Module[] = [
       'Experimentos de ponta a ponta: da pesquisa à implementação e ao aprendizado.',
     ],
     dim: ['Porto Alegre, Brasil.'],
+    entity: {
+      jobTitle: 'Growth, CRO e experiências digitais',
+      knowsAbout: ['Estratégia', 'Mensagem', 'Design', 'Front-end', 'Análise'],
+      locality: 'Porto Alegre',
+      region: 'Rio Grande do Sul',
+      country: 'Brasil',
+      /* As mesmas três etapas que o TRAJETO desenha, com as mesmas datas. */
+      worksFor: [
+        { name: 'Nelogica', from: '2024', to: '2026' },
+        { name: 'MSC Crociere', from: '2022', to: '2024' },
+        { name: 'Agências e independente', from: '2019', to: '2022' },
+      ],
+    },
     lyra: {
       open: ['A unidade despertou.', 'Comece aqui.'],
       /* QUEM não tem lista, então nem a LUA nem o SOL fazem nada aqui. A fala dizia

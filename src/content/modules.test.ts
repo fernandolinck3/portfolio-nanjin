@@ -8,7 +8,7 @@
  */
 import { existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { GAP, MODULES, SCREEN_BUDGET, WORKS, LYRA_IDLE_MS, moduleAt, lyraAt, workById, caseOf, ECLIPSE, type Module } from './modules'
+import { GAP, MODULES, SCREEN_BUDGET, WORKS, LYRA_IDLE_MS, moduleAt, lyraAt, workById, caseOf, ECLIPSE, type Module, itemsMaxFor } from './modules'
 import { EN, translate, visibleStrings } from './en'
 import { HOOK, itemKey, mirrorHTML } from './mirror'
 
@@ -108,7 +108,9 @@ describe('the Screen budget', () => {
 
   it.each(MODULES)('$title fits its item list', m => {
     const b = SCREEN_BUDGET.items
-    expect((m.items ?? []).length).toBeLessThanOrEqual(b.max)
+    /* Por layout: um `grid` corta em quatro e um `nodes` em três, então o teto de uma
+       `list` não é o teto deles. T-16. */
+    expect((m.items ?? []).length).toBeLessThanOrEqual(itemsMaxFor(m.layout))
     for (const i of m.items ?? []) {
       expect(i.label.length).toBeLessThanOrEqual(b.labelChars)
       expect((i.meta ?? '').length).toBeLessThanOrEqual(b.metaChars)
@@ -287,8 +289,9 @@ describe('the projects', () => {
     }
   })
 
-  it('is exactly Portfólio, Graecus and Miscelânea', () => {
-    expect(WORKS.map(w => w.id)).toEqual(['portfolio', 'graecus', 'miscelanea'])
+  it('é o portfólio, o Graecus, os quatro da parceria e a Miscelânea', () => {
+    expect(WORKS.map(w => w.id)).toEqual(
+      ['portfolio', 'graecus', 'cmpinox', 'maiara', 'anelise', 'helder', 'miscelanea'])
   })
 
   it('reaches every project from PROJETOS, and back by id', () => {

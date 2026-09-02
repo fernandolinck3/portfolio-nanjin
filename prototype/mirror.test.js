@@ -97,13 +97,13 @@ describe('the mirror in a document', () => {
   it('reports the page position as text, and says nothing before the first draw', () => {
     const pos = () => el().querySelector(`[${HOOK.position}]`).textContent
     mirror.sync(S({ page: 1, sel: 1 }))
-    expect(pos()).toBe('PROJETO 2 de 3 · índice')
+    expect(pos()).toBe('PROJETO 2 de 7 · índice')
     /* `pages` is written by the draw and is 0 until it has run — a position of
        "página 1 de 0" is worse than no position */
     mirror.sync(S({ page: 1, sel: 1, sec: 1, pages: 0 }))
-    expect(pos()).toBe('PROJETO 2 de 3 · índice')
+    expect(pos()).toBe('PROJETO 2 de 7 · índice')
     mirror.sync(S({ page: 1, sel: 1, sec: 2, pages: 6 }))
-    expect(pos()).toBe('PROJETO 2 de 3 · página 2 de 6')
+    expect(pos()).toBe('PROJETO 2 de 7 · página 2 de 6')
     /* QUEM has no list, and the honest report of no position is no position */
     mirror.sync(S({ page: 0 }))
     expect(pos()).toBe('')
@@ -382,6 +382,7 @@ describe('o idioma alcança quem desenha, não só quem escreve', () => {
     const acts = contact.items.map(i => i.act).filter(Boolean)
     expect(acts.some(a => a.kind === 'mail' && a.value.includes('@'))).toBe(true)
     expect(acts.some(a => a.kind === 'url' && a.value.startsWith('https://'))).toBe(true)
-    expect(WORKS.map(w => w.id)).toEqual(['portfolio', 'graecus', 'miscelanea'])
+    expect(WORKS.map(w => w.id)).toEqual(
+      ['portfolio', 'graecus', 'cmpinox', 'maiara', 'anelise', 'helder', 'miscelanea'])
   })
 })
