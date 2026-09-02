@@ -93,44 +93,14 @@ export const EN: Readonly<Record<string, string>> = {
     'content and the SOL goes deeper into it.',
 
   'VISÃO GERAL': 'OVERVIEW',
-  'Um portfólio concebido como instrumento. Em vez de':
-    'A portfolio conceived as an instrument. Instead of',
-  'percorrer páginas convencionais, a navegação acontece':
-    'moving through conventional pages, navigation happens',
-  'por meio de um artefato físico virtual.':
-    'by way of a virtual physical artefact.',
 
-  'MOTIVO': 'WHY',
-  'Como apresentar estratégia, mensagem, design, front-end':
-    'How do you present strategy, messaging, design, front-end',
-  'e análise sem reduzir o percurso a uma lista de cargos':
-    'and analytics without reducing the path to a list of job',
-  'ou ferramentas? A interface passa a ser a resposta.':
-    'titles or tools? The interface becomes the answer.',
 
   'CONSTRUÇÃO': 'BUILD',
-  'Three.js cuida do objeto, dos materiais e da iluminação.':
-    'Three.js handles the object, its materials and its light.',
-  'Uma camada semântica em HTML mantém textos e controles':
-    'A semantic HTML layer keeps text and controls readable,',
-  'legíveis, testáveis e acessíveis.':
-    'testable and accessible.',
 
   'REFERÊNCIAS': 'REFERENCES',
   'Mapas celestes, gravuras esotéricas, mecanismos':
     'Celestial maps, esoteric engravings, analogue',
-  'analógicos e terminais monocromáticos, combinados como':
-    'mechanisms and monochrome terminals, combined as',
-  'princípios de interação e materialidade.':
-    'principles of interaction and materiality.',
 
-  'INTERAÇÃO': 'INTERACTION',
-  'A LUA seleciona. O SOL abre. As seis teclas dão acesso':
-    'The LUA selects. The SOL opens. The six keys give direct',
-  'direto. O enquadramento permanece controlado para':
-    'access. The framing stays controlled in order to',
-  'preservar a legibilidade.':
-    'preserve legibility.',
 
   'GRAECUS': 'GRAECUS',
   'Graecus': 'Graecus',
@@ -138,48 +108,12 @@ export const EN: Readonly<Record<string, string>> = {
   'Site institucional + blog': 'Company site + blog',
   'Site institucional e blog em WordPress com tema':
     'A WordPress company site and blog on a custom theme,',
-  'personalizado. Conecta posicionamento, oferta, prova,':
-    'connecting positioning, offer, proof, content and',
-  'conteúdo e contato em uma sequência direta.':
-    'contact in one direct sequence.',
   'personalizado, sem page builder.': 'custom-built, with no page builder.',
 
-  'CONTEXTO': 'CONTEXT',
-  'Era preciso explicar uma oferta extensa e':
-    'A wide, multidisciplinary offer had to be explained',
-  'multidisciplinar sem tornar a experiência densa':
-    'without making the experience too dense or too',
-  'ou fragmentada demais.':
-    'fragmented.',
 
-  'Tema WordPress próprio, sem page builder. Templates PHP':
-    'An own WordPress theme, no page builder. PHP templates',
-  'para home, institucional, serviços, arquivo, categorias':
-    'for home, company, services, archive, categories and',
-  'e artigos, com componentes reutilizáveis.':
-    'articles, with reusable components.',
 
-  'BLOG': 'BLOG',
-  'Busca, filtros por categoria, atalhos temáticos e':
-    'Search, category filters, thematic shortcuts and',
-  'paginação. O template de artigo define a hierarquia de':
-    'pagination. The article template sets the hierarchy of',
-  'autoria, data, categorias e tempo de leitura.':
-    'author, date, categories and reading time.',
 
-  'RESULTADO': 'OUTCOME',
-  'Um sistema que permite publicar novos serviços e':
-    'A system that allows new services and content to be',
-  'conteúdos sem romper o sistema visual. Não há dados':
-    'published without breaking the visual system. There is',
-  'públicos de conversão ou tráfego.':
-    'no public conversion or traffic data.',
 
-  'CAPTURAS': 'SCREENS',
-  'Home, serviços, arquivo do blog, um artigo, o FAQ':
-    'Home, services, the blog archive, an article, the FAQ',
-  'aberto e a home em mobile.':
-    'open, and the home page on mobile.',
 
   'MISCELÂNEA': 'MISCELLANY',
   'Miscelânea': 'Miscellany',
@@ -351,6 +285,63 @@ export const EN: Readonly<Record<string, string>> = {
    * fazer a mesma coisa — declarar, não pedir desculpa, não prometer data.
    */
   'Ainda não registrado.': 'Not recorded yet.',
+
+  /* Graecus e o portfólio, na mesma régua dos quatro — 2026-09-02 */
+  'Site institucional e blog de uma consultoria de':
+    'A company site and blog for a growth consultancy:',
+  'growth: seis linhas de serviço, de mídia paga a':
+    'six service lines, from paid media to data',
+  'engenharia de dados, sob uma marca só.':
+    'engineering, under a single brand.',
+  'Cada linha tem a própria pilha — Google e Meta na':
+    'Each line has its own stack — Google and Meta in',
+  'mídia, Hubspot e RD no CRM, BigQuery e Databricks':
+    'media, Hubspot and RD in CRM, BigQuery and',
+  'nos dados. Escritas em coluna, as seis viram um':
+    'Databricks in data. Written as a column, the six',
+  'inventário de logos e nenhuma decisão.':
+    'become an inventory of logos and no decision.',
+  'Cada serviço é um cartão e as ferramentas são':
+    'Each service is a card and the tools are labels',
+  'etiquetas dentro dele. Tema WordPress próprio, sem':
+    'inside it. A custom WordPress theme, with no page',
+  'page builder: templates PHP para home, serviços,':
+    'builder: PHP templates for home, services, archive,',
+  'arquivo, categorias e artigos, com componentes':
+    'categories and articles, all on shared',
+  'reutilizáveis.': 'components.',
+  'O BLOG': 'THE BLOG',
+  'Busca, filtro por categoria, atalhos temáticos e':
+    'Search, category filter, thematic shortcuts and',
+  'paginação, todos sobre um único template de artigo.':
+    'pagination, all on one article template.',
+
+  'Um portfólio que é um instrumento: uma tela, sem':
+    'A portfolio that is an instrument: one screen, no',
+  'scroll e sem rota, com o conteúdo morando no display':
+    'scroll and no routes, with the content living on',
+  'do próprio aparelho.': 'the device display itself.',
+  'O MOTIVO': 'THE REASON',
+  'Estratégia, mensagem, design, front-end e análise na':
+    'Strategy, message, design, front-end and analysis',
+  'mesma pessoa viram uma lista de cargos quando escritas':
+    'in one person become a list of job titles when',
+  'em coluna. Aqui são a coisa que o visitante opera':
+    'written as a column. Here they are the thing the',
+  'antes de abrir qualquer case.':
+    'visitor operates before opening any case.',
+  'Three.js desenha o objeto. O conteúdo vive num só':
+    'Three.js draws the object. The content lives in one',
+  'arquivo e é lido duas vezes — pela Tela e por um':
+    'file and is read twice — by the Screen and by an',
+  'espelho em HTML, pré-renderizado no build. Um':
+    'HTML mirror, pre-rendered at build time. A crawler',
+  'rastreador lia 465 caracteres; passou a ler 5.675.':
+    'used to read 465 characters; it now reads 5,675.',
+  'analógicos e terminais monocromáticos. O objeto de':
+    'analogue mechanisms and monochrome terminals. The',
+  'referência é um pedal da Old Blood Noise Endeavors.':
+    'reference object is an Old Blood Noise Endeavors pedal.',
 
   /* ---------------- os quatro sites da parceria com Eduardo Braga ----------------
 

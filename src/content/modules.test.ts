@@ -327,20 +327,22 @@ describe('the projects', () => {
   })
 
   /**
-   * The Graecus case declares CAPTURAS and leaves it empty. The six website
-   * screenshots the brief asks for do not exist locally — the two files under
-   * `public/works/` are social pieces, which is different work for the same client.
+   * O Graecus carrega as capturas do site, e **não uma seção que as descreve**.
+   *
+   * A seção CAPTURAS existiu por um motivo bom: as seis capturas não existiam em
+   * disco, e a seção declarava a lacuna em vez de fingir. Elas existem desde
+   * 2026-08-31, e a partir daí a seção passou a narrar o que já estava na tela ao
+   * lado — que é exactamente o hábito que Fernando vetou em 2026-09-02 ("não precisa
+   * descrever coisas óbvias"). Ela saiu dos sete cases junto com o resto.
+   *
+   * O que continua valendo a pena guardar é a propriedade, não a prosa: este é o
+   * único case cujas capturas o briefing conta, e um recorte que as deixe cair abaixo
+   * de seis tem de falhar aqui.
    */
-  it('shows the Graecus captures it declares', () => {
-    const g = MODULES.find(x => x.id === 'projects')!.items!.find(i => i.id === 'graecus')!
-    const capturas = g.sections.find(s => s.heading === 'CAPTURAS')
-    expect(capturas).toBeDefined()
-    /* it used to be a declared gap: the six screenshots did not exist locally and the
-       section said so rather than pretending. They exist now, so the section
-       describes them and the Work carries them. */
-    expect(capturas!.lines.length).toBeGreaterThan(0)
+  it('carrega as capturas do site que o briefing pede', () => {
     const shots = workById('graecus')!.images ?? []
     expect(shots.length).toBeGreaterThanOrEqual(6)
+    for (const src of shots) expect(src.startsWith('/works/')).toBe(true)
   })
 })
 

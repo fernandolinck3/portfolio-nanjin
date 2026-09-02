@@ -421,47 +421,42 @@ export const REAL_WORKS = WORKS_PT.filter(w => !w.empty).length
 function caseOfPT(id: string): readonly Section[] {
   if (id === 'portfolio') return [
   /* A ordem é o briefing, não uma preferência: ele pediu projeto, contexto e
-     construção sem rolar. CONSTRUÇÃO era a quarta seção e caía abaixo da dobra —
-     Graecus já a tinha em terceiro e passava, este case não. REFERÊNCIAS desceu
-     um lugar; ela informa, mas não é o que ele pediu que aparecesse primeiro. */
+     construção sem rolar, e as três primeiras seções são isso. REFERÊNCIAS fecha,
+     porque informa sem ser o que ele pediu na frente. INTERAÇÃO saiu: o `blurb` já
+     diz que a LUA percorre e o SOL abre, e repetir na Tela é gastar linha para dizer
+     duas vezes. */
     {
       heading: 'VISÃO GERAL',
       lines: [
-        'Um portfólio concebido como instrumento. Em vez de',
-        'percorrer páginas convencionais, a navegação acontece',
-        'por meio de um artefato físico virtual.',
+        'Um portfólio que é um instrumento: uma tela, sem',
+        'scroll e sem rota, com o conteúdo morando no display',
+        'do próprio aparelho.',
       ],
     },
     {
-      heading: 'MOTIVO',
+      heading: 'O MOTIVO',
       lines: [
-        'Como apresentar estratégia, mensagem, design, front-end',
-        'e análise sem reduzir o percurso a uma lista de cargos',
-        'ou ferramentas? A interface passa a ser a resposta.',
+        'Estratégia, mensagem, design, front-end e análise na',
+        'mesma pessoa viram uma lista de cargos quando escritas',
+        'em coluna. Aqui são a coisa que o visitante opera',
+        'antes de abrir qualquer case.',
       ],
     },
     {
       heading: 'CONSTRUÇÃO',
       lines: [
-        'Three.js cuida do objeto, dos materiais e da iluminação.',
-        'Uma camada semântica em HTML mantém textos e controles',
-        'legíveis, testáveis e acessíveis.',
+        'Three.js desenha o objeto. O conteúdo vive num só',
+        'arquivo e é lido duas vezes — pela Tela e por um',
+        'espelho em HTML, pré-renderizado no build. Um',
+        'rastreador lia 465 caracteres; passou a ler 5.675.',
       ],
     },
     {
       heading: 'REFERÊNCIAS',
       lines: [
         'Mapas celestes, gravuras esotéricas, mecanismos',
-        'analógicos e terminais monocromáticos, combinados como',
-        'princípios de interação e materialidade.',
-      ],
-    },
-    {
-      heading: 'INTERAÇÃO',
-      lines: [
-        'A LUA seleciona. O SOL abre. As seis teclas dão acesso',
-        'direto. O enquadramento permanece controlado para',
-        'preservar a legibilidade.',
+        'analógicos e terminais monocromáticos. O objeto de',
+        'referência é um pedal da Old Blood Noise Endeavors.',
       ],
     },
   ]
@@ -469,48 +464,35 @@ function caseOfPT(id: string): readonly Section[] {
     {
       heading: 'VISÃO GERAL',
       lines: [
-        'Site institucional e blog em WordPress com tema',
-        'personalizado. Conecta posicionamento, oferta, prova,',
-        'conteúdo e contato em uma sequência direta.',
+        'Site institucional e blog de uma consultoria de',
+        'growth: seis linhas de serviço, de mídia paga a',
+        'engenharia de dados, sob uma marca só.',
       ],
     },
     {
-      heading: 'CONTEXTO',
+      heading: 'O PROBLEMA',
       lines: [
-        'Era preciso explicar uma oferta extensa e',
-        'multidisciplinar sem tornar a experiência densa',
-        'ou fragmentada demais.',
+        'Cada linha tem a própria pilha — Google e Meta na',
+        'mídia, Hubspot e RD no CRM, BigQuery e Databricks',
+        'nos dados. Escritas em coluna, as seis viram um',
+        'inventário de logos e nenhuma decisão.',
       ],
     },
     {
       heading: 'CONSTRUÇÃO',
       lines: [
-        'Tema WordPress próprio, sem page builder. Templates PHP',
-        'para home, institucional, serviços, arquivo, categorias',
-        'e artigos, com componentes reutilizáveis.',
+        'Cada serviço é um cartão e as ferramentas são',
+        'etiquetas dentro dele. Tema WordPress próprio, sem',
+        'page builder: templates PHP para home, serviços,',
+        'arquivo, categorias e artigos, com componentes',
+        'reutilizáveis.',
       ],
     },
     {
-      heading: 'BLOG',
+      heading: 'O BLOG',
       lines: [
-        'Busca, filtros por categoria, atalhos temáticos e',
-        'paginação. O template de artigo define a hierarquia de',
-        'autoria, data, categorias e tempo de leitura.',
-      ],
-    },
-    {
-      heading: 'RESULTADO',
-      lines: [
-        'Um sistema que permite publicar novos serviços e',
-        'conteúdos sem romper o sistema visual. Não há dados',
-        'públicos de conversão ou tráfego.',
-      ],
-    },
-    {
-      heading: 'CAPTURAS',
-      lines: [
-        'Home, serviços, arquivo do blog, um artigo, o FAQ',
-        'aberto e a home em mobile.',
+        'Busca, filtro por categoria, atalhos temáticos e',
+        'paginação, todos sobre um único template de artigo.',
       ],
     },
   ]
