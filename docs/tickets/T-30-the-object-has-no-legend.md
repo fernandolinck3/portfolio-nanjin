@@ -82,5 +82,6 @@ decides by looking:
 
 ## Source
 
-`.impeccable/critique/2026-09-01T12-00-21Z__nanj-in.md` — heuristics 2, 4, 6, 7 and 10, persona
+`critique/2026-09-01T12-00-21Z__nanj-in.md`, no repositório privado `nanjin-notas` — heurísticas
+2, 4, 6, 7 e 10, persona
 Jordan, and question 2.

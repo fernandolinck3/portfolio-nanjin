@@ -19,3 +19,7 @@ art/*.gif
 .claude/
 
 .DS_Store
+
+# Notas de trabalho e material sensível vivem num repositório privado.
+# Ver o ponteiro no fim do HANDOFF.md.
+.impeccable/

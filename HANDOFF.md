@@ -356,50 +356,12 @@ part to work from, not from taste.
     guess. Suggestion on the table: ship Tenebrae as Grimoire, make Cracktro Project 002.
 16. **Lyra's bubble** is plain. He asked for ornamental. The covering-text half is fixed.
 
-## Blocked on Fernando
+## Blocked on Fernando · Cautions
 
-- **The GTM container is still not imported.** The corrected export is
-  `docs/analytics/gtm-nanj-in.json` and nothing blocks it. Four things are his alone: import it
-  (*Merge*, and **Overwrite** while the container holds nothing but the failed import of this same
-  file), confirm one hit in GA4 Realtime, register the six custom dimensions (`module`, `item`,
-  `work`, `image`, `route`, `face`), and rule on consent. Detail in `docs/log/2026-08.md`.
-- **He has not seen the image-based Decks**, nor the project overlay built on 2026-08-31. Both were
-  verified in an automated tab; his judgement is the thing missing.
-- ~~**The LinkedIn URL.**~~ **Given 2026-09-01** — `https://www.linkedin.com/in/fernandolinck/`. The row acts now; it had stayed inert rather than guess a slug, which is why there was nothing to unpick when the address arrived.
-- **The PATH glossary rename** — needs his word, and a `CONTEXT.md` entry when it lands.
-- **RACK contents** (T-13) — slot 4 still lists influences, not tools. Blocked four sessions.
-- **His own voice.** QUEM, CRITÉRIOS and Lyra's lines are mine. They are honest and they are not his.
-  The ECLIPSE copy is mine too, and it is the most *written* thing on the object.
-- **The Graecus captures are in** (six site screenshots, `public/works/graecus-*.jpg`), and the case
-  section describes them. That one is closed.
+Estas duas seções saíram para um repositório **privado** em 2026-09-02.
 
-## Cautions
+Elas guardavam notas de trabalho **sobre Fernando** — como ele responde, o que já
+custou tempo, e quais textos do portfólio ainda não são a voz dele. Nada disso é
+produto, e este repositório é público e está linkado do perfil dele no GitHub.
 
-- **Build and show. Descriptions do not land.** Every decision that stuck was settled by a render or a
-  reference image, never by a paragraph. He said *"i dont understand"* to a wall of text, once.
-- **He answers with images.** Check `~/Downloads` when he mentions a reference. Verify the file is
-  what it claims — a `.png` was a GIF once — and read the whole thing before assuming which parts
-  apply.
-- **His references carry more than he asks for.** The faceplate's 1.82 aspect answered a proportions
-  problem he had not raised. `cross and jogs.png` was given for three controls and also settled the
-  Decks' whole palette. Measure them; crop them with `sips` and look properly.
-- **Do not open his browser without asking** — but *do* ask. Four rounds of blind performance fixes
-  achieved nothing; twenty minutes of measuring in a real tab found the cause.
-- **The Chrome extension gives out.** Screenshots start timing out, then `javascript_tool` loses the
-  tab, and creating a fresh tab is what recovers it. It happened perhaps a dozen times on
-  2026-08-28. Budget for it: prefer one probe that returns numbers over five that return pictures,
-  and never let a verification plan depend on a long sequence of screenshots.
-- **rAF fires zero times in an automated tab.** Drive the scene with `__unit.step(t)` then
-  `__unit.render()`, and read state with `__unit.nav()`. Anything timing-based — the opening, the
-  ECLIPSE transition, the film — cannot be observed here at all and has to be handed to him.
-- **Give him the thing, not a toggle.** Confirmed three times now.
-- **Do not add dependencies** (ADR-0004). When Node could not decode a PNG the answer was 120 lines of
-  `zlib`, not a package.
-- **He moves fast and reverses himself.** When he changes direction, write the ADR — do not just
-  change the code, and do not re-litigate the old one.
-- **When he says something is broken, believe him and go find the mechanism.** Every "it's missing"
-  and "it's black" has been a real, specific, findable bug — never a taste disagreement. The one
-  exception is worth knowing: *"the hover is slow"* was not lag, it was a change of 0.048 in lightness
-  on a near-black pad. A response you cannot see and a response that has not happened look identical.
-- **The disk.** It has hit 100% before and produced `ENOSPC` with a twenty-minute window where every
-  tool call failed. `~/Library/Caches` is the first place to look.
+Quem estiver trabalhando aqui e precisar delas: `~/dev/nanjin-notas`.

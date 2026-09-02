@@ -13,7 +13,9 @@ fácil de reverter que existe.
 
 Em 2026-09-02 ele pediu os quatro sites feitos em parceria com **Eduardo Braga**: `cmpinox.com.br`,
 `maiarateixeira.adv.br`, `aneliseporto.com.br` e `helderrodrigues.com.br`. O levantamento técnico
-dos quatro está em `docs/research/cases-parceria-eduardo-braga.md`.
+dos quatro está em `research/cases-parceria-eduardo-braga.md` do repositório privado
+`nanjin-notas` — é auditoria de autoria de um parceiro nomeado e saiu do público em
+2026-09-02.
 
 Duas perguntas precisavam de resposta antes de escrever uma linha.
 
