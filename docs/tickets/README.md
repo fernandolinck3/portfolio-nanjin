@@ -27,9 +27,9 @@ T-04 is the merge point and should not start while track B is mid-flight.
 
 | # | Ticket | Track | Depends on | State |
 |---|---|---|---|---|
-| T-01 | [Content source](T-01-content-source.md) | A | — | ready |
+| T-01 | [Content source](T-01-content-source.md) | A | — | **done** — `modules.ts`, 755 linhas, fonte única |
 | T-02 | [DOM truth layer](T-02-dom-truth-layer.md) | A | T-01 | ready after T-01 |
-| T-03 | [Screen reads the source](T-03-screen-reads-source.md) | A | T-01 | ready after T-01 |
+| T-03 | [Screen reads the source](T-03-screen-reads-source.md) | A | T-01 | **done** — `PAGES` morreu; `render.js:16` importa `MODULES` |
 | T-04 | [Scene into `src/`](T-04-scene-into-src.md) | A | T-02, T-03, track B quiet | later |
 | T-05 | [Flat Plate](T-05-flat-plate.md) | A | T-02 | tem um piso desde 2026-09-01 — ver comentário |
 | T-06 | [Portrait recomposition](T-06-portrait.md) | A | T-04 | later |
@@ -50,11 +50,12 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-22 | [The Screen is five percent](T-22-the-screen-is-five-percent.md) | B | — | ready — from the 2026-09-01 critique |
 | T-23 | [Three holes in the overlay](T-23-the-overlay-has-three-holes.md) | A | T-18 merged | **done 2026-09-01** |
 | T-24 | [CONTATO is last, and partly dead](T-24-contato-is-last-and-partly-dead.md) | A | — | ready |
-| T-25 | [The documents describe another object](T-25-the-documents-describe-another-object.md) | A | — | ready — docs only |
+| T-25 | [The documents describe another object](T-25-the-documents-describe-another-object.md) | A | — | **done 2026-09-01** — `ecf4807` |
 | T-26 | [The robots still cannot read it](T-26-the-robots-still-cannot-read-it.md) | A | T-18 | **done 2026-09-01** — 465 → 5.745 chars |
 | T-27 | [The k in Linck](T-27-the-k-in-linck.md) | B | — | **done 2026-09-01** — no ar |
 | T-28 | [A form on CONTATO](T-28-a-form-on-contato.md) | C | Fernando | **done 2026-09-01** — ADR-0027 + formulário |
 | T-29 | [O Preview do GTM não conecta](T-29-o-preview-do-gtm-nao-conecta.md) | A | — | precisa do sintoma exato |
+| T-30 | [Nine controls and no legend](T-30-the-object-has-no-legend.md) | B | — | ready — 11 dos 15 pontos perdidos na crítica |
 
 ## Where T-21 to T-25 came from
 
