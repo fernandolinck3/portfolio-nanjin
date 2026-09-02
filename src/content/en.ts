@@ -82,10 +82,10 @@ export const EN: Readonly<Record<string, string>> = {
   'PROJETOS': 'PROJECTS',
   'PROJETOS — Trabalhos e o raciocínio por trás deles': 'PROJECTS — Work, and the thinking behind it',
   'PROJETO': 'PROJECT',
-  'PORTFÓLIO': 'PORTFOLIO',
+  'PORTFÓLIO PESSOAL': 'PERSONAL PORTFOLIO',
   'SITE INTERATIVO': 'INTERACTIVE SITE',
   'Site interativo': 'Interactive site',
-  'Portfólio': 'Portfolio',
+  'Portfólio pessoal': 'Personal portfolio',
   'Um portfólio concebido como instrumento.': 'A portfolio conceived as an instrument.',
   'Seis teclas acessam os módulos, a LUA percorre o':
     'Six keys reach the modules, the LUA walks the',
@@ -352,7 +352,14 @@ export const EN: Readonly<Record<string, string>> = {
    */
   'Ainda não registrado.': 'Not recorded yet.',
 
-  /* ---------------- os quatro sites da parceria com Eduardo Braga ---------------- */
+  /* ---------------- os quatro sites da parceria com Eduardo Braga ----------------
+
+     Um case aqui é uma decisão contada, e a régua é o leitor: alguém que já sabe o que
+     é um acordeão, um tema escuro e um arquivo do Figma. **Nenhuma frase existe para
+     justificar uma técnica padrão** — Fernando cortou três dessas em 2026-09-02 e
+     chamou o tom de noob talk, com razão. O que sobra é o que o leitor não sabe: o
+     mercado do cliente, a restrição e a escolha. O inglês segue a mesma régua, e onde a
+     virada não sobrevive à tradução literal a frase foi refeita em inglês. */
 
   'CMP INOX': 'CMP INOX',
   'CMP Inox': 'CMP Inox',
@@ -362,41 +369,6 @@ export const EN: Readonly<Record<string, string>> = {
     'A company site for a stainless steel supplier, with',
   'com catálogo, tabelas técnicas e orçamento.':
     'a catalogue, technical tables and a quote form.',
-  'Site institucional de uma distribuidora de aço':
-    'A company site for a stainless steel supplier with',
-  'inoxidável com mais de trinta anos de mercado.':
-    'more than thirty years in the market. A catalogue,',
-  'Catálogo, tabelas técnicas e pedido de orçamento.':
-    'technical tables and a request for a quote.',
-  'Quem compra aço inox chega sabendo a liga e a bitola':
-    'Whoever buys stainless steel arrives knowing the',
-  'de que precisa. O site tinha de responder à':
-    'alloy and the gauge. The site had to answer the',
-  'especificação antes de argumentar sobre a empresa.':
-    'specification before arguing about the company.',
-  'Projeto no Webflow com o sistema de classes':
-    'Built in Webflow on the Client-First class system,',
-  'Client-First, exportado e servido como estático.':
-    'exported and served as a static site. No CMS to',
-  'Sem CMS a manter e sem banco no caminho.':
-    'maintain and no database in the way.',
-  'MEDIÇÃO': 'MEASUREMENT',
-  'O GA4 entrou no mesmo dia da primeira versão e em':
-    'GA4 went in on the same day as the first version',
-  'todas as páginas, não como etapa posterior. O':
-    'and on every page, not as a later step. The form',
-  'formulário pede segmento e canal de contato, e':
-    'asks for the segment and the preferred channel,',
-  'qualifica antes do primeiro telefonema. Não há':
-    'and qualifies before the first call. There is no',
-  'dados públicos de conversão ou tráfego.':
-    'public conversion or traffic data.',
-  'PARCERIA': 'PARTNERSHIP',
-  'Trabalho feito em parceria com Eduardo Braga.':
-    'Work made in partnership with Eduardo Braga.',
-  'Home, catálogo, tabelas de composição química,':
-    'Home, catalogue, chemical composition tables,',
-  'contato e a home em mobile.': 'contact and the home on mobile.',
 
   'MAIARA TEIXEIRA': 'MAIARA TEIXEIRA',
   'Maiara Teixeira': 'Maiara Teixeira',
@@ -407,35 +379,6 @@ export const EN: Readonly<Record<string, string>> = {
     'A site for a real estate and succession law',
   'sucessões, com agendamento e tema claro e escuro.':
     'practice, with booking and a light and dark theme.',
-  'Site de uma advocacia especializada em direito':
-    'A site for a practice specialised in real estate',
-  'imobiliário e sucessões, em Cachoeirinha, RS.':
-    'and succession law, in Cachoeirinha, Brazil.',
-  'Quem procura advogado para um inventário ou a compra':
-    'Whoever looks for a lawyer for an estate or a',
-  'de um imóvel decide por confiança. A página precisa':
-    'property purchase decides on trust. The page has',
-  'mostrar competência antes de pedir o contato.':
-    'to show competence before asking for contact.',
-  'HTML, CSS e JavaScript escritos à mão, sem framework':
-    'HTML, CSS and JavaScript written by hand, with no',
-  'e sem etapa de build. Uma página com âncoras, servida':
-    'framework and no build step. One page with anchors,',
-  'estática — o conteúdo vem dentro do HTML. Tem tema':
-    'served static — the content comes inside the HTML.',
-  'claro e escuro, navegação mobile própria e um FAQ':
-    'It has a light and dark theme, its own mobile',
-  'que abre no lugar.': 'navigation and a FAQ that opens in place.',
-  'CONVERSÃO': 'CONVERSION',
-  'Formulário de contato e WhatsApp com a mensagem já':
-    'A contact form, and WhatsApp with the message',
-  'escrita, para o visitante não começar de uma tela':
-    'already written so the visitor does not start',
-  'em branco. Não há dados públicos de conversão.':
-    'from blank. There is no public conversion data.',
-  'Home, áreas do direito, como funciona, contato e a':
-    'Home, areas of law, how it works, contact and',
-  'home em mobile.': 'the home on mobile.',
 
   'ANELISE PORTO': 'ANELISE PORTO',
   'Anelise Porto': 'Anelise Porto',
@@ -444,31 +387,6 @@ export const EN: Readonly<Record<string, string>> = {
     'A site for a general law practice, with six areas',
   'do direito e contato direto por WhatsApp.':
     'of law and direct contact over WhatsApp.',
-  'Site de uma advocacia generalista em Cachoeirinha,':
-    'A site for a general law practice in Cachoeirinha,',
-  'RS, com seis áreas do direito em uma página.':
-    'Brazil, with six areas of law on one page.',
-  'Seis áreas competem pela mesma atenção. Listar todas':
-    'Six areas compete for the same attention. Listing',
-  'com o mesmo peso não ajuda a escolher, e esconder':
-    'them all at equal weight does not help anyone',
-  'qualquer uma perde o cliente que veio por ela.':
-    'choose, and hiding one loses the client it drew.',
-  'HTML, CSS e JavaScript à mão, sem framework. As áreas':
-    'HTML, CSS and JavaScript by hand, with no framework.',
-  'abrem no lugar, uma de cada vez, e a página inteira':
-    'The areas open in place, one at a time, and the',
-  'chega dentro do HTML servido.':
-    'whole page arrives inside the HTML that is served.',
-  'Uma rota só, repetida: falar agora no WhatsApp. Sem':
-    'One route, repeated: talk now on WhatsApp. No',
-  'formulário, porque a resposta rápida é o argumento.':
-    'form, because the quick answer is the argument.',
-  'Não há dados públicos de conversão.':
-    'There is no public conversion data.',
-  'Home, áreas do direito, como funciona, chamada final':
-    'Home, areas of law, how it works, the closing call',
-  'e a home em mobile.': 'and the home on mobile.',
 
   'HÉLDER RODRIGUES': 'HÉLDER RODRIGUES',
   'Hélder Rodrigues': 'Hélder Rodrigues',
@@ -477,32 +395,112 @@ export const EN: Readonly<Record<string, string>> = {
   'Landing page de um personal trainer, desenhada no':
     'A landing page for a personal trainer, designed in',
   'Figma e construída em React.': 'Figma and built in React.',
+
+  /* títulos compartilhados pelos quatro */
+  'A DECISÃO': 'THE DECISION',
+  'PARCERIA': 'PARTNERSHIP',
+  'Trabalho feito em parceria com Eduardo Braga.':
+    'Work made in partnership with Eduardo Braga.',
+
+  /* CMP Inox */
+  'Uma distribuidora de aço inox com trinta anos de':
+    'A stainless steel supplier, thirty years in the',
+  'mercado, que vendia por telefone e por indicação.':
+    'market, that sold by telephone and by referral.',
+  'O site é para o comprador que já sabe o que quer e':
+    'The site is for the buyer who already knows what he',
+  'só precisa conferir se a liga está lá.':
+    'wants and only needs to check the alloy is there.',
+  'O COMPRADOR': 'THE BUYER',
+  'Ninguém abre um catálogo de aço por curiosidade.':
+    'Nobody opens a steel catalogue out of curiosity. He',
+  'Ele chega com uma liga e uma bitola anotadas, e a':
+    'arrives with an alloy and a gauge written down, and',
+  'hierarquia responde a isso: produto antes de':
+    'the hierarchy answers that: product before company,',
+  'empresa, tabela técnica antes de argumento.':
+    'technical table before argument.',
+  'Nenhum CMS. Projeto no Webflow com o sistema de':
+    'No CMS. Built in Webflow on the Client-First class',
+  'classes Client-First, exportado e servido como':
+    'system, exported and served as static files, with',
+  'arquivos estáticos, com sitemap versionado junto.':
+    'the sitemap versioned alongside them.',
+  'As composições químicas são arquivo, não imagem.':
+    'The chemical compositions are a file, not an image.',
+  'MEDIÇÃO': 'MEASUREMENT',
+  'GA4 em todas as páginas desde a primeira versão. O':
+    'GA4 on every page from the first version. The form',
+  'formulário qualifica antes do contato: empresa,':
+    'qualifies before the contact does: company,',
+  'segmento e canal preferido.': 'segment and preferred channel.',
+
+  /* Maiara Teixeira */
+  'Advocacia de direito imobiliário e sucessões, em':
+    'A real estate and succession law practice in',
+  'Cachoeirinha. Uma página só, com tudo dentro dela.':
+    'Cachoeirinha, Brazil. One page, everything inside.',
+  'QUEM PROCURA': 'WHO COMES LOOKING',
+  'Quem procura um advogado de inventário costuma':
+    'Someone looking for a probate lawyer usually comes',
+  'chegar num momento difícil, comparando alguns nomes':
+    'at a hard moment, weighing a few names and looking',
+  'e buscando quem já tenha feito aquilo antes.':
+    'for whoever has done it before.',
+  'O site foi construído para responder a isso.':
+    'The site was built to answer that.',
+  'Sem framework e sem etapa de build: um HTML, um CSS':
+    'No framework and no build step: one HTML, one CSS',
+  'e um JavaScript, servidos estáticos. Formulário':
+    'and one JavaScript, served static. Its own form,',
+  'próprio e WhatsApp com a mensagem pré-preenchida':
+    'and WhatsApp with the message pre-filled by',
+  'por assunto.': 'subject.',
+
+  /* Anelise Porto */
+  'Advocacia generalista em Cachoeirinha, com seis':
+    'A general law practice in Cachoeirinha, Brazil,',
+  'áreas do direito em uma página.':
+    'with six areas of law on one page.',
+  'O PROBLEMA': 'THE PROBLEM',
+  'Seis áreas disputam a mesma atenção. Listar as seis':
+    'Six areas compete for the same attention. Listing',
+  'com o mesmo peso não ajuda ninguém a escolher, e':
+    'all six at equal weight helps nobody choose, and',
+  'esconder qualquer uma perde justamente o cliente':
+    'hiding any of them loses exactly the client who',
+  'que entrou por ela.': 'came in through it.',
+  'As áreas abrem no lugar, uma de cada vez, e a':
+    'The areas open in place, one at a time, and the',
+  'página inteira vem dentro do HTML servido. Sem':
+    'whole page comes inside the HTML served. No',
+  'framework e sem build.': 'framework and no build.',
+  'UMA ROTA SÓ': 'ONE ROUTE ONLY',
+  'Sem formulário: o site inteiro leva ao WhatsApp,':
+    'No form: the whole site leads to WhatsApp, repeated',
+  'repetido a cada seção. A promessa do escritório é':
+    'in every section. The practice promises a fast',
+  'resposta rápida, e a rota é única por isso.':
+    'answer, and that is why there is only one route.',
+
+  /* Hélder Rodrigues */
   'Landing page de um personal trainer, construída em':
     'A landing page for a personal trainer, built in',
   'React a partir de um desenho feito no Figma.':
     'React from a design made in Figma.',
-  'Treino personalizado é um serviço que só se avalia':
-    'Personal training is a service you can only judge',
-  'depois de contratado. A página vende o método, e o':
-    'after buying it. The page sells the method, and',
-  'método precisava ficar visível numa tela.':
-    'the method had to be visible on one screen.',
-  'React com Vite e Tailwind, em treze componentes.':
-    'React with Vite and Tailwind, in thirteen',
-  'O desenho veio antes do código e está versionado':
-    'components. The design came before the code and is',
-  'junto dele, o que mantém os dois conferíveis.':
-    'versioned beside it, which keeps both checkable.',
-  'MÉTODO NA TELA': 'THE METHOD ON SCREEN',
-  'Avaliação, plano, monitorização e ajuste aparecem':
-    'Assessment, plan, monitoring and adjustment appear',
-  'como etapas, ao lado de um painel de números.':
-    'as steps, beside a panel of numbers. What is',
-  'O que é vendido é mostrado, não descrito.':
-    'being sold is shown, not described.',
-  'Home, resultados, metodologia, serviços e a home':
-    'Home, results, methodology, services and the home',
-  'em mobile.': 'on mobile.',
+  'O QUE SE VENDE': 'WHAT IS BEING SOLD',
+  'Treino personalizado não se experimenta antes de':
+    'You cannot try personal training before buying it.',
+  'comprar. O que o cliente avalia é o método.':
+    'What the client judges is the method.',
+  'Avaliação, plano, monitorização e ajuste viram':
+    'Assessment, plan, monitoring and adjustment become',
+  'etapas numeradas, ao lado de um painel de números.':
+    'numbered steps, beside a panel of numbers.',
+  'React 19 com Vite e Tailwind, em treze componentes,':
+    'React 19 with Vite and Tailwind, in thirteen',
+  'e um componente dedicado às meta tags.':
+    'components, one of them dedicated to the meta tags.',
 
 }
 

@@ -383,6 +383,6 @@ describe('o idioma alcança quem desenha, não só quem escreve', () => {
     expect(acts.some(a => a.kind === 'mail' && a.value.includes('@'))).toBe(true)
     expect(acts.some(a => a.kind === 'url' && a.value.startsWith('https://'))).toBe(true)
     expect(WORKS.map(w => w.id)).toEqual(
-      ['portfolio', 'graecus', 'cmpinox', 'maiara', 'anelise', 'helder', 'miscelanea'])
+      ['graecus', 'cmpinox', 'maiara', 'anelise', 'helder', 'portfolio', 'miscelanea'])
   })
 })

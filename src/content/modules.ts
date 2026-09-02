@@ -270,17 +270,6 @@ export type Work = {
 const WORKS_PT: readonly Work[] = [
   {
     no: '001',
-    id: 'portfolio',
-    title: 'Portfólio',
-    kind: 'Site interativo',
-    blurb: [
-      'Um portfólio concebido como instrumento.',
-      'Seis teclas acessam os módulos, a LUA percorre o',
-      'conteúdo e o SOL aprofunda a seleção.',
-    ],
-  },
-  {
-    no: '002',
     id: 'graecus',
     title: 'Graecus',
     kind: 'Site institucional + blog',
@@ -303,7 +292,7 @@ const WORKS_PT: readonly Work[] = [
     ],
   },
   {
-    no: '003',
+    no: '002',
     id: 'cmpinox',
     title: 'CMP Inox',
     kind: 'Site institucional',
@@ -322,13 +311,14 @@ const WORKS_PT: readonly Work[] = [
     ],
   },
   {
-    no: '004',
+    no: '003',
     id: 'maiara',
     title: 'Maiara Teixeira',
     kind: 'Site de advocacia',
     client: 'Maiara Teixeira Advocacia',
     images: [
       '/works/maiara-home.jpg',
+      '/works/maiara-sobre.jpg',
       '/works/maiara-servicos.jpg',
       '/works/maiara-processo.jpg',
       '/works/maiara-contato.jpg',
@@ -340,13 +330,14 @@ const WORKS_PT: readonly Work[] = [
     ],
   },
   {
-    no: '005',
+    no: '004',
     id: 'anelise',
     title: 'Anelise Porto',
     kind: 'Site de advocacia',
     client: 'Anelise Porto Advocacia',
     images: [
       '/works/anelise-home.jpg',
+      '/works/anelise-sobre.jpg',
       '/works/anelise-servicos.jpg',
       '/works/anelise-processo.jpg',
       '/works/anelise-cta.jpg',
@@ -358,7 +349,7 @@ const WORKS_PT: readonly Work[] = [
     ],
   },
   {
-    no: '006',
+    no: '005',
     id: 'helder',
     title: 'Hélder Rodrigues',
     kind: 'Landing page',
@@ -374,6 +365,29 @@ const WORKS_PT: readonly Work[] = [
     blurb: [
       'Landing page de um personal trainer, desenhada no',
       'Figma e construída em React.',
+    ],
+  },
+  /* Sexto, e não primeiro: decisão de Fernando em 2026-09-02. O objeto em que o
+     visitante já está de pé não precisa abrir a lista — o trabalho de cliente precisa.
+     As capturas são do próprio instrumento, tiradas do Chrome dirigido por CDP: a
+     Tela sai do `emissiveMap` da Placa em 960x540, que é a resolução real do painel,
+     e não uma foto de um disco de 190px. */
+  {
+    no: '006',
+    id: 'portfolio',
+    title: 'Portfólio pessoal',
+    kind: 'Site interativo',
+    images: [
+      '/works/portfolio-objeto.jpg',
+      '/works/portfolio-quem.jpg',
+      '/works/portfolio-projetos.jpg',
+      '/works/portfolio-criterios.jpg',
+      '/works/portfolio-flat.jpg',
+    ],
+    blurb: [
+      'Um portfólio concebido como instrumento.',
+      'Seis teclas acessam os módulos, a LUA percorre o',
+      'conteúdo e o SOL aprofunda a seleção.',
     ],
   },
   {
@@ -509,137 +523,110 @@ function caseOfPT(id: string): readonly Section[] {
     {
       heading: 'VISÃO GERAL',
       lines: [
-        'Site institucional de uma distribuidora de aço',
-        'inoxidável com mais de trinta anos de mercado.',
-        'Catálogo, tabelas técnicas e pedido de orçamento.',
+        'Uma distribuidora de aço inox com trinta anos de',
+        'mercado, que vendia por telefone e por indicação.',
+        'O site é para o comprador que já sabe o que quer e',
+        'só precisa conferir se a liga está lá.',
       ],
     },
     {
-      heading: 'CONTEXTO',
+      heading: 'O COMPRADOR',
       lines: [
-        'Quem compra aço inox chega sabendo a liga e a bitola',
-        'de que precisa. O site tinha de responder à',
-        'especificação antes de argumentar sobre a empresa.',
+        'Ninguém abre um catálogo de aço por curiosidade.',
+        'Ele chega com uma liga e uma bitola anotadas, e a',
+        'hierarquia responde a isso: produto antes de',
+        'empresa, tabela técnica antes de argumento.',
       ],
     },
     {
-      heading: 'CONSTRUÇÃO',
+      heading: 'A DECISÃO',
       lines: [
-        'Projeto no Webflow com o sistema de classes',
-        'Client-First, exportado e servido como estático.',
-        'Sem CMS a manter e sem banco no caminho.',
+        'Nenhum CMS. Projeto no Webflow com o sistema de',
+        'classes Client-First, exportado e servido como',
+        'arquivos estáticos, com sitemap versionado junto.',
+        'As composições químicas são arquivo, não imagem.',
       ],
     },
     {
       heading: 'MEDIÇÃO',
       lines: [
-        'O GA4 entrou no mesmo dia da primeira versão e em',
-        'todas as páginas, não como etapa posterior. O',
-        'formulário pede segmento e canal de contato, e',
-        'qualifica antes do primeiro telefonema. Não há',
-        'dados públicos de conversão ou tráfego.',
+        'GA4 em todas as páginas desde a primeira versão. O',
+        'formulário qualifica antes do contato: empresa,',
+        'segmento e canal preferido.',
       ],
     },
     {
       heading: 'PARCERIA',
       lines: ['Trabalho feito em parceria com Eduardo Braga.'],
-    },
-    {
-      heading: 'CAPTURAS',
-      lines: [
-        'Home, catálogo, tabelas de composição química,',
-        'contato e a home em mobile.',
-      ],
     },
   ]
   if (id === 'maiara') return [
     {
       heading: 'VISÃO GERAL',
       lines: [
-        'Site de uma advocacia especializada em direito',
-        'imobiliário e sucessões, em Cachoeirinha, RS.',
+        'Advocacia de direito imobiliário e sucessões, em',
+        'Cachoeirinha. Uma página só, com tudo dentro dela.',
       ],
     },
     {
-      heading: 'CONTEXTO',
+      heading: 'QUEM PROCURA',
       lines: [
-        'Quem procura advogado para um inventário ou a compra',
-        'de um imóvel decide por confiança. A página precisa',
-        'mostrar competência antes de pedir o contato.',
+        'Quem procura um advogado de inventário costuma',
+        'chegar num momento difícil, comparando alguns nomes',
+        'e buscando quem já tenha feito aquilo antes.',
+        'O site foi construído para responder a isso.',
       ],
     },
     {
-      heading: 'CONSTRUÇÃO',
+      heading: 'A DECISÃO',
       lines: [
-        'HTML, CSS e JavaScript escritos à mão, sem framework',
-        'e sem etapa de build. Uma página com âncoras, servida',
-        'estática — o conteúdo vem dentro do HTML. Tem tema',
-        'claro e escuro, navegação mobile própria e um FAQ',
-        'que abre no lugar.',
-      ],
-    },
-    {
-      heading: 'CONVERSÃO',
-      lines: [
-        'Formulário de contato e WhatsApp com a mensagem já',
-        'escrita, para o visitante não começar de uma tela',
-        'em branco. Não há dados públicos de conversão.',
+        'Sem framework e sem etapa de build: um HTML, um CSS',
+        'e um JavaScript, servidos estáticos. Formulário',
+        'próprio e WhatsApp com a mensagem pré-preenchida',
+        'por assunto.',
       ],
     },
     {
       heading: 'PARCERIA',
       lines: ['Trabalho feito em parceria com Eduardo Braga.'],
-    },
-    {
-      heading: 'CAPTURAS',
-      lines: [
-        'Home, áreas do direito, como funciona, contato e a',
-        'home em mobile.',
-      ],
     },
   ]
   if (id === 'anelise') return [
     {
       heading: 'VISÃO GERAL',
       lines: [
-        'Site de uma advocacia generalista em Cachoeirinha,',
-        'RS, com seis áreas do direito em uma página.',
+        'Advocacia generalista em Cachoeirinha, com seis',
+        'áreas do direito em uma página.',
       ],
     },
     {
-      heading: 'CONTEXTO',
+      heading: 'O PROBLEMA',
       lines: [
-        'Seis áreas competem pela mesma atenção. Listar todas',
-        'com o mesmo peso não ajuda a escolher, e esconder',
-        'qualquer uma perde o cliente que veio por ela.',
+        'Seis áreas disputam a mesma atenção. Listar as seis',
+        'com o mesmo peso não ajuda ninguém a escolher, e',
+        'esconder qualquer uma perde justamente o cliente',
+        'que entrou por ela.',
       ],
     },
     {
-      heading: 'CONSTRUÇÃO',
+      heading: 'A DECISÃO',
       lines: [
-        'HTML, CSS e JavaScript à mão, sem framework. As áreas',
-        'abrem no lugar, uma de cada vez, e a página inteira',
-        'chega dentro do HTML servido.',
+        'As áreas abrem no lugar, uma de cada vez, e a',
+        'página inteira vem dentro do HTML servido. Sem',
+        'framework e sem build.',
       ],
     },
     {
-      heading: 'CONVERSÃO',
+      heading: 'UMA ROTA SÓ',
       lines: [
-        'Uma rota só, repetida: falar agora no WhatsApp. Sem',
-        'formulário, porque a resposta rápida é o argumento.',
-        'Não há dados públicos de conversão.',
+        'Sem formulário: o site inteiro leva ao WhatsApp,',
+        'repetido a cada seção. A promessa do escritório é',
+        'resposta rápida, e a rota é única por isso.',
       ],
     },
     {
       heading: 'PARCERIA',
       lines: ['Trabalho feito em parceria com Eduardo Braga.'],
-    },
-    {
-      heading: 'CAPTURAS',
-      lines: [
-        'Home, áreas do direito, como funciona, chamada final',
-        'e a home em mobile.',
-      ],
     },
   ]
   if (id === 'helder') return [
@@ -651,39 +638,24 @@ function caseOfPT(id: string): readonly Section[] {
       ],
     },
     {
-      heading: 'CONTEXTO',
+      heading: 'O QUE SE VENDE',
       lines: [
-        'Treino personalizado é um serviço que só se avalia',
-        'depois de contratado. A página vende o método, e o',
-        'método precisava ficar visível numa tela.',
+        'Treino personalizado não se experimenta antes de',
+        'comprar. O que o cliente avalia é o método.',
       ],
     },
     {
-      heading: 'CONSTRUÇÃO',
+      heading: 'A DECISÃO',
       lines: [
-        'React com Vite e Tailwind, em treze componentes.',
-        'O desenho veio antes do código e está versionado',
-        'junto dele, o que mantém os dois conferíveis.',
-      ],
-    },
-    {
-      heading: 'MÉTODO NA TELA',
-      lines: [
-        'Avaliação, plano, monitorização e ajuste aparecem',
-        'como etapas, ao lado de um painel de números.',
-        'O que é vendido é mostrado, não descrito.',
+        'Avaliação, plano, monitorização e ajuste viram',
+        'etapas numeradas, ao lado de um painel de números.',
+        'React 19 com Vite e Tailwind, em treze componentes,',
+        'e um componente dedicado às meta tags.',
       ],
     },
     {
       heading: 'PARCERIA',
       lines: ['Trabalho feito em parceria com Eduardo Braga.'],
-    },
-    {
-      heading: 'CAPTURAS',
-      lines: [
-        'Home, resultados, metodologia, serviços e a home',
-        'em mobile.',
-      ],
     },
   ]
   /* Miscelânea não tem case, e a última linha desta seção prometia uma "primeira

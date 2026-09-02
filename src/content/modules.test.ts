@@ -291,7 +291,7 @@ describe('the projects', () => {
 
   it('é o portfólio, o Graecus, os quatro da parceria e a Miscelânea', () => {
     expect(WORKS.map(w => w.id)).toEqual(
-      ['portfolio', 'graecus', 'cmpinox', 'maiara', 'anelise', 'helder', 'miscelanea'])
+      ['graecus', 'cmpinox', 'maiara', 'anelise', 'helder', 'portfolio', 'miscelanea'])
   })
 
   it('reaches every project from PROJETOS, and back by id', () => {
