@@ -4,6 +4,26 @@
 `docs/log/` is the diary and is optional. This file carries only the traps that have cost time more
 than once, because it is loaded automatically and every line in it is a line everyone pays for.
 
+**This repository is public, and linked from his GitHub profile.** A recruiter reading it
+is a likely reader, not a hypothetical one. That draws one line through everything written
+here, commit messages included:
+
+> Reasoning about **how the object works** belongs in the repository. Reasoning about **how
+> to make Fernando look better** does not.
+
+Concretely, never commit — in a message, a comment, a ticket or a doc:
+
+- **A verbatim quote of him.** Paraphrase the requirement instead. "The crossfader was
+  cropped" says the same thing as quoting him saying it, and does not publish him.
+- **Which portfolio copy is his and which is ours.** It is the single most damaging fact
+  this repository can carry, for someone who presents himself as growth and messaging.
+- **Editorial rules for his copy** — what to cut so it reads better, what a draft claimed
+  that it should not have, how a case should be framed. Apply the rule; do not publish it.
+- **Any judgement of how strong a project or a client case is.**
+
+Technical reasoning stays whole, and it is what credits him: measurements, what was tried
+and dropped, why a number is that number. That half is the reason the repository is public.
+
 **Write reasoning in the commit message, not in `HANDOFF.md`.** `git log --oneline` is cheap and
 nobody loads a commit body into context. `HANDOFF.md` keeps state and decisions; the dated narrative
 goes to `docs/log/<year>-<month>.md`.
