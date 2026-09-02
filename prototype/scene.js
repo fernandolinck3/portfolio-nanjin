@@ -3014,17 +3014,35 @@ let lastPick = null;
  * edge. `workRowAt` answers from the boxes the same pass drew, so a row can never
  * be clickable somewhere it is not painted.
  */
-function screenRowAt(e) {
+/**
+ * What the Screen has under a point — **one answer, shared by the click and by the
+ * cursor.**
+ *
+ * There were two lists of the same thing. `pointerdown` knew four targets: the claim,
+ * the back, the eclipse mark and the rows. `pointermove` — which sets the cursor and
+ * the hover — knew only the rows. So three controls were clickable and invisible to
+ * the pointer, and Fernando found the first of them: *"no módulo de eclipse, o abrir
+ * o instagram está sem cursor pointer pra mostrar que é click."*
+ *
+ * The bug is not the missing branch, it is that a control had to be registered twice
+ * to work. Two lists drift; one cannot. Anything added here is clickable and
+ * hoverable in the same edit, or in neither.
+ *
+ * It also raycasts once where the pair raycast twice on every move.
+ */
+function screenHit(e) {
+  const sp = screenPoint(e);
+  if (!sp) return null;
+  /* the controls the Screen draws on itself come before the rows, because each is
+     registered by the pass that paints it and can sit over the list */
+  if (inBox(sp, claimBox())) return { kind: 'claim' };
+  if (inBox(sp, backBox())) return { kind: 'back' };
+  if (inBox(sp, eclipseMarkBox())) return { kind: 'mark' };
   /* any Module with items has rows; this used to name one Module by an id that no
      longer exists, which silently made the whole Screen unclickable */
-  if (!MODULES[curPage].items?.length) return -1;
-  const r = frameRect(), p = pt(e);
-  ndc.x = ((p.x - r.left) / r.width) * 2 - 1;
-  ndc.y = -((p.y - r.top) / r.height) * 2 + 1;
-  ray.setFromCamera(ndc, camera);
-  const hit = ray.intersectObject(screen, false)[0];
-  if (!hit || !hit.uv) return -1;
-  return workRowAt(hit.uv.x * SCREEN_W, (1 - hit.uv.y) * SCREEN_H);
+  if (!MODULES[curPage].items?.length) return null;
+  const row = workRowAt(sp[0], sp[1]);
+  return row >= 0 ? { kind: 'row', row } : null;
 }
 
 /**
@@ -3689,7 +3707,7 @@ el.addEventListener('pointerdown', e => {
     if (c === 'pad') { padPress[hit.userData.i] = 1; pressPad(hit.userData.i); return; }
     if (c === 'screen') {
       if (focus.active) { focus.exit(); return; }
-      const row = screenRowAt(e);
+      const on = screenHit(e);
       /**
        * The Screen is still a way in.
        *
@@ -3707,15 +3725,14 @@ el.addEventListener('pointerdown', e => {
        * Each is registered by the pass that paints it, so a control is clickable
        * exactly where it appears and cannot drift from its own picture.
        */
-      const sp = screenPoint(e);
-      if (inBox(sp, claimBox())) {
+      if (on?.kind === 'claim') {
         flashLcd('ABRIR · INSTAGRAM');
         track('outbound', { route: 'INSTAGRAM', kind: 'url', from: 'eclipse' });
         window.open(claimURL(), '_blank', 'noopener'); return;
       }
-      if (inBox(sp, backBox())) { moonBack(); return; }
-      if (inBox(sp, eclipseMarkBox())) { openEclipse(eclipse.face); return; }
-      if (row >= 0) { openRow(row); return; }
+      if (on?.kind === 'back') { moonBack(); return; }
+      if (on?.kind === 'mark') { openEclipse(eclipse.face); return; }
+      if (on?.kind === 'row') { openRow(on.row); return; }
       /* not on a row: fall through, so the Screen is still somewhere you can grab
          the view from the way every other dead area of the Unit is */
     }
@@ -3755,12 +3772,15 @@ el.addEventListener('pointermove', e => {
       setHint(padHover >= 0 ? MODULES[padHover].hint : '');
       drawScreen();
     }
-    const row = ctl === 'screen' ? screenRowAt(e) : -1;
+    const on = ctl === 'screen' ? screenHit(e) : null;
+    const row = on?.kind === 'row' ? on.row : -1;
     if (row !== hoverWork) { hoverWork = row; setHoverWork(row); drawScreen(); }
+    /* `on` and not `row`: the claim, the back and the eclipse mark are clicks too,
+       and saying so is the whole point of one hit test. */
     el.style.cursor = ctl === 'pad' ? 'pointer'
       : ctl === 'fader' ? 'ew-resize'
       : ctl === 'sun' || ctl === 'moon' ? 'grab'
-      : ctl === 'screen' && row >= 0 ? 'pointer'
+      : ctl === 'screen' && on ? 'pointer'
       : freeLook() ? 'grab' : 'default';
     return;
   }
@@ -3812,9 +3832,23 @@ el.addEventListener('pointermove', e => {
        drag. Fernando: *"ela tá girando inversamente ao arraste de mouse."* */
     const d = deckTurn(d0.group, jogAt, now);
     jogAt = now;
-    /* the platter follows the hand one to one; `carry` is the same travel measured
-       against the detents, and the two are fed from the same number so the wheel can
-       never be showing one thing while the selection does another */
+    /**
+     * **Os dois sinais, medidos em 2026-09-02.**
+     *
+     * `deckTurn` devolve o produto vetorial em espaço de tela, onde y cresce para
+     * baixo: positivo é **horário para o olho** (lado direito descendo). Mas
+     * `group.rotation.y` positivo **desenha anti-horário** nesta câmera — renderizado
+     * em 0 e em 0.55 e comparado quadro a quadro, não deduzido. Somar um no outro
+     * fazia a roda girar contra a mão, que é a queixa que já tinha voltado uma vez:
+     * *"ela tá girando inversamente ao arraste de mouse."* A correção de então negou
+     * `carry` em vez de `turn` — consertou o que não estava quebrado e inverteu a
+     * lista.
+     *
+     * `turn` continua sendo **o número da mão**, em unidades de tela. Quem sabe da
+     * mão-esquerda da câmera é uma linha só, lá onde `turn` vira `rotation.y` — e é lá
+     * que o sinal é negado. Inverter aqui parava as detentes, porque a inércia e o
+     * arrasto passavam a somar em sentidos opostos.
+     */
     d0.turn += d;
     /**
      * The cursor runs the other way from the platter, and that is deliberate.
@@ -3822,10 +3856,12 @@ el.addEventListener('pointermove', e => {
      * They were fed the same number, which is tidy and wrong: turning the wheel
      * **clockwise** has to walk *down* a list, the way a scroll wheel and a jog wheel
      * both do — *"o menu está indo pra baixo quando giro a jog anti-horário, deve ser
-     * sentido horário."* The platter still follows the hand exactly; only what the
-     * turn buys is mirrored.
+     * sentido horário."* Medido antes e depois: anti-horário andava 0 -> 6 e horário
+     * não saía do lugar. Com `turn` já corrigido acima, `carry` volta a andar no
+     * mesmo sentido do sinal de tela, e horário desce — que é o que o CDJ faz, o que
+     * a roda de scroll faz e o que o `docs/COMO-FUNCIONA.md` sempre afirmou.
      */
-    d0.carry -= d;
+    d0.carry += d;
     /* the hand's own speed, so letting go hands the wheel its momentum rather than
        an invented one. `dtNow` can be zero on the first move of a frame. */
     d0.spin = d / Math.max(dtNow, 1 / 240);
@@ -5054,7 +5090,12 @@ function frame(t) {
        from the notch rather than from wherever the finger happened to stop */
     if (active !== kind) d0.carry = 0;
 
-    d0.group.rotation.y = d0.turn;
+    /* O único lugar que conhece a mão da câmera: `rotation.y` positivo desenha
+       **anti-horário** aqui — medido renderizando a roda em 0 e em 0.55 e comparando —
+       enquanto `turn` positivo é o horário do olho, vindo do produto vetorial em
+       espaço de tela. Negar na fronteira deixa todo o resto do arquivo falando a
+       linguagem da mão. */
+    d0.group.rotation.y = -d0.turn;
   }
   /**
    * Candlelight is never steady — and it is never a sine wave either.
