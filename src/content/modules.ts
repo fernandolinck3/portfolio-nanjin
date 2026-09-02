@@ -184,7 +184,6 @@ export const LYRA_IDLE_MS = 6000
  */
 const GAP_PT = 'Ainda não registrado.'
 
-const gap = (heading: string): Section => ({ heading, lines: [] })
 
 /* ---------------- os projetos ---------------- */
 
@@ -768,6 +767,24 @@ export function caseOf(id: string): readonly Section[] {
   const pt = caseOfPT(id)
   return LOCALE === 'en' ? translate(pt) : pt
 }
+
+/**
+ * O conteúdo **antes** de qualquer idioma, para quem precisa escolher o seu.
+ *
+ * O build monta as duas páginas no mesmo processo, e nesse processo os exports acima
+ * já se decidiram — em `node` pelo padrão. Renderizar a página em inglês a partir
+ * deles significaria traduzir o que talvez já esteja traduzido. Hoje isso é inofensivo
+ * porque nenhuma tradução encadeia com outra, mas isso é sorte e não construção:
+ * bastaria alguém traduzir "A" para "B" tendo "B" como chave. Quem escolhe idioma
+ * parte daqui, e a tradução acontece exatamente uma vez.
+ */
+export const SOURCE = {
+  modules: MODULES_PT,
+  works: WORKS_PT,
+  eclipse: ECLIPSE_PT,
+  gap: GAP_PT,
+  caseOf: caseOfPT,
+} as const
 
 /** O Módulo vivo. Slots são 1-based; o estado que os move é 0-based. */
 export function moduleAt(index: number): Module {

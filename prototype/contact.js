@@ -33,6 +33,20 @@
  * responder"; the object is him, not an agency writing about him.
  */
 import { UI } from '../src/content/strings.ts'
+import { MODULES } from '../src/content/modules.ts'
+
+/**
+ * O endereço, lido de onde ele mora.
+ *
+ * Estava escrito à mão aqui, duas vezes — no `href` e no texto — enquanto
+ * `modules.ts` é a fonte única (ADR-0002). Trocar o e-mail lá teria deixado este
+ * painel oferecendo o antigo, calado, na única superfície cujo trabalho é ser
+ * alcançável. Vem do mesmo `Act` que a linha do CONTATO usa, então há um endereço
+ * no projeto e não dois.
+ */
+const MAIL = MODULES
+  .flatMap(m => m.items ?? [])
+  .flatMap(i => (i.act?.kind === 'mail' ? [i.act.value] : []))[0] ?? ''
 
 /**
  * Where it goes. Named once, so swapping the vendor is a URL and a key.
@@ -156,7 +170,7 @@ export function createContact({ mount, onOpen, onClose, track }) {
       <p class="ct-status" role="status" aria-live="polite" data-tone="work"></p>
 
       <p class="ct-fallback">${UI.contactFallback}
-        <a href="mailto:fernandolinck@outlook.com">fernandolinck@outlook.com</a></p>
+        <a href="mailto:${MAIL}">${MAIL}</a></p>
 
       <p class="ct-notice">${UI.contactNotice}</p>
     </form>`

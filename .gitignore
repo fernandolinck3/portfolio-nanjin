@@ -14,4 +14,8 @@ art/*.png
 art/*.aseprite
 art/*.psd
 art/*.gif
+# Agent worktrees and session state. One was committed-adjacent for a day and made
+# every local `vitest` run 102 extra tests out of a nine-hour-old copy of the repo.
+.claude/
+
 .DS_Store

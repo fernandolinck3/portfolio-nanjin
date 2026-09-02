@@ -28,7 +28,7 @@
  * aparecerem sem que ninguém precise lembrar de nada. É a única camada que de fato
  * previne a deriva; o teste em `modules.test.ts` só pega o que escapar dela.
  */
-import { ECLIPSE, GAP, MODULES, WORKS, type Item, type Module } from './modules'
+import { MODULES, SOURCE, type Item, type Module } from './modules'
 import { DEFAULT_LOCALE, LOCALE, langFor, other, pathFor, type Locale } from './locale'
 
 /** A raiz do site, com barra. Escrita uma vez porque aparece em cinco lugares aqui. */
@@ -220,17 +220,29 @@ const stateHTML = (s: Strings, eclipse: Content['eclipse']) => `
  * deriva pode lê-la sem um navegador.
  */
 /**
- * O conteúdo no idioma pedido.
+ * O conteúdo no idioma pedido, **sempre a partir da fonte**.
  *
- * `pt-BR` devolve o próprio `MODULES` — mesma referência, sem cópia nem travessia,
- * porque a esmagadora maioria das renderizações é a página padrão e ela não deve
- * pagar nada por existir uma segunda língua.
+ * `SOURCE` é o português antes de qualquer resolução. Partir dele em vez de `MODULES`
+ * garante que a tradução aconteça exatamente uma vez: num navegador em `/en/` os
+ * exports já vieram traduzidos, e traduzi-los de novo é inofensivo só enquanto nenhuma
+ * tradução encadear com outra. `pt-BR` devolve as próprias referências, sem cópia nem
+ * travessia, porque a página padrão não deve pagar nada por existir uma segunda.
  */
-type Content = { modules: readonly Module[]; eclipse: typeof ECLIPSE; gap: string; works: typeof WORKS }
+type Content = {
+  modules: readonly Module[]
+  eclipse: typeof SOURCE.eclipse
+  gap: string
+  works: typeof SOURCE.works
+}
 
 const contentFor = (locale: Locale): Content => locale === DEFAULT_LOCALE
-  ? { modules: MODULES, eclipse: ECLIPSE, gap: GAP, works: WORKS }
-  : { modules: translate(MODULES), eclipse: translate(ECLIPSE), gap: translate(GAP), works: translate(WORKS) }
+  ? { modules: SOURCE.modules, eclipse: SOURCE.eclipse, gap: SOURCE.gap, works: SOURCE.works }
+  : {
+      modules: translate(SOURCE.modules),
+      eclipse: translate(SOURCE.eclipse),
+      gap: translate(SOURCE.gap),
+      works: translate(SOURCE.works),
+    }
 
 export function mirrorHTML(locale: Locale = LOCALE): string {
   const c = contentFor(locale)

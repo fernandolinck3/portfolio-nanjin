@@ -545,6 +545,21 @@ describe('o portfólio em inglês', () => {
     expect(routes(en)).toEqual(routes(MODULES))
   })
 
+  /**
+   * Traduzir duas vezes tem de dar o mesmo que traduzir uma.
+   *
+   * Isto era verdade por sorte e não por construção: bastava alguém traduzir "A" para
+   * "B" tendo "B" também como chave, e um texto que passasse duas vezes pela tabela
+   * viraria "C". O caminho que fazia isso — o espelho renderizando a partir de
+   * `MODULES`, que num navegador em `/en/` já vem resolvido — foi fechado partindo de
+   * `SOURCE`. Isto guarda a tabela em si, que é o lugar onde a cadeia nasceria.
+   */
+  it('não encadeia: nenhum valor inglês é chave de outra tradução', () => {
+    const chained = Object.entries(EN).filter(([pt, en]) => pt !== en && en in EN && EN[en] !== en)
+    expect(chained, `cadeias em en.ts:\n  ${chained.map(([k, v]) => `${k} -> ${v} -> ${EN[v]}`).join('\n  ')}`)
+      .toEqual([])
+  })
+
   it('cabe no mesmo orçamento de tela que o português', () => {
     for (const m of translate(MODULES)) {
       for (const l of m.lead ?? []) expect(l.length, `lead de ${m.id}: "${l}"`).toBeLessThanOrEqual(SCREEN_BUDGET.lead.paraChars)

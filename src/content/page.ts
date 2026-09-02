@@ -37,7 +37,7 @@
  */
 
 import { mirrorIntoPage } from './mirror'
-import { DEFAULT_LOCALE, langFor, other, pathFor, type Locale } from './locale'
+import { DEFAULT_LOCALE, langFor, pathFor, type Locale } from './locale'
 import { stringsFor, type Strings } from './strings'
 
 const SITE = 'https://nanj.in'
@@ -146,7 +146,6 @@ function swapChrome(html: string, locale: Locale): string {
  */
 export function localizePage(html: string, locale: Locale, opts: { draft?: boolean } = {}): string {
   const s = stringsFor(locale)
-  const o = other(locale)
   const path = pathFor(locale)
 
   let out = swapChrome(mirrorIntoPage(html, locale), locale)
@@ -173,12 +172,3 @@ export function localizePage(html: string, locale: Locale, opts: { draft?: boole
   /* a página raiz já está onde tudo está; qualquer outra precisa dizer onde é a raiz */
   return locale === DEFAULT_LOCALE ? out : rootBase(out)
 }
-
-/** Onde cada página é escrita, relativo à raiz do build. */
-export const fileFor = (locale: Locale): string =>
-  locale === DEFAULT_LOCALE ? 'index.html' : `${o_dir(locale)}/index.html`
-
-const o_dir = (locale: Locale) => pathFor(locale).replace(/^\/|\/$/g, '')
-
-/** Só para o `hreflang` recíproco não precisar ser digitado duas vezes. */
-export const alternateOf = other
