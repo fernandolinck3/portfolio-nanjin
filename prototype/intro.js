@@ -47,24 +47,41 @@
  */
 export const OPEN = { tilt: 18, dist: 6.4, yaw: 0 }
 /**
- * 5.0, não 5.6 — um passo, não a mudança que o T-22 pede.
+ * 4.2 — o T-22, medido em vez de citado.
  *
- * A crítica mediu a Screen desenhando ~405px de largura em repouso: um buffer de 320
- * a 1.27x, não inteiro, inclinado e graduado, enquanto duas rodas de ~300px não
- * carregam informação nenhuma. O T-22 propõe tilt 4 / dist 4.6, que mede 676 e é uma
- * recomposição de verdade.
+ * A crítica mediu a Screen desenhando ~405px em repouso e prescreveu `tilt 4 /
+ * dist 4.6`, dizendo que isso mede 676px. **A prescrição está errada.** A projeção
+ * foi refeita com a geometria real — `PerspectiveCamera(38)`, a abertura de
+ * 1.84 x 1.035 em (0, .272, -.50) — e calibrada contra a única medição que existe:
+ * a 1280x800, o repouso antigo de 5.6 dá 401px, que é o ~405 que ela mediu. No
+ * mesmo viewport, dist 4.6 dá **494px, não 676**. Chegar a 676 custa dist 3.4.
  *
- * Isto é menos do que isso de propósito. Fernando pediu um zoom pequeno, e ele está
- * certo sobre o porquê: aumentar a Screen de verdade puxa textura, tipografia e o
- * enquadramento inteiro atrás. Aproximar a câmera não puxa nada — é o mesmo objeto,
- * maior no quadro, e as rodas cortam nas bordas, o que as fotos de referência deste
- * projeto todas fazem.
+ *   dist 5.6 -> 401px (1.25x)    dist 4.2 -> 544px (1.70x)
+ *   dist 5.0 -> 452px (1.41x)    dist 3.4 -> 683px (2.14x)
+ *
+ * **E o tilt quase não entra nesta conta.** A Screen é um plano deitado e o tilt gira
+ * a câmera na vertical, então ele muda a altura projetada, não a largura. Quem manda
+ * é a distância — por isso este commit move dist e deixa tilt em 6.
+ *
+ * 4.2 e não 3.4 porque o alvo do ticket custa as rodas inteiras: a 3.4 elas viram
+ * lascas na borda. "Deixe as rodas cortarem" não é o mesmo que apagá-las, e o objeto
+ * inteiro é o argumento. A 4.2 elas cortam e continuam lendo como rodas.
+ *
+ * Duas coisas que a medição revelou e este commit **não** resolve:
+ *
+ * - **Sobra uma faixa vazia embaixo da Screen** conforme a câmera chega. O `lookAt`
+ *   é (0, .35, 0) e a Screen está no fundo da Plate, então aproximar sobe a Screen no
+ *   quadro. Isso pede um `pan.y`, que é outra decisão e não vai junto às cegas.
+ * - **O número certo depende da altura da janela, não da largura**, porque o FOV do
+ *   three.js é vertical. 4.2 dá 1.70x numa janela de 800px de altura e 2.23x numa de
+ *   1050. Uma distância fixa não pode acertar as duas; a resposta honesta é dist em
+ *   função da altura do viewport, e isso continua aberto no T-22.
  *
  * O que fica pior e precisa dos olhos dele: o **castiçal cortado atrás** (Open 14).
- * Ele já encosta na borda em 5.6 e encosta mais aqui. Três saídas foram oferecidas e
- * nenhuma escolhida; este commit não escolhe por ele, só torna a escolha mais devida.
+ * Ele já encostava na borda em 5.6 e encosta mais aqui. Três saídas foram oferecidas
+ * e nenhuma escolhida; este commit não escolhe por ele, só torna a escolha mais devida.
  */
-export const REST = { tilt: 6, dist: 5.0, yaw: 0 }
+export const REST = { tilt: 6, dist: 4.2, yaw: 0 }
 
 /**
  * Seconds. The Screen's own boot is timed against this, not the other way round.
