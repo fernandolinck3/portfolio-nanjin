@@ -29,6 +29,7 @@
  * it links no privacy policy, because there is no privacy policy. A link to a page
  * that does not exist would be the only false statement on the site.
  */
+import { UI } from '../src/content/strings.ts'
 
 const KEY = 'tenebrae.consent'
 
@@ -96,11 +97,10 @@ export function createConsent(onDecide) {
   bar.dataset.up = '0'
   bar.setAttribute('aria-label', 'Medição e cookies')
   bar.innerHTML = `
-    <p><b>Cookies.</b> Utilizamos cookies do Google Analytics para medir o tráfego
-      deste site. Você pode aceitar ou recusar — recusar não afeta a navegação.</p>
+    <p><b>${UI.consentTitle}</b> ${UI.consentText}</p>
     <div class="cs-acts">
-      <button type="button" data-yes>Aceitar</button>
-      <button type="button" data-no>Recusar</button>
+      <button type="button" data-yes>${UI.consentAccept}</button>
+      <button type="button" data-no>${UI.consentDecline}</button>
     </div>`
   document.body.appendChild(bar)
 

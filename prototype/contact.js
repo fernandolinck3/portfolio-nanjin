@@ -32,6 +32,7 @@
  * behalf, which is the opposite of what a portfolio is for. Keep it as "mim" and "te
  * responder"; the object is him, not an agency writing about him.
  */
+import { UI } from '../src/content/strings.ts'
 
 /**
  * Where it goes. Named once, so swapping the vendor is a URL and a key.
@@ -127,40 +128,37 @@ export function createContact({ mount, onOpen, onClose, track }) {
 
   panel.innerHTML = `
     <form class="ct-frame" novalidate>
-      <h2 id="ct-title">Escrever</h2>
-      <p class="ct-lead">Uma vaga, um projeto ou uma ideia incomum.</p>
+      <h2 id="ct-title">${UI.contactTitle}</h2>
+      <p class="ct-lead">${UI.contactLead}</p>
 
       <label class="ct-field">
-        <span>Nome</span>
+        <span>${UI.contactName}</span>
         <input name="name" type="text" required autocomplete="name" placeholder=" ">
       </label>
       <label class="ct-field">
-        <span>E-mail</span>
+        <span>${UI.contactEmail}</span>
         <input name="email" type="email" required autocomplete="email" placeholder=" ">
       </label>
       <label class="ct-field">
-        <span>Mensagem</span>
+        <span>${UI.contactMessage}</span>
         <textarea name="message" required placeholder=" "></textarea>
       </label>
 
       <div class="ct-trap" aria-hidden="true">
-        <label>Não preencha<input type="checkbox" name="botcheck" tabindex="-1" autocomplete="off"></label>
+        <label>${UI.contactTrap}<input type="checkbox" name="botcheck" tabindex="-1" autocomplete="off"></label>
       </div>
 
       <div class="ct-row">
-        <button class="ct-send" type="submit">Enviar</button>
-        <button class="ct-cancel" type="button">Voltar</button>
+        <button class="ct-send" type="submit">${UI.contactSend}</button>
+        <button class="ct-cancel" type="button">${UI.contactCancel}</button>
       </div>
 
       <p class="ct-status" role="status" aria-live="polite" data-tone="work"></p>
 
-      <p class="ct-fallback">Se preferir o seu próprio cliente de e-mail:
+      <p class="ct-fallback">${UI.contactFallback}
         <a href="mailto:fernandolinck@outlook.com">fernandolinck@outlook.com</a></p>
 
-      <p class="ct-notice">Nome, e-mail e mensagem são enviados por um serviço externo
-        (Web3Forms, servidores nos EUA) e chegam direto para mim. Servem só para te
-        responder. Não ficam armazenados no serviço e não vão para mais ninguém. Para
-        corrigir ou apagar, escreva para o mesmo endereço.</p>
+      <p class="ct-notice">${UI.contactNotice}</p>
     </form>`
 
   panel.prepend(style)
@@ -198,15 +196,15 @@ export function createContact({ mount, onOpen, onClose, track }) {
     /* validate here rather than leaning on the browser: novalidate is set so the
        message lands in the object's own voice instead of a native bubble */
     if (!data.name?.trim() || !data.email?.trim() || !data.message?.trim()) {
-      say('Preencha nome, e-mail e mensagem.', 'bad'); return
+      say(UI.contactIncomplete, 'bad'); return
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
-      say('Esse e-mail não parece completo.', 'bad'); return
+      say(UI.contactBadEmail, 'bad'); return
     }
 
     sending = true
     send.disabled = true
-    say('Enviando…', 'work')
+    say(UI.contactSending, 'work')
 
     try {
       const res = await fetch(ENDPOINT, {
@@ -221,18 +219,18 @@ export function createContact({ mount, onOpen, onClose, track }) {
       })
       const body = await res.json().catch(() => null)
       if (res.ok && body?.success) {
-        say('Enviado. Respondo nesse e-mail.', 'ok')
+        say(UI.contactSent, 'ok')
         track?.('contact_sent', { route: 'form' })
         form.reset()
         setTimeout(() => { if (panel.dataset.open === '1') close() }, DONE_MS)
       } else {
         /* the API answered and said no: quote nothing, offer the route that works */
-        say('Não foi possível enviar. Escreva direto para o endereço abaixo.', 'bad')
+        say(UI.contactRefused, 'bad')
         track?.('contact_failed', { route: 'form', status: String(res.status) })
       }
     } catch {
       /* offline, blocked, DNS — indistinguishable from here and identical to the visitor */
-      say('Sem conexão com o envio. Escreva direto para o endereço abaixo.', 'bad')
+      say(UI.contactOffline, 'bad')
       track?.('contact_failed', { route: 'form', status: 'network' })
     } finally {
       sending = false

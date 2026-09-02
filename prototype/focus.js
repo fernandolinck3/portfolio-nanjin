@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { caseOf } from '../src/content/modules.ts'
 import { track, trackSettled } from './track.js'
+import { UI } from '../src/content/strings.ts'
 
 /**
  * Zoom to the Screen, then hand the Work to the DOM.
@@ -117,10 +118,10 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
    */
   panel.innerHTML = `
     <div class="work-frame">
-      <button class="work-back" type="button">&larr;&nbsp; VOLTAR</button>
+      <button class="work-back" type="button">&larr;&nbsp; ${UI.touchBack}</button>
       <figure class="work-plate" role="button" tabindex="-1">
         <img class="work-shot" alt="" hidden>
-        <ol class="work-strip" aria-label="Imagens do projeto"></ol>
+        <ol class="work-strip" aria-label="${UI.workImages}"></ol>
         <figcaption class="work-count"></figcaption>
       </figure>
       <header class="work-head">
@@ -133,14 +134,14 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
         <div class="work-case"></div>
         <p class="work-more"></p>
       </div>
-      <nav class="work-rail" aria-label="Seções do case" hidden>
+      <nav class="work-rail" aria-label="${UI.workSections}" hidden>
         <ol class="work-marks"></ol>
         <span class="work-pos"></span>
       </nav>
     </div>
-    <button class="work-step" data-d="-1" type="button" aria-label="Imagem anterior">&lsaquo;</button>
-    <button class="work-step" data-d="1" type="button" aria-label="Próxima imagem">&rsaquo;</button>
-    <p class="work-hint">clique na imagem para ampliar &middot; &larr; &rarr; para percorrer as imagens</p>`
+    <button class="work-step" data-d="-1" type="button" aria-label="${UI.workPrevImage}">&lsaquo;</button>
+    <button class="work-step" data-d="1" type="button" aria-label="${UI.workNextImage}">&rsaquo;</button>
+    <p class="work-hint">${UI.workHint}</p>`
   panel.setAttribute('aria-labelledby', 'work-title')
   mount.appendChild(panel)
 
@@ -541,7 +542,7 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
     plate.dataset.shot = n ? '1' : '0'
     plate.tabIndex = n ? 0 : -1
     plate.setAttribute('aria-label', n
-      ? (zoomed() ? 'Reduzir a imagem' : 'Ampliar a imagem')
+      ? (zoomed() ? UI.workZoomOut : UI.workZoomIn)
       : '')
     setNatural()
     count.textContent = n > 1 ? `${at + 1} / ${n}` : ''
@@ -617,7 +618,7 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
     if (plate.dataset.shot !== '1') on = false
     const opening = on && !zoomed()
     panel.dataset.zoom = on ? '1' : '0'
-    plate.setAttribute('aria-label', on ? 'Reduzir a imagem' : 'Ampliar a imagem')
+    plate.setAttribute('aria-label', on ? UI.workZoomOut : UI.workZoomIn)
     /* only on the way open, and only from a real gesture — `show()` and `enter()` both
        close it on the way past, and a close is not an event worth having */
     if (opening && current) track('image_open', { work: current.id, image: shotName() })

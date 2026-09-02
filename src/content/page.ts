@@ -27,7 +27,7 @@
 
 import { mirrorIntoPage } from './mirror'
 import { DEFAULT_LOCALE, langFor, other, pathFor, type Locale } from './locale'
-import { stringsFor } from './strings'
+import { stringsFor, type Strings } from './strings'
 
 const SITE = 'https://nanj.in'
 
@@ -65,6 +65,43 @@ function hreflangHTML(): string {
 }
 
 /**
+ * As strings que estão escritas à mão no `index.html`, e não montadas por script.
+ *
+ * A fileira de toque e o aviso de virar o aparelho são marcação estática: existem
+ * antes de qualquer script rodar, que é metade do motivo de existirem. Os cinco
+ * arquivos que montam DOM em JavaScript (`consent`, `contact`, `flat`, `focus` e o
+ * espelho) leem `UI` e se traduzem sozinhos, porque `LOCALE` sai do `<html lang>`
+ * que esta função acabou de escrever. Estes não podem.
+ *
+ * A troca é literal: pega o que a chave diz em português, exige que esteja na
+ * página, e põe o que ela diz na outra língua. **Exige** é a parte que importa —
+ * se alguém editar o texto no `index.html` sem editar `strings.ts`, o build quebra
+ * aqui em vez de publicar uma página em inglês com quatro botões em português.
+ */
+const CHROME: readonly (keyof Strings)[] = [
+  'touchPrev', 'touchNext', 'touchOpen', 'touchBack',
+  'touchPrevLabel', 'touchNextLabel', 'touchOpenLabel', 'touchBackLabel',
+  'touchRowLabel', 'turnPhone',
+]
+
+function swapChrome(html: string, locale: Locale): string {
+  const from = stringsFor(DEFAULT_LOCALE)
+  const to = stringsFor(locale)
+  let out = html
+  for (const key of CHROME) {
+    const pt = String(from[key])
+    if (!out.includes(pt)) {
+      throw new Error(
+        `localizePage: "${pt}" (${key}) não está no index.html. ` +
+        'A marcação e strings.ts divergiram — conserte os dois, não remova a checagem.',
+      )
+    }
+    out = out.split(pt).join(String(to[key]))
+  }
+  return out
+}
+
+/**
  * A página inteira, no idioma pedido.
  *
  * `draft` põe `noindex` na página. Ele existe porque a máquina das duas páginas fica
@@ -79,7 +116,7 @@ export function localizePage(html: string, locale: Locale, opts: { draft?: boole
   const o = other(locale)
   const path = pathFor(locale)
 
-  let out = mirrorIntoPage(html, locale)
+  let out = swapChrome(mirrorIntoPage(html, locale), locale)
 
   out = setAttr(out, '<html', 'lang', langFor(locale))
   out = setAttr(out, '<meta name="description"', 'content', s.pageDescription)

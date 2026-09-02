@@ -20,6 +20,7 @@
  */
 import { MODULES } from '../src/content/modules.ts'
 import { createContact } from './contact.js'
+import { UI } from '../src/content/strings.ts'
 
 /* No backtick may appear inside this template literal, comments included. */
 const CSS = `
@@ -117,15 +118,12 @@ export function flatten(reason) {
   const write = document.createElement('button')
   write.type = 'button'
   write.className = 'flat-write'
-  write.textContent = 'Escrever'
+  write.textContent = UI.contactTitle
   write.addEventListener('click', () => panel.open())
 
   const note = document.createElement('p')
   note.className = 'flat-note'
-  note.textContent =
-    'Esta é a versão em texto. O portfólio é um instrumento em 3D e o seu navegador '
-    + 'não tem aceleração gráfica disponível, então ele não foi carregado — o conteúdo '
-    + 'abaixo é o mesmo.'
+  note.textContent = UI.flatNote
   mirror.prepend(note)
   mirror.appendChild(write)
 
