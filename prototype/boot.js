@@ -13,11 +13,15 @@
  */
 import { probe3D } from './capability.js'
 import { createConsent } from './consent.js'
+import { offerLanguage } from './language.js'
 
 /* Asked on both paths and before either: the cookie question has nothing to do with
    whether this machine can draw the Unit, and a visitor who gets the text version is
    owed the same choice as one who gets the object. */
-createConsent()
+/* A oferta de idioma entra como o `onDecide` do consentimento, e não ao lado dele:
+   as duas são barras fixas no rodapé, e empilhadas fariam a primeira decisão do
+   visitante virar duas. Uma sequência, nunca uma pilha. */
+createConsent(() => offerLanguage())
 
 const forced = location.search.includes('flat')
 const verdict = forced ? { ok: false, reason: 'forced' } : probe3D()

@@ -186,6 +186,25 @@ export function stringsFor(locale: Locale) {
     languageLabel: t('Idioma', 'Language'),
 
     /**
+     * A oferta da outra língua, e ela é lida **na** outra língua.
+     *
+     * Quem precisa desta linha é, por definição, quem não lê a língua da página em
+     * que caiu. Por isso quem a renderiza pede `stringsFor(o.locale)` e não `UI`: a
+     * frase de oferta do inglês mora no lado inglês da tabela e é o que um visitante
+     * de navegador inglês vê **na página portuguesa**.
+     *
+     * Oferta e não redirecionamento, pelo motivo escrito no T-31: trocar a página por
+     * baixo de quem chegou quebra link compartilhado — alguém manda `nanj.in` para um
+     * contato e o contato cai em outro lugar — e confunde crawler.
+     */
+    languageOffer: t(
+      'Este site também está em português.',
+      'This site is also available in English.',
+    ),
+    languageGo: t('Ler em português', 'Read in English'),
+    languageStay: t('Ficar', 'Stay'),
+
+    /**
      * O que a aba, o Google e um cartão de link dizem.
      *
      * O `<title>` inglês não traduz "experiências digitais" ao pé da letra —
