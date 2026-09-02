@@ -635,6 +635,21 @@ const castP = () => clamp01(since() / CAST_MS)
    Unit can turn a ray into "the visitor clicked 003" without a second copy of the
    layout to disagree with this one. */
 
+/**
+ * O realce de quem está sob o ponteiro.
+ *
+ * Era `rgba(255,255,255,.05)` sobre um fundo quase preto — cerca de um por cento de
+ * luminância, que é a mesma armadilha do *"the hover is slow"*: não era lentidão, era
+ * uma resposta que ninguém enxerga. Fernando, em 2026-09-02: *"a interface não está
+ * clara de se utilizar, tanto em feedbacks sensoriais como pelos feedbacks no
+ * display."*
+ *
+ * O valor foi escolhido olhando a textura de 960x540 exportada da Placa, não no
+ * escuro: abaixo de .10 a faixa some no dither do LCD, e acima de .18 ela compete com
+ * a linha selecionada, que é dourada e tem de continuar sendo a mais forte da tela.
+ */
+const HOVER_WASH = 'rgba(255,255,255,.14)'
+
 let hoverWork = -1, plinthWork = -1
 let workRows = []
 
@@ -759,7 +774,7 @@ function drawList(items, sel, x0, y, bodyW, typed) {
     if (i / items.length > typed) return
     workRows.push({ i, x: x0 - 8, y: y - 10, w: bodyW + 12, h: 14 })
     const on = i === sel
-    if (i === hoverWork && !on) { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(x0 - 8, y - 10, bodyW + 12, 14) }
+    if (i === hoverWork && !on) { g.fillStyle = HOVER_WASH; g.fillRect(x0 - 8, y - 10, bodyW + 12, 14) }
     g.fillStyle = on ? GOLD : DIM
     if (on) disc(g, x0 - 8, y - 4, 3); else ring(g, x0 - 8, y - 4, 2, 1)
     g.font = '13px VT323, monospace'
@@ -789,7 +804,7 @@ function drawIndex(items, sel, x0, y, bodyW, typed) {
     if (i / items.length > typed) return
     workRows.push({ i, x: x0 - 8, y: y - 10, w: bodyW + 12, h: 12 })
     const on = i === sel
-    if (i === hoverWork && !on) { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(x0 - 8, y - 10, bodyW + 12, 12) }
+    if (i === hoverWork && !on) { g.fillStyle = HOVER_WASH; g.fillRect(x0 - 8, y - 10, bodyW + 12, 12) }
     g.font = '8px Silkscreen, monospace'
     g.fillStyle = on ? GOLD : DIM
     g.fillText(String(i + 1).padStart(2, '0'), x0 - 6, y - 1)
@@ -816,7 +831,7 @@ function drawGrid(items, sel, x0, y, bodyW, typed) {
     const cx = x0 + (i % 2) * (cw + 8), cy = y + Math.floor(i / 2) * (ch + 6)
     const on = i === sel
     workRows.push({ i, x: cx - 4, y: cy - 10, w: cw + 8, h: ch })
-    if (i === hoverWork && !on) { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(cx - 4, cy - 10, cw + 8, ch) }
+    if (i === hoverWork && !on) { g.fillStyle = HOVER_WASH; g.fillRect(cx - 4, cy - 10, cw + 8, ch) }
     /* the cell's own edge, so four blocks read as a matrix and not as loose text */
     tone(cx - 4, cy - 10, cw + 8, 1, on ? .5 : .18, on ? GOLD : INK)
     tone(cx - 4, cy - 10, 1, ch, on ? .5 : .18, on ? GOLD : INK)
@@ -853,7 +868,7 @@ function drawNodes(items, sel, x0, y, bodyW, typed) {
     workRows.push({ i, x: x0 - 8, y: by - 8, w: bodyW + 12, h: bh })
     g.fillStyle = on ? 'rgba(201,190,150,.13)' : 'rgba(255,255,255,.045)'
     g.fillRect(x0 - 2, by - 8, bodyW + 6, bh)
-    if (i === hoverWork && !on) { g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(x0 - 2, by - 8, bodyW + 6, bh) }
+    if (i === hoverWork && !on) { g.fillStyle = HOVER_WASH; g.fillRect(x0 - 2, by - 8, bodyW + 6, bh) }
     g.fillStyle = on ? GOLD : DIM
     if (on) disc(g, x0 - 8, by + 3, 3); else ring(g, x0 - 8, by + 3, 2, 1)
     g.font = '13px VT323, monospace'

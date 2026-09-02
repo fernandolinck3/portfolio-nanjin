@@ -1891,7 +1891,16 @@ const slot = new THREE.Mesh(slab(FADER.len, .14, .04, .015),
   new THREE.MeshStandardMaterial({
     color: 0xFFFFFF, map: faderSlot(FADER.len, .14), metalness: .5, roughness: .6,
   }));
-slot.position.set(0, .335, FADER.z); unit.add(slot);
+/**
+ * A calha inteira é alvo, e não só a tampa.
+ *
+ * Só `cap` tinha `ctl`, o que dava ao controle mais visível do objeto **a menor área
+ * de clique dele**: o mapa de cursor varrido em 2026-09-02 mostrou uma coluna de
+ * 25px de largura, contra as rodas que ocupam quase um terço do quadro cada. A calha
+ * é desenhada como trilho, lida como trilho, e não respondia — nem ao clique nem ao
+ * cursor.
+ */
+slot.position.set(0, .335, FADER.z); slot.userData.ctl = 'fader'; unit.add(slot);
 const capMap = faderCap(.13, .26);
 /* The cap carries its own lamp at night. `emissiveMap` is its own face, so the bone
    lights and the groove down it stays dark — a block that glowed evenly would read
@@ -3061,6 +3070,19 @@ function screenPoint(e) {
   if (!hit || !hit.uv) return null;
   return [hit.uv.x * SCREEN_W, (1 - hit.uv.y) * SCREEN_H];
 }
+/**
+ * Onde no curso do fader um clique caiu, em 0..1 — ou `null` se não há interseção.
+ *
+ * `lastPick` guarda a interseção inteira e não só o mesh, que é o mesmo motivo pelo
+ * qual os cubos das rodas funcionam: a calha é uma posição sobre uma peça, não uma
+ * peça. `capX` é o mapa de valor para x; isto é ele ao contrário.
+ */
+function faderValueAt() {
+  if (!lastPick) return null;
+  const x = unit.worldToLocal(lastPick.point.clone()).x;
+  return Math.max(0, Math.min(1, (x + FADER.travel / 2) / FADER.travel));
+}
+
 const inBox = (pt2, b) =>
   !!b && !!pt2 && pt2[0] >= b.x && pt2[0] <= b.x + b.w && pt2[1] >= b.y && pt2[1] <= b.y + b.h;
 
@@ -3736,8 +3758,13 @@ el.addEventListener('pointerdown', e => {
       /* not on a row: fall through, so the Screen is still somewhere you can grab
          the view from the way every other dead area of the Unit is */
     }
-    if (c === 'fader') {
-      active = 'fader'; startVal = xfVal; xfHand = xfVal;
+      if (c === 'fader') {
+      /* Apertar a calha salta para aquele ponto; apertar a tampa a pega onde está.
+         `xfHand` é o alvo e `updateFader` corre até ele, então o salto é animado e
+         não um teleporte. Depois disso o arrasto continua do valor novo. */
+      const v = hit === slot ? faderValueAt() : null;
+      const from = v === null ? xfVal : v;
+      active = 'fader'; startVal = from; xfHand = from;
       el.setPointerCapture(e.pointerId); return;
     }
     if (c === 'sun' || c === 'moon') {

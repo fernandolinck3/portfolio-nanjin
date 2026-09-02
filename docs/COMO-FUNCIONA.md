@@ -33,7 +33,7 @@ objeto e ele responde.** Essa é a ideia inteira, e todo o resto é consequênci
 | Controle | O que faz |
 | --- | --- |
 | **6 teclas** | Escolhem o **módulo**: Quem, Projetos, Trajeto, Critérios, Habilidades, Contato. É a navegação principal, e a única. |
-| **Roda LUA** | À esquerda. Percorre a **lista** do módulo aberto — os três projetos, os cinco critérios, as rotas de contato. |
+| **Roda LUA** | À esquerda. Percorre a **lista** do módulo aberto — os sete projetos, os cinco critérios, as rotas de contato. |
 | **Roda SOL** | À direita. Vira as **páginas** do item selecionado. Onde não há páginas, ela também percorre a lista, para não ficar morta. |
 | **Fader** | É a **luz**. Da esquerda para a direita: noite, crepúsculo, dia. Apaga as velas da sala e muda a atmosfera inteira. |
 | **7 estrelas** | Embaixo do mostrador. Uma acende para cada módulo visitado. A do meio é outra coisa — veja *O segredo*. |
@@ -44,6 +44,14 @@ Isso deu trabalho e vale saber por quê. Uma roda de verdade você gira com a m�
 arco; com mouse ninguém faz arco, faz linha reta. Hoje o código mede **quanto do teu
 movimento foi tangente à roda** — puxar para fora do centro não gira nada, arrastar de
 lado gira. Sentido horário desce a lista, como uma rodinha de scroll.
+
+Isso é medido, não prometido: em 2026-09-02 um arrasto sintético em arco sobre a LUA
+andou de 0 a 6 no sentido horário e travou no topo no anti-horário. A frase acima já
+estava aqui antes disso e estava **errada** — o código fazia o contrário, e havia dois
+sinais se compensando. Hoje a roda segue a mão e o horário desce.
+
+A calha do fader também virou alvo: dá para clicar em qualquer ponto dela e a luz
+salta para lá, em vez de só arrastar a tampa.
 
 ---
 
