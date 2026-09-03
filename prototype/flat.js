@@ -21,60 +21,79 @@
 import { MODULES } from '../src/content/modules.ts'
 import { createContact } from './contact.js'
 import { UI } from '../src/content/strings.ts'
+import { FLAT_CSS } from './flat-skin.js'
+import { REACTION_FRAMES, REACTION_W, REACTION_H } from './screen/reaction-frames.js'
+import { createKnobReaction } from './screen/reaction.js'
+import { drawSprite } from './screen/drawn.js'
+import { lyraAt, LYRA_NAME, LYRA_IDLE_MS } from '../src/content/modules.ts'
 
 /* No backtick may appear inside this template literal, comments included. */
-const CSS = `
-  html[data-flat] body { overflow:auto; background:#0A0A0B; }
-  html[data-flat] #frame, html[data-flat] #stage, html[data-flat] .hud { display:none !important; }
-
-  /* the clip from mirror.ts is undone here rather than edited there: that sheet is
-     what keeps the pre-rendered mirror from flashing as a wall of text on a normal
-     load, and it must go on doing that job */
-  html[data-flat] #mirror { position:static; width:auto; height:auto; overflow:visible;
-    display:block; max-width:74ch; margin:0 auto; padding:56px 22px 96px;
-    font:400 15px/1.72 Archivo, "Helvetica Neue", Arial, sans-serif; color:#B9B2A2; }
-
-  html[data-flat] #mirror h1 { font:400 40px/1.06 "Grenze Gotisch", Georgia, serif;
-    color:#EDE5CF; margin:0 0 6px; letter-spacing:.01em; }
-  html[data-flat] #mirror h2 { font:400 12px/1.4 "Azeret Mono", ui-monospace, monospace;
-    letter-spacing:.26em; text-transform:uppercase; color:#8A7A54; margin:52px 0 14px;
-    padding-top:18px; border-top:1px solid #221F1A; }
-  html[data-flat] #mirror h3 { font:600 15px/1.4 Archivo, Arial, sans-serif;
-    color:#E4DCC6; margin:22px 0 4px; }
-  html[data-flat] #mirror p { margin:0 0 9px; }
-  html[data-flat] #mirror ul { list-style:none; margin:0; padding:0; }
-  html[data-flat] #mirror li { margin:0 0 4px; }
-  html[data-flat] #mirror section > ul > li { margin:0 0 26px; }
-
-  /* the item headings are buttons because the canvas needs them to be; with no canvas
-     they are headings again, and must stop looking pressable */
-  html[data-flat] #mirror h3 button { all:unset; display:block; cursor:default;
-    font:inherit; color:inherit; }
-
-  html[data-flat] #mirror a { color:#C6A961; text-underline-offset:3px; }
-  html[data-flat] #mirror a:hover, html[data-flat] #mirror a:focus-visible { color:#EFD79B; }
-
-  html[data-flat] .flat-note { margin:34px 0 0; padding:14px 16px; border:1px solid #221F1A;
-    font:400 12px/1.6 "Azeret Mono", ui-monospace, monospace; color:#6E685A; }
-  html[data-flat] .flat-write { all:unset; display:inline-block; margin:18px 0 0;
-    border:1px solid #6E5F3E; color:#E8DFC4; padding:11px 24px; cursor:pointer;
-    font:400 11px/1 "Azeret Mono", ui-monospace, monospace; letter-spacing:.24em;
-    text-transform:uppercase; }
-  html[data-flat] .flat-write:hover, html[data-flat] .flat-write:focus-visible {
-    background:rgba(34,28,20,.9); border-color:#A8905C; color:#F4ECD4; }
-
-  /* the focus escape hatch from the clipped mirror is meaningless once unclipped */
-  html[data-flat] #mirror :is(button,a):focus { position:static; padding:0; background:none;
-    color:inherit; border:0; max-width:none; font:inherit; letter-spacing:inherit; }
-  html[data-flat] #mirror :is(button,a):focus-visible { outline:2px solid #8A7A54;
-    outline-offset:3px; }
-`
 
 /**
  * Turn the clipped mirror into the page.
  *
  * @param {string} reason  what `probe3D()` decided, for the console only.
  */
+/**
+ * LYRA, uma vez, no alto.
+ *
+ * **Uma e não seis.** No objeto ela reage ao Módulo que está vivo; aqui não há
+ * Módulo vivo — a página inteira está aberta de uma vez — então seis delas seriam
+ * seis cópias de uma coisa que só faz sentido com um cursor.
+ *
+ * Ela fala a linha do Módulo de identidade e troca para a de ocioso aos seis
+ * segundos, como faz na Tela. As falas vêm de `modules.ts`, não daqui.
+ *
+ * **As falas dela não estão no espelho, e isso é decisão.** A regra do `CLAUDE.md`
+ * — tudo que a Tela mostra existe no DOM — mira o conteúdo do portfólio. As falas
+ * da LYRA são interface em personagem: no HTML que um ATS lê elas seriam ruído, e
+ * quem usa leitor de tela já recebe a fala corrente pela região viva do espelho.
+ * Por isso elas entram aqui, no desenho, e não lá.
+ */
+function lyraStrip() {
+  const strip = document.createElement('div')
+  strip.className = 'flat-lyra'
+
+  const art = document.createElement('canvas')
+  art.width = REACTION_W * 3
+  art.height = REACTION_H * 3
+  art.setAttribute('aria-hidden', 'true')
+
+  const say = document.createElement('div')
+  say.className = 'say'
+  const who = document.createElement('p')
+  who.className = 'who'
+  who.textContent = LYRA_NAME
+  const bubble = document.createElement('div')
+  bubble.className = 'bubble'
+  const line = document.createElement('p')
+
+  const lyra = lyraAt(0)
+  line.textContent = lyra.open.join(' ')
+  setTimeout(() => { line.textContent = lyra.idle.join(' ') }, LYRA_IDLE_MS)
+
+  bubble.appendChild(line)
+  say.append(who, bubble)
+  strip.append(art, say)
+
+  /* Ela respira. `frameAt` é função pura do tempo decorrido, então um laço a
+     dirige de graça — a mesma forma que a Tela usa. Sob movimento reduzido ela
+     fica no quadro de repouso e o laço nem começa. */
+  const g = art.getContext('2d')
+  const react = createKnobReaction({ idle: true })
+  const paint = () => {
+    const c = getComputedStyle(document.documentElement)
+    const tok = k => c.getPropertyValue(k).trim()
+    g.clearRect(0, 0, art.width, art.height)
+    drawSprite(g, REACTION_FRAMES[react.frameAt()], 0, 0, 3,
+      tok('--ink'), tok('--mid'), tok('--dim'), tok('--bg'))
+  }
+  if (react.reducedMotion) paint()
+  else react.subscribe(paint)
+
+  return strip
+}
+
 export function flatten(reason) {
   const mirror = document.getElementById('mirror')
   /* Without the mirror there is nothing to reveal, and pretending otherwise would
@@ -82,7 +101,7 @@ export function flatten(reason) {
   if (!mirror) return false
 
   const style = document.createElement('style')
-  style.textContent = CSS
+  style.textContent = FLAT_CSS
   document.head.appendChild(style)
   document.documentElement.dataset.flat = '1'
 
@@ -125,6 +144,7 @@ export function flatten(reason) {
   note.className = 'flat-note'
   note.textContent = UI.flatNote
   mirror.prepend(note)
+  mirror.prepend(lyraStrip())
   mirror.appendChild(write)
 
   console.info('[tenebrae] flat: ' + reason)

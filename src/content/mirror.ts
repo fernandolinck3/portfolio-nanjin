@@ -68,6 +68,26 @@ export const HOOK = {
   eclipse: 'data-mirror-eclipse',
   /** O link para a outra língua. Um `<a href>` de verdade, não um botão. */
   lang: 'data-mirror-lang',
+  /**
+   * Qual dos cinco desenhos a Tela usa para este Módulo.
+   *
+   * O espelho sempre emitiu a mesma marcação para os seis, o que basta para ler
+   * mas não para **desenhar**: um índice numerado, uma matriz de grupos e um mapa
+   * de dois blocos são três coisas diferentes, e sem este atributo o Flat Plate
+   * (T-05) teria de reconstruir a distinção por conta própria — uma segunda
+   * fonte da mesma informação.
+   *
+   * Ele não muda nada para quem lê. É uma dica de forma, não conteúdo.
+   */
+  layout: 'data-mirror-layout',
+  /* Os campos que só a tela de identidade tem, marcados para o desenho poder
+     tratá-los sem adivinhar por posição. */
+  role: 'data-mirror-role',
+  lead: 'data-mirror-lead',
+  low: 'data-mirror-low',
+  disc: 'data-mirror-disc',
+  /* O `meta` de um item: o número no índice, o tipo numa rota, o papel num nó. */
+  meta: 'data-mirror-meta',
 } as const
 
 /** `"1.0"` — o endereço de um item, e a única forma dele nos dois arquivos. */
@@ -126,7 +146,7 @@ const itemHTML = (mod: Module, m: number, item: Item, i: number, c: Content) => 
   return `
     <li>
       <h3><button type="button" ${HOOK.item}="${itemKey(m, i)}" tabindex="-1">${esc(item.label)}</button></h3>
-${item.meta ? `      <p>${esc(item.meta)}</p>` : ''}
+${item.meta ? `      <p ${HOOK.meta}>${esc(item.meta)}</p>` : ''}
 ${addressOf(item)}
 ${work ? `      <p>${esc([work.kind, work.client, work.year].filter(Boolean).join(' · '))}</p>
 ${para(work.blurb)}` : ''}
@@ -136,15 +156,15 @@ ${sectionsOf(m, i, item, c.gap)}
 
 /** Um Módulo inteiro. Os seis estão sempre no documento; só um está vivo. */
 const moduleHTML = (mod: Module, m: number, c: Content) => `
-  <section ${HOOK.module}="${m}" aria-labelledby="mirror-m${m}">
+  <section ${HOOK.module}="${m}" ${HOOK.layout}="${mod.layout}" aria-labelledby="mirror-m${m}">
     <h2 id="mirror-m${m}">${esc(mod.title)}</h2>
 ${mod.name ? `    <p>${esc(mod.name)}</p>` : ''}
-${mod.role ? `    <p>${esc(mod.role)}</p>` : ''}
-${mod.disciplines?.length ? `    <ul>${mod.disciplines.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : ''}
-${mod.lead?.length ? mod.lead.map(l => `    <p>${esc(l)}</p>`).join('\n') : ''}
+${mod.role ? `    <p ${HOOK.role}>${esc(mod.role)}</p>` : ''}
+${mod.disciplines?.length ? `    <ul ${HOOK.disc}>${mod.disciplines.map(d => `<li>${esc(d)}</li>`).join('')}</ul>` : ''}
+${mod.lead?.length ? mod.lead.map(l => `    <p ${HOOK.lead}>${esc(l)}</p>`).join('\n') : ''}
 ${mod.items?.length ? `    <ul>${mod.items.map((it, i) => itemHTML(mod, m, it, i, c)).join('')}
     </ul>` : ''}
-${mod.dim?.length ? `    <p>${esc(mod.dim.join(' '))}</p>` : ''}
+${mod.dim?.length ? `    <p ${HOOK.low}>${esc(mod.dim.join(' '))}</p>` : ''}
   </section>`
 
 /**
