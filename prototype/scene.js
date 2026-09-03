@@ -3188,7 +3188,12 @@ function applyVigil() {
      the wall around her going black is the whole reason she is a fixture. */
   {
     const k = Math.max(0, Math.min(1, 1 - vigil / .55));
-    dim(pictureLight, PIC0 * k * k * (3 - 2 * k));
+    /* `ROOM_K` because this is a room fixture: with the room switched off it is one of
+       the four lights ADR-0019 caught illuminating nothing the camera can see. Written
+       here rather than in `setRoomAmount` for the reason the environment taught an hour
+       ago — one property, one writer. `setRoomAmount` dimmed it and then called
+       `applyVigil`, which turned it straight back on. */
+    dim(pictureLight, PIC0 * k * k * (3 - 2 * k) * ROOM_K);
   }
 
   CANDLES.forEach((c, i) => {
@@ -4948,6 +4953,47 @@ window.__unit = {
   setWarmth(k) { return setWarmth(k) },
 
   /**
+   * What the last frame actually cost, in the units that do not need a clock.
+   *
+   * `perf()` is the real measurement and it needs frames, which means it needs a
+   * *visible* window — an automated tab reports `visibilityState: "hidden"` and fires
+   * `requestAnimationFrame` zero times per second, measured. This is the half that
+   * survives that: draw calls, triangles, programs and textures are properties of the
+   * frame that was just drawn, and `__unit.render()` draws one on demand.
+   *
+   * It is the right number for the question *"what did all this furniture cost?"*,
+   * because ADR-0019's answer is that geometry is the free half — 150 draw calls and
+   * 77k triangles measured as nothing an M1 notices, while fifteen lights measured as
+   * 87% of the frame. A room that added a hundred draw calls and no lights has, by
+   * that measurement, added nothing. This is how that claim gets checked instead of
+   * repeated.
+   */
+  stats() {
+    camera.updateMatrixWorld(true); scene.updateMatrixWorld(true);
+    /**
+     * `renderer.render` and **not** `post.render`.
+     *
+     * `renderer.info` resets on every render call, and the composer's last act is a
+     * full-screen quad — so reading it after `post.render()` reports one draw call and
+     * one triangle, every time, whatever the scene contains. That reading is not
+     * wrong, it is an answer to a different question: *what did the grade pass cost?*
+     * The scene's own numbers need the scene's own render.
+     */
+    renderer.render(scene, camera);
+    const lights = [];
+    scene.traverse(o => { if (o.isLight && o.visible && o.intensity > 0) lights.push(o.type); });
+    return {
+      drawCalls: renderer.info.render.calls,
+      triangles: renderer.info.render.triangles,
+      programs: renderer.info.programs.length,
+      textures: renderer.info.memory.textures,
+      geometries: renderer.info.memory.geometries,
+      lightsOn: lights.length,
+      lights,
+    };
+  },
+
+  /**
    * Measure what this scene actually costs, and what each part of it costs.
    *
    * `__unit.perf()` — full sweep, about 25s. `__unit.perf(1)` — quick, about 10s.
@@ -5599,7 +5645,13 @@ const ROOM_BASE = roomOnlyLights.map(l => (l ? l.intensity : 0));
 function setRoomAmount(k) {
   k = Math.max(0, Math.min(1, k));
   setRoom(k > 0);
-  roomOnlyLights.forEach((l, i) => { if (l) dim(l, ROOM_BASE[i] * k); });
+  /* the fixtures that are only the room's. `pictureLight` is deliberately **not** here
+     even though it is one of them: it also answers to the Vigil, so it is written in
+     `applyVigil` and reads `ROOM_K` there. Two writers on one light is how the room
+     came back on by itself. */
+  roomOnlyLights.forEach((l, i) => {
+    if (l && l !== pictureLight) dim(l, ROOM_BASE[i] * k);
+  });
   /**
    * The ambient steps back as the room arrives, and that is physics rather than taste.
    *
