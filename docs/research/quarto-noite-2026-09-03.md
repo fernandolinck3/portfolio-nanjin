@@ -1,7 +1,7 @@
 # O quarto, construído de madrugada — 2026-09-03
 
-Registro de uma sessão longa, autorizada a rodar sem aprovação a cada passo. Seis commits
-locais, **nenhum push**, nenhum deploy. `npm run check` limpo e 140 testes verdes em cada
+Registro de uma sessão longa, autorizada a rodar sem aprovação a cada passo. **Dez commits
+locais, nenhum push**, nenhum deploy. `npm run check` limpo e 140 testes verdes em cada
 um deles.
 
 Se você está lendo isto de manhã: **os endereços estão no fim.**
@@ -23,10 +23,7 @@ Duas correções pelo caminho, as duas por olhar e não por deduzir:
   máquina. Uniformidade é o que um folheado *é* por fabricação, e é o oposto do que uma
   mesa antiga tem. Trocada por madeira figurada.
 
-**O que ainda falta na mesa, e é o principal:** a referência que você mandou é uma mesa de
-marchetaria Napoleão III — o tampo é uma **superfície gráfica** com embutido dourado em
-arabescos e cartela central. Isso não é modelagem nem textura: é desenho por cima do
-material, exatamente o que a Plate já faz e o que o `CONTEXT.md` chama de **Print**.
+A outra metade da referência — o embutido dourado — foi construída depois, na seção 6.
 
 ### 2. A luz: o quarto estava iluminado duas vezes
 
@@ -77,6 +74,56 @@ brasa. É a última cor antes da lua.
 | `sobrio` | a arquitetura e um quadro; sem busto, sem relógio, sem livros |
 | `vazio` | a casca — cornija, roseta e lustre. Para julgar a Unit contra nada |
 
+### 6. O embutido dourado — a metade da referência que não é madeira
+
+A mesa da referência é aquela mesa por causa do **ornamento cortado na madeira**. Então o
+tampo ganhou uma camada gráfica por cima: banda seguindo a borda abaulada, cartela oval no
+centro com volutas saindo dela, e ramos espelhados nos quatro cantos. Latão sobre
+transparência, quatro milésimos acima da madeira.
+
+**Desenhado e não baixado**, e o motivo não é preciosismo: toda foto de marchetaria é a
+foto da mesa *de outra pessoa*, com as proporções dela e o copyright dela. Este tampo tem
+14,6 por 8,6 com lados abaulados, e ornamento que não segue o contorno lê como decalque.
+
+O vocabulário são **quatro marcas** — voluta, folha, campânula e banda — e o espelhamento
+é a gramática: um painel de marchetaria é cortado em pilha e aberto, então os cantos são
+exatamente o reverso um do outro.
+
+O centro fica liso porque a Unit fica ali. Mesa de verdade é lisa no meio pelo mesmo
+motivo: gente põe coisa em cima.
+
+### 7. Lareira e porta
+
+A lareira se paga três vezes: é o objeto em torno do qual um cômodo daquele século se
+organiza; põe uma fonte quente **baixa e de lado**, a única direção de onde esta cena nunca
+foi iluminada; e dá à Vigília algo além de subtrair, porque fogo não apaga como vela, ele
+baixa a brasa. É a última cor antes da lua.
+
+A porta fica fechada de propósito — porta aberta precisa levar a algum lugar.
+
+### 8. O quarto foi medido
+
+`__unit.stats()` é novo e existe porque o `perf()` precisa de quadros, e quadro precisa de
+janela visível. Isto é a metade que sobrevive: contagens do quadro que acabou de ser
+desenhado.
+
+| | draw calls | triângulos |
+|---|---|---|
+| com o quarto | **603** | 173.917 |
+| sem o quarto | 218 | 127.640 |
+
+Todo o cômodo — paredes, mobília antiga e as peças barrocas novas — custa **+385 draw calls
+e +46 mil triângulos, e zero luzes**. Pela ADR-0019, que mediu geometria como a metade
+grátis, isso é próximo de nada. Mas 603 é quatro vezes o que ela mediu, e num aparelho
+fraco draw call começa a pesar — o número está aqui para ser conferido, não para ser
+confiado.
+
+**Fio solto, deixado à vista:** com o quarto em zero o `lightsOn` cai de 12 para 11 — só a
+luz do retrato sai. O `wallWash` e os dois globos continuam acesos com intensidade cheia,
+que é exatamente o desperdício que a ADR-0019 existe para matar. O `roomOnlyLights` parece
+certo e o `dim()` parece certo, então a explicação está noutro lugar. Chutar às cinco e
+meia é como se erra de novo.
+
 ## O que foi decidido por ausência
 
 Três coisas foram construídas e **removidas**, e a remoção é a decisão:
@@ -126,10 +173,10 @@ O servidor precisa estar de pé (`npm run prototype`). Pelo celular, o IP da red
 
 ## O que eu faria a seguir, em ordem
 
-1. **O embutido dourado no tampo.** É o que a tua referência tem e a mesa não — e é desenho,
-   não modelo. A Plate é o precedente pronto.
-2. **A câmera.** O quarto inteiro é invisível para o visitante: `CAM_LIMITS` prende a vista
+1. **A câmera.** O quarto inteiro é invisível para o visitante: `CAM_LIMITS` prende a vista
    no objeto, e só o FREECAM da bancada chega lá. Sem resolver isso, tudo acima é enfeite de
    bancada. O `50.camera-rail` do laboratório do basement é a forma sem virar órbita livre.
-3. **Medir.** O `MEDIR` da bancada tem duas linhas com o quarto aceso e ninguém rodou ainda.
+2. **O fio solto das luzes** da seção 8 — três luzes do quarto continuam acesas com ele
+   apagado, e é o desperdício que a ADR-0019 existe para matar.
+3. **Medir o frame.** O `MEDIR` da bancada tem duas linhas com o quarto aceso e ninguém rodou ainda.
    Trinta e duas chamas emissivas custam pouco, mas *pouco* é uma palavra, não um número.
