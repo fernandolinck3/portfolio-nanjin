@@ -349,9 +349,23 @@ export function createRoomDecor(room, { floorY, wallFace, sideX }) {
    */
   let globeI = 5.2
   let lastK = 1
-  function update(vigil) {
+  /**
+   * `roomK` — how much room there is to light, 0..1.
+   *
+   * Without it these two lamps answered to the Vigil and to nothing else, so with the
+   * room switched off they stayed lit at full intensity, illuminating furniture the
+   * camera cannot see. That is precisely the waste ADR-0019 was written about: a
+   * visible light compiles into the shader and is evaluated by every lit fragment
+   * regardless of what it is pointed at.
+   *
+   * It arrives as an argument rather than being read from a module the decor does not
+   * import, because the caller is the one that knows — and because the whole point is
+   * that these lamps have **one** writer. `setRoomAmount` dimming them and `applyVigil`
+   * turning them straight back on was the third instance of that bug in one session.
+   */
+  function update(vigil, roomK = 1) {
     const k = Math.max(0, Math.min(1, 1 - vigil / .55))
-    const e = k * k * (3 - 2 * k)
+    const e = k * k * (3 - 2 * k) * Math.max(0, Math.min(1, roomK))
     lastK = e
     for (const l of lamps) {
       l.light.intensity = e * globeI

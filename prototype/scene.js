@@ -3269,7 +3269,7 @@ function applyVigil() {
   }
 
   /* the studio's own lamps go out first, before the Candles */
-  decor.update(vigil);
+  decor.update(vigil, ROOM_K);
 
   /* the decks turn the day. Sun up, and it is afternoon outside; Moon up, and it is night. */
   nightSky.material.opacity = vigil;
@@ -3314,7 +3314,7 @@ function applyVigil() {
   shaftUniforms.uColor.value.copy(skyLight.color);
   shaftUniforms.uStrength.value = .15 * (1 - vigil) + .05 * vigil;
   skyLight.color.setRGB(1 - vigil * .38, .894 - vigil * .18, .737 + vigil * .11);
-  dim(wallWash, .07 * (1 - vigil) + .04 * vigil);
+  dim(wallWash, (.07 * (1 - vigil) + .04 * vigil) * ROOM_K);
   wallWash.color.setRGB(.784 - vigil * .22, .718 - vigil * .08, .604 + vigil * .16);
 
   /**
@@ -5627,11 +5627,6 @@ function setRoomLights(on) {
   for (const l of roomOnlyLights) if (l) l.visible = on;
 }
 
-/** What each of those was set to before the room was switched off. Captured rather
-    than written down, because re-typing fitted numbers into a second place is how two
-    versions of a rig start to disagree. */
-const ROOM_BASE = roomOnlyLights.map(l => (l ? l.intensity : 0));
-
 /**
  * The room as an amount rather than a switch — `__unit.setRoomAmount(.4)`.
  *
@@ -5645,13 +5640,22 @@ const ROOM_BASE = roomOnlyLights.map(l => (l ? l.intensity : 0));
 function setRoomAmount(k) {
   k = Math.max(0, Math.min(1, k));
   setRoom(k > 0);
-  /* the fixtures that are only the room's. `pictureLight` is deliberately **not** here
-     even though it is one of them: it also answers to the Vigil, so it is written in
-     `applyVigil` and reads `ROOM_K` there. Two writers on one light is how the room
-     came back on by itself. */
-  roomOnlyLights.forEach((l, i) => {
-    if (l && l !== pictureLight) dim(l, ROOM_BASE[i] * k);
-  });
+  /**
+   * **This function does not touch a single light**, and that is the fix rather than an
+   * omission.
+   *
+   * All four room fixtures — `wallWash`, `pictureLight` and the two globes — already
+   * have curves in `applyVigil`, because they answer to the Vigil as well as to the
+   * room. So the version that dimmed them here undid itself one line later, when it
+   * called `applyVigil` to update the environment: the room went dark and came back on
+   * inside the same call, and the only visible symptom was a light count that would not
+   * drop.
+   *
+   * `ROOM_K` is the whole mechanism. Each of the four multiplies its own Vigil curve by
+   * it, where that curve is already written, and nothing is written twice. Third
+   * instance of this bug in one session — the environment, the picture light, and these
+   * — which is enough to call it the shape of the file rather than an accident.
+   */
   /**
    * The ambient steps back as the room arrives, and that is physics rather than taste.
    *

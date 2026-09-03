@@ -118,11 +118,28 @@ grátis, isso é próximo de nada. Mas 603 é quatro vezes o que ela mediu, e nu
 fraco draw call começa a pesar — o número está aqui para ser conferido, não para ser
 confiado.
 
-**Fio solto, deixado à vista:** com o quarto em zero o `lightsOn` cai de 12 para 11 — só a
-luz do retrato sai. O `wallWash` e os dois globos continuam acesos com intensidade cheia,
-que é exatamente o desperdício que a ADR-0019 existe para matar. O `roomOnlyLights` parece
-certo e o `dim()` parece certo, então a explicação está noutro lugar. Chutar às cinco e
-meia é como se erra de novo.
+### 9. O fio solto era o mesmo bug, pela terceira vez — e fechou
+
+Com o quarto em zero, o `lightsOn` caía de 12 para 11: só a luz do retrato saía. O
+`wallWash` e os dois globos ficavam acesos com intensidade cheia, iluminando móveis que a
+câmera não vê — o desperdício exato que a ADR-0019 existe para matar.
+
+A causa não estava no `dim()` nem no `roomOnlyLights`, que estavam certos. Estava em **quem
+escreve depois**: o `applyVigil` tem curva própria para o `wallWash` (linha 3317) e chama o
+`decor.update(vigil)`, que reescreve os globos a partir da Vigília sozinha. O
+`setRoomAmount` apagava as quatro e então chamava o `applyVigil` para atualizar o ambiente
+— e o quarto acendia de volta dentro da mesma chamada. O único sintoma visível era uma
+contagem de luzes que não descia.
+
+Terceira instância do mesmo bug em uma sessão: o ambiente, a luz do retrato e estas. Três
+vezes é a forma do arquivo, não um acidente — **uma propriedade, um dono.**
+
+Agora o `setRoomAmount` **não toca em nenhuma luz**. As quatro já têm curvas no
+`applyVigil`, porque respondem à Vigília além do quarto; cada uma multiplica a própria
+curva por `ROOM_K`, onde a curva já estava escrita, e nada é escrito duas vezes.
+
+Medido depois: **12 luzes com o quarto, 8 sem, 12 ao religar** — sem deriva. Quatro luzes
+saem do shader de verdade, que é um terço do orçamento que a ADR-0019 mediu em 87% do frame.
 
 ## O que foi decidido por ausência
 
@@ -176,7 +193,5 @@ O servidor precisa estar de pé (`npm run prototype`). Pelo celular, o IP da red
 1. **A câmera.** O quarto inteiro é invisível para o visitante: `CAM_LIMITS` prende a vista
    no objeto, e só o FREECAM da bancada chega lá. Sem resolver isso, tudo acima é enfeite de
    bancada. O `50.camera-rail` do laboratório do basement é a forma sem virar órbita livre.
-2. **O fio solto das luzes** da seção 8 — três luzes do quarto continuam acesas com ele
-   apagado, e é o desperdício que a ADR-0019 existe para matar.
-3. **Medir o frame.** O `MEDIR` da bancada tem duas linhas com o quarto aceso e ninguém rodou ainda.
+2. **Medir o frame.** O `MEDIR` da bancada tem duas linhas com o quarto aceso e ninguém rodou ainda.
    Trinta e duas chamas emissivas custam pouco, mas *pouco* é uma palavra, não um número.
