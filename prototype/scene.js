@@ -2855,6 +2855,97 @@ rail.rotation.z = Math.PI / 2; rail.position.set(0, WIN.y1 + .25, WALL_Z + .55);
 const skyLight = new THREE.DirectionalLight(0xFFE0B8, 3.0);
 skyLight.position.set(1.1, 4.6, WALL_Z); skyLight.target.position.set(0, 0, 1);
 room.add(skyLight, skyLight.target);
+
+/**
+ * The shaft — the window's light as a thing you can see, and it is not a light.
+ *
+ * `skyLight` already carries the sun and the moon: `applyVigil` walks it from 3.0 to
+ * 0.50 and slides its colour from morning to moonlight. What it cannot do is be
+ * *visible*. A directional light illuminates surfaces; it does not fill the air
+ * between them, and a window with a bright rectangle of floor under it and nothing in
+ * between is the tell that a room is computed.
+ *
+ * So the beam is geometry. `62.sun-ray-cone.js` in the basement laboratory does the
+ * same thing with a cone and a noise texture; this uses the **window's own aperture**
+ * extruded along the light's direction, so the shaft is the shape of the opening
+ * rather than an approximation of it, and the fades are computed from world position
+ * instead of from UVs — `ExtrudeGeometry` along a path emits UVs nobody should trust.
+ *
+ * Additive, `depthWrite: false`, and out of the light loop entirely. ADR-0019's rule
+ * holds: if something needs to glow, it is emissive, it is not a lamp.
+ */
+const SHAFT_LEN = 17.5;
+const shaftDir = new THREE.Vector3()
+  .subVectors(skyLight.target.position, skyLight.position).normalize();
+const shaftOrigin = new THREE.Vector3(0, (WIN.y0 + WIN.y1) / 2, WALL_Z + .35);
+const shaftUniforms = {
+  uOrigin: { value: shaftOrigin },
+  uDir: { value: shaftDir },
+  uLen: { value: SHAFT_LEN },
+  uRadius: { value: WIN.x * 1.45 },
+  uColor: { value: new THREE.Color(0xFFE0B8) },
+  /* Additive over a volume 17 units long: what looks reasonable as a number is a
+     white wash on screen, because every fragment along the depth adds again. */
+  uStrength: { value: .15 },
+  uTime: { value: 0 },
+};
+const shaft = new THREE.Mesh(
+  new THREE.ExtrudeGeometry(
+    (() => {
+      /* the aperture, drawn once more as a Shape — the wall carries it as a hole and
+         a hole is a Path, which cannot be extruded on its own */
+      const a = new THREE.Shape();
+      a.moveTo(-WIN.x, WIN.y0);
+      a.lineTo(-WIN.x, WIN.spring);
+      a.quadraticCurveTo(-WIN.x, WIN.y1, 0, WIN.y1);
+      a.quadraticCurveTo(WIN.x, WIN.y1, WIN.x, WIN.spring);
+      a.lineTo(WIN.x, WIN.y0);
+      a.closePath();
+      return a;
+    })(),
+    { depth: SHAFT_LEN, bevelEnabled: false, curveSegments: 16 })
+    /* The Shape is drawn in the wall's own coordinates, so it carries the window's
+       height inside the geometry. Rotating the mesh would rotate *that* too, and the
+       first attempt laid the aperture flat across the room like a slab. Centring the
+       geometry on its own origin first is what makes the later rotation mean
+       "point the beam", instead of "tip the window over". */
+    .translate(0, -(WIN.y0 + WIN.y1) / 2, 0),
+  new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide, uniforms: shaftUniforms,
+    vertexShader: /* glsl */'\n' + [
+      'varying vec3 vW;',
+      'void main() {',
+      '  vW = (modelMatrix * vec4(position, 1.0)).xyz;',
+      '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+      '}',
+    ].join('\n'),
+    fragmentShader: /* glsl */'\n' + [
+      'uniform vec3 uOrigin, uDir, uColor;',
+      'uniform float uLen, uRadius, uStrength, uTime;',
+      'varying vec3 vW;',
+      'void main() {',
+      '  float t = clamp(dot(vW - uOrigin, uDir) / uLen, 0.0, 1.0);',
+      '  vec3 axis = uOrigin + uDir * (t * uLen);',
+      '  float r = length(vW - axis) / uRadius;',
+      /* soft flanks, and the beam thins as it travels — a shaft is a cone in practice
+         because the aperture is not a point source */
+      '  float edge = 1.0 - smoothstep(0.42, 1.0, r * (0.82 + t * 0.5));',
+      '  float along = pow(1.0 - t, 1.8);',
+      /* dust, slow: two sines rather than a texture, because the eye reads movement
+         here and not pattern */
+      '  float dust = 0.84 + 0.16 * sin(vW.y * 2.3 + uTime * 0.35) * sin(vW.x * 1.7 - uTime * 0.21);',
+      '  float a = along * edge * uStrength * dust;',
+      '  gl_FragColor = vec4(uColor * a, a);',
+      '}',
+    ].join('\n'),
+  }));
+/* the extrude runs along +z from the aperture; point it down the light's direction */
+shaft.position.copy(shaftOrigin);
+shaft.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), shaftDir);
+shaft.renderOrder = 3;
+shaft.onBeforeRender = () => { shaftUniforms.uTime.value = performance.now() / 1000; };
+room.add(shaft);
 /* `wallWash` was the other half of the flat. Kept at a whisper so the far corners
    are dark rather than absent — a corner at pure zero reads as a hole, not a room. */
 const wallWash = new THREE.DirectionalLight(0xC8B79A, .07);
@@ -3016,6 +3107,16 @@ rake.layers.set(RAKE_LAYER);
 
 const KEY0 = key.intensity, MOON0 = moonlight.intensity;
 const ENV0 = scene.environmentIntensity ?? 1;
+/**
+ * How much the room is taking over, 0..1 — see `setRoomAmount`.
+ *
+ * It lives up here, beside `ENV0`, because `environmentIntensity` has exactly **one**
+ * writer and this is the other half of its argument. Two functions assigning the same
+ * property is not a style problem: the Vigil would have silently undone the room's
+ * correction on the next turn of the crossfader, and the bug would have looked like
+ * the room brightening on its own.
+ */
+let ROOM_K = 0;
 
 /* The ramps live in `light.js` now — the Screen reads the same three pairs to
    decide how far into the night it has travelled, and two files agreeing by hand
@@ -3069,7 +3170,10 @@ function applyVigil() {
    * lacquer. The room past the Unit still goes to nothing, because `skyLight` and
    * `wallWash` have their own curves and neither of them is this one.
    */
-  scene.environmentIntensity = ENV0 * (0.06 + 0.94 * (1 - vigil));
+  /* the Vigil's curve and the room's are multiplied, not fought over: the night is
+     dark because the Vigil says so, and the room is not double-lit because the walls
+     are doing what the environment map was standing in for */
+  scene.environmentIntensity = ENV0 * (0.06 + 0.94 * (1 - vigil)) * (1 - .38 * ROOM_K);
 
   /* The wheels show whose hand is winning. Light comes through their tracery: the
      Sun's holds while the room is lit and is out by the time the last Candle is;
@@ -3127,6 +3231,10 @@ function applyVigil() {
    */
   dim(skyLight, 3.0 * (1 - vigil) + 0.50 * vigil);
   skyLight.color.setRGB(1 - vigil * .34, .878 - vigil * .13, .722 + vigil * .14);
+  /* the visible shaft is the same light, so it takes the same colour and dies on the
+     same curve — a moonbeam is a beam, just a colder and quieter one */
+  shaftUniforms.uColor.value.copy(skyLight.color);
+  shaftUniforms.uStrength.value = .15 * (1 - vigil) + .05 * vigil;
   skyLight.color.setRGB(1 - vigil * .38, .894 - vigil * .18, .737 + vigil * .11);
   dim(wallWash, .07 * (1 - vigil) + .04 * vigil);
   wallWash.color.setRGB(.784 - vigil * .22, .718 - vigil * .08, .604 + vigil * .16);
@@ -5419,7 +5527,24 @@ function setRoomAmount(k) {
   k = Math.max(0, Math.min(1, k));
   setRoom(k > 0);
   roomOnlyLights.forEach((l, i) => { if (l) dim(l, ROOM_BASE[i] * k); });
-  return { amount: k, lights: roomOnlyLights.filter(l => l && l.visible).length };
+  /**
+   * The ambient steps back as the room arrives, and that is physics rather than taste.
+   *
+   * `environmentIntensity` at 1.85 was fitted against a scene with **no room**: with
+   * nothing around the Unit to catch light and throw it back, the environment map was
+   * standing in for the bounce a room would have given. Switch the room on and both
+   * are present, so the object is lit twice — which is exactly the pale, flat, doll's
+   * house reading the room had.
+   *
+   * The environment does not go away: it is still what makes the gilt read as metal.
+   * It gives up the part of its job the walls have taken over.
+   */
+  ROOM_K = k;
+  applyVigil();          /* one writer for the environment, and this is how it is told */
+  return {
+    amount: k, lights: roomOnlyLights.filter(l => l && l.visible).length,
+    env: +scene.environmentIntensity.toFixed(2),
+  };
 }
 
 setRoom(false);
