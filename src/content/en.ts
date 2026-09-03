@@ -51,7 +51,7 @@ export const EN: Readonly<Record<string, string>> = {
 
   /* ---- QUEM ---------------------------------------------------------- */
   'QUEM': 'WHO',
-  'QUEM — A perspectiva que ele traz': 'WHO — The perspective he brings',
+  'QUEM — Growth, CRO e front-end, e como eu junto os três': 'WHO — Growth, CRO and front-end, and how I join the three',
   'GROWTH · CRO · EXPERIÊNCIAS DIGITAIS': 'GROWTH · CRO · DIGITAL PRODUCT',
   'ESTRATÉGIA': 'STRATEGY',
   'MENSAGEM': 'MESSAGING',
@@ -93,7 +93,7 @@ export const EN: Readonly<Record<string, string>> = {
 
   /* ---- PROJETOS ------------------------------------------------------- */
   'PROJETOS': 'PROJECTS',
-  'PROJETOS — Trabalhos e o raciocínio por trás deles': 'PROJECTS — Work, and the thinking behind it',
+  'PROJETOS — Sites, landing pages e o raciocínio por trás': 'PROJECTS — Sites, landing pages, and the thinking behind them',
   'PROJETO': 'PROJECT',
   'PORTFÓLIO PESSOAL': 'PERSONAL PORTFOLIO',
   'SITE INTERATIVO': 'INTERACTIVE SITE',
@@ -147,7 +147,7 @@ export const EN: Readonly<Record<string, string>> = {
 
   /* ---- TRAJETO -------------------------------------------------------- */
   'TRAJETO': 'PATH',
-  'TRAJETO — Onde ele trabalhou e do que cuidou': 'PATH — Where he worked and what he looked after',
+  'TRAJETO — Onde eu trabalhei e do que eu cuidei': 'PATH — Where I worked and what I looked after',
   'O percurso em camadas, e as datas que as sustentam.':
     'The path in layers, and the dates that hold them up.',
   'ETAPA': 'STAGE',
@@ -188,7 +188,7 @@ export const EN: Readonly<Record<string, string>> = {
   /* ---- CRITÉRIOS ------------------------------------------------------ */
   'CRITÉRIOS': 'CRITERIA',
   'CRITÉR.': 'CRITERIA',
-  'CRITÉRIOS — Como contexto vira trabalho terminado': 'CRITERIA — How context becomes finished work',
+  'CRITÉRIOS — Como eu transformo contexto em trabalho pronto': 'CRITERIA — How I turn context into finished work',
   'Os dados decidem. O encanto também conta.': 'The data decides. Delight counts too.',
   'CRITÉRIO': 'CRITERION',
 
@@ -241,7 +241,7 @@ export const EN: Readonly<Record<string, string>> = {
   /* ---- HABILIDADES ---------------------------------------------------- */
   'HABILIDADES': 'SKILLS',
   'HABILID.': 'SKILLS',
-  'HABILIDADES — Com o que ele trabalha': 'SKILLS — What he works with',
+  'HABILIDADES — CRO, growth, UX/UI e front-end, na prática': 'SKILLS — CRO, growth, UX/UI and front-end, in practice',
   'As ferramentas à mão, agrupadas pelo que fazem.':
     'The tools at hand, grouped by what they do.',
   'GRUPO': 'GROUP',

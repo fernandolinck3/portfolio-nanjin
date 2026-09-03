@@ -261,9 +261,20 @@ export function stringsFor(locale: Locale) {
       'Fernando Linck — Growth, CRO e experiências digitais',
       'Fernando Linck — Growth, CRO and digital product experiences',
     ),
+    /**
+     * A descrição **não ranqueia**. O Google diz isso há anos: ela decide se alguém
+     * clica depois de o resultado já ter aparecido, e nada mais. Quem ranqueia é o
+     * espelho, o title e os dados estruturados.
+     *
+     * Por isso ela não vira lista de serviços. Uma descrição que enumera o que se faz
+     * lê igual aos outros vinte resultados; a linha do instrumento é a única coisa
+     * nesta que distingue. A versão anterior tinha 160 caracteres e era **cortada no
+     * meio** — trocar "experiências digitais" por "front-end" devolveu doze
+     * caracteres e um termo que as pessoas digitam.
+     */
     pageDescription: t(
-      'Portfólio de Fernando Linck — growth, CRO e experiências digitais — apresentado como um instrumento: seis teclas, duas rodas e um fader que vai da noite ao dia.',
-      'Fernando Linck’s portfolio — growth, CRO and digital product experiences — presented as an instrument: six keys, two wheels and a fader that runs from night to day.',
+      'Portfólio de Fernando Linck — growth, CRO e front-end — apresentado como um instrumento: seis teclas, duas rodas e um fader que vai da noite ao dia.',
+      'Fernando Linck — growth, CRO and front-end — presented as an instrument: six keys, two wheels and a fader that runs from night to day.',
     ),
     ogDescription: t(
       'Um portfólio apresentado como instrumento: seis teclas, duas rodas e um fader que vai da noite ao dia.',

@@ -685,7 +685,7 @@ const MODULES_PT: readonly Module[] = [
     title: 'QUEM',
     layout: 'identity',
     pad: 'QUEM',
-    hint: 'QUEM — A perspectiva que ele traz',
+    hint: 'QUEM — Growth, CRO e front-end, e como eu junto os três',
     /**
      * O nome, e a hierarquia sob ele.
      *
@@ -747,7 +747,7 @@ const MODULES_PT: readonly Module[] = [
     title: 'PROJETOS',
     layout: 'list',
     pad: 'PROJETOS',
-    hint: 'PROJETOS — Trabalhos e o raciocínio por trás deles',
+    hint: 'PROJETOS — Sites, landing pages e o raciocínio por trás',
     /* Sem `lead`. Três títulos dizem o que são; o texto acima deles só empurrava o
        terceiro contra o rodapé. */
     unit: 'PROJETO',
@@ -778,7 +778,7 @@ const MODULES_PT: readonly Module[] = [
     title: 'TRAJETO',
     layout: 'nodes',
     pad: 'TRAJETO',
-    hint: 'TRAJETO — Onde ele trabalhou e do que cuidou',
+    hint: 'TRAJETO — Onde eu trabalhei e do que eu cuidei',
     lead: ['O percurso em camadas, e as datas que as sustentam.'],
     unit: 'ETAPA',
     items: [
@@ -842,7 +842,7 @@ const MODULES_PT: readonly Module[] = [
     layout: 'index',
     /* `CRITÉR.` só existe no hardware — a Tela sempre escreve por extenso. */
     pad: 'CRITÉR.',
-    hint: 'CRITÉRIOS — Como contexto vira trabalho terminado',
+    hint: 'CRITÉRIOS — Como eu transformo contexto em trabalho pronto',
     /* Uma linha. Cinco critérios têm de caber inteiros na mesma tela, e duas linhas
        de abertura custavam o quinto. */
     lead: ['Os dados decidem. O encanto também conta.'],
@@ -939,7 +939,7 @@ const MODULES_PT: readonly Module[] = [
     title: 'HABILIDADES',
     layout: 'grid',
     pad: 'HABILID.',
-    hint: 'HABILIDADES — Com o que ele trabalha',
+    hint: 'HABILIDADES — CRO, growth, UX/UI e front-end, na prática',
     lead: ['As ferramentas à mão, agrupadas pelo que fazem.'],
     unit: 'GRUPO',
     items: [
