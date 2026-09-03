@@ -12,6 +12,7 @@ import { track, trackSettled } from './track.js'
 import { padMaps, faderSlot, faderCap } from './control-faces.js';
 import { deckMaps, deckGlow } from './deck-faces.js'
 import { createRoomDecor } from './room-decor.js'
+import { createBaroque } from './room-baroque.js'
 import { createAltarProps } from './altar-props.js'
 import { createPost } from './post.js'
 import { createFocus } from './focus.js'
@@ -2997,6 +2998,24 @@ const PIC0 = pictureLight.intensity;
    touched — this furnishes the room around them. */
 const decor = createRoomDecor(room, { floorY: FLOOR_Y, wallFace: WALL_Z + 0.7, sideX: SIDE_X });
 
+/**
+ * The baroque fittings — cornice, ceiling rose, chandelier, sconces, mirror, drapery,
+ * a bust and a stack of books. See `room-baroque.js`.
+ *
+ * Sixteen flames on the chandelier, twelve on the sconces, and **not one new light**.
+ * Everything that glows is emissive, which is the rule `docs/realism-budget.md` writes
+ * down and the one the basement's bunker scene arrives at independently. Geometry is
+ * paid for once; a light is paid for by every lit pixel, every frame, forever.
+ *
+ * `?layout=` picks between three arrangements — `cheio`, `sobrio`, `vazio` — so the
+ * room can be judged as a set of options rather than as one guess.
+ */
+const LAYOUT = new URLSearchParams(location.search).get('layout') || 'cheio';
+const baroque = createBaroque(room, {
+  floorY: FLOOR_Y, ceilY: CEIL_Y, sideX: SIDE_X, wallZ: WALL_Z, depth: DEPTH,
+  gilt: GILT, layout: LAYOUT,
+});
+
 /* canvas type is drawn once at load, before the webfonts land */
 document.fonts?.ready?.then(() => summoning.refresh());
 
@@ -3233,6 +3252,22 @@ function applyVigil() {
   skyLight.color.setRGB(1 - vigil * .34, .878 - vigil * .13, .722 + vigil * .14);
   /* the visible shaft is the same light, so it takes the same colour and dies on the
      same curve — a moonbeam is a beam, just a colder and quieter one */
+  /**
+   * The room's flames go out with the Altar's.
+   *
+   * Thirty-two of them, on the chandelier and the sconces, and they are emissive
+   * rather than lights — so walking them down is one uniform each and no shader
+   * recompile. A room whose chandelier stays lit while the three Candles gutter is
+   * not the same room, and the Vigil would stop meaning anything.
+   *
+   * They die *before* the Candles rather than with them: a house is put out room by
+   * room and the last light is the one at hand.
+   */
+  {
+    const k = Math.max(0, Math.min(1, 1 - vigil / .72));
+    baroque.materials.FLAME.emissiveIntensity = 3.2 * k * k;
+    for (const f of baroque.flames) f.visible = k > .01;
+  }
   shaftUniforms.uColor.value.copy(skyLight.color);
   shaftUniforms.uStrength.value = .15 * (1 - vigil) + .05 * vigil;
   skyLight.color.setRGB(1 - vigil * .38, .894 - vigil * .18, .737 + vigil * .11);
