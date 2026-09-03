@@ -181,9 +181,26 @@
   body[data-turned] #frame{width:100vh;height:100vw;
     transform:translate(100vw,0) rotate(90deg);transform-origin:0 0}
   body[data-turned] #turn{display:flex}
-  #turn{position:absolute;z-index:55;left:50%;transform:translateX(-50%);
-    bottom:calc(14px + env(safe-area-inset-bottom));
-    display:none;align-items:center;gap:10px;margin:0;padding:8px 14px;
+  /**
+   * The notices stack, and they live outside the frame.
+   *
+   * Three can be on screen at once — turn the phone, the other language, and the
+   * consent gate — and all three were pinned to the bottom edge independently, so
+   * they covered each other: `.cs-bar` at z-index 80 over `.lg-bar` at 79, both at
+   * `bottom:0`.
+   *
+   * Worse, `#turn` sat **inside `#frame`**, which a portrait phone rotates ninety
+   * degrees. A transformed element is the containing block for everything absolute
+   * inside it, so the notice asking you to turn the phone was itself turned. The rule
+   * the contact form already established covers every one of these: **the Unit is
+   * what is turned; a person reading is not.**
+   */
+  #avisos{position:fixed;left:0;right:0;bottom:0;z-index:80;
+    display:flex;flex-direction:column;align-items:center;
+    padding-bottom:env(safe-area-inset-bottom);pointer-events:none}
+  #avisos > *{pointer-events:auto}
+  #turn{z-index:55;margin:0 0 14px;
+    display:none;align-items:center;gap:10px;padding:8px 14px;
     background:rgba(10,9,8,.82);border:1px solid #3A3A38;color:#8A8880;
     font-family:"Azeret Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.16em}
   #turn svg{stroke:#8A7A54;fill:none;stroke-width:1.5;flex:0 0 auto}
@@ -231,13 +248,6 @@
 </style>
 <div id="frame">
 <button id="full" type="button" hidden>TELA CHEIA</button>
-<p id="turn" role="status">
-  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-    <rect x="8" y="2" width="8" height="14" rx="1.5"/>
-    <path d="M5 19 a9 9 0 0 0 14 0"/><path d="M5 19 l-2 -3 M5 19 l3 -1.5"/>
-  </svg>
-  Vire o celular para uma tela maior
-</p>
 <!-- The canvas is the object for the eye and nothing at all for a screen reader:
      a WebGL surface has no text, no roles and no structure to offer one. It is
      marked away explicitly so the reading of the page is the mirror's — see
@@ -304,6 +314,9 @@
   <span class="ctl"><button id="replay" type="button">REPLAY INTRO</button></span>
   <span class="ctl"><button id="freecam" type="button">FREECAM</button> <b id="freecamv">off</b></span>
   <span class="ctl"><button id="eclipse" type="button">ECLIPSE</button> <b id="eclipsev">bloqueado</b></span>
+  <span class="ctl">ROOM <input id="room" type="range" min="0" max="100" value="0" aria-label="Room presence"> <b id="roomv">off</b></span>
+  <span class="ctl">POOL <input id="pool" type="range" min="0" max="100" value="0" aria-label="Pool falloff"> <b id="poolv">off</b></span>
+  <span class="ctl">WARM <input id="warm" type="range" min="0" max="100" value="0" aria-label="Light warmth"> <b id="warmv">rig</b></span>
   <span class="ctl">FPS <b id="fps">--</b></span>
 </div>
 </div>
@@ -326,4 +339,13 @@ window.addEventListener('error',function(e){var d=document.getElementById('err')
 <!-- boot.js, not scene.js: importing scene.js builds the WebGL renderer at module
      scope, so whether this machine can draw the Unit has to be decided one step
      earlier. See prototype/capability.js. -->
+<div id="avisos">
+<p id="turn" role="status">
+  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+    <rect x="8" y="2" width="8" height="14" rx="1.5"/>
+    <path d="M5 19 a9 9 0 0 0 14 0"/><path d="M5 19 l-2 -3 M5 19 l3 -1.5"/>
+  </svg>
+  Vire o celular para uma tela maior
+</p>
+</div>
 <script type="module" src="./boot.js"></script>

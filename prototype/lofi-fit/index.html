@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lofi-fit — Tenebrae</title>
+<!--
+  The workbench for the low-fi register.
+
+  Same instinct as `deck-fit/` and `light-fit/`: fit one thing, on its own page, with
+  the dial next to the result instead of in a console. What is different here is that
+  the thing being fitted is the *whole frame*, so this page cannot draw its own — it
+  drives the real object in an iframe and reads it back.
+
+  It answers three questions, and the third is the one that decides how far the first
+  dial can go:
+
+    1. does it look right          — the sliders, and A/B against the shipped image
+    2. what does it give back      — MEDIR, which runs the ADR-0019 sweep in there
+    3. where does the Screen stop being legible
+                                   — TELA frames the Screen the way `focus.js` does,
+                                     at whatever scale is set. The Screen is 320x180
+                                     and it is where the content lives, so it is the
+                                     real ceiling on the resolution dial, not taste.
+
+  Two things it is deliberately not:
+
+  - **It does not have a vertex-snap dial.** Snapping vertices to a grid and dropping
+    perspective correction on the textures are the console's actual signature, they
+    cost nothing, and they are the pair that reads as *game console* rather than as
+    *print*. They are a per-material change and they are a separate decision. This
+    page is about the two dials that are already reversible in one line.
+  - **It is not the argument for shipping any of this.** `?lofi` on the real page is.
+
+  The window has to be in front. An automated tab is a hidden tab, `requestAnimationFrame`
+  fires zero times per second in one, and both the sweep and the picture need frames.
+-->
+<style>
+  :root{
+    --bg:#0a0a0c; --ink:#d8d2c4; --dim:#6f6a5f; --line:#22222a; --hot:#e0a14a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  body{display:grid;grid-template-columns:300px 1fr;height:100vh;overflow:hidden}
+
+  aside{border-right:1px solid var(--line);padding:14px;overflow-y:auto;display:flex;
+    flex-direction:column;gap:14px}
+  h1{font-size:12px;letter-spacing:.18em;text-transform:uppercase;margin:0;color:var(--hot)}
+  .note{color:var(--dim);font-size:11px;line-height:1.45}
+
+  .dial{display:grid;gap:4px}
+  .dial label{display:flex;justify-content:space-between;letter-spacing:.08em;
+    text-transform:uppercase;font-size:10px;color:var(--dim)}
+  .dial label b{color:var(--ink);font-weight:400}
+  input[type=range]{width:100%;accent-color:var(--hot)}
+
+  .row{display:flex;gap:6px;flex-wrap:wrap}
+  button{font:inherit;background:#15151a;color:var(--ink);border:1px solid var(--line);
+    padding:5px 9px;cursor:pointer;letter-spacing:.06em}
+  button:hover{border-color:var(--hot);color:var(--hot)}
+  button[aria-pressed=true]{background:var(--hot);color:#111;border-color:var(--hot)}
+
+  .readout{border-top:1px solid var(--line);padding-top:10px;color:var(--dim);font-size:11px;
+    white-space:pre-wrap}
+  .readout b{color:var(--ink);font-weight:400}
+
+  main{position:relative;min-width:0}
+  iframe{width:100%;height:100%;border:0;display:block;background:#000}
+  pre#perf{position:absolute;inset:auto 12px 12px 12px;max-height:52%;overflow:auto;margin:0;
+    background:#000000e8;border:1px solid var(--line);padding:10px;font-size:11px;
+    color:var(--ink);white-space:pre;display:none}
+  #hint{position:absolute;top:10px;left:12px;background:#000000cc;border:1px solid var(--line);
+    padding:5px 8px;color:var(--dim);font-size:11px}
+</style>
+</head>
+<body>
+
+<aside>
+  <h1>lofi-fit</h1>
+  <p class="note">
+    A janela precisa estar <b>na frente</b>. Aba em segundo plano n&atilde;o recebe
+    <code>rAF</code> e nada aqui funciona.
+  </p>
+
+  <div class="dial">
+    <label>escala do buffer <b id="v-scale">1.50</b></label>
+    <input id="scale" type="range" min="0.15" max="1.5" step="0.05" value="1.5">
+  </div>
+
+  <div class="dial">
+    <label>lofi (mistura) <b id="v-lofi">0.00</b></label>
+    <input id="lofi" type="range" min="0" max="1" step="0.05" value="0">
+  </div>
+
+  <div class="dial">
+    <label>n&iacute;veis por canal <b id="v-levels">32</b></label>
+    <input id="levels" type="range" min="2" max="64" step="1" value="32">
+  </div>
+
+  <div class="dial">
+    <label>dither <b id="v-dither">1.00</b></label>
+    <input id="dither" type="range" min="0" max="1" step="0.05" value="1">
+  </div>
+
+  <div class="dial">
+    <label>display (filtro) <b id="v-screen">0.00</b></label>
+    <input id="lofiScreen" type="range" min="0" max="1" step="0.02" value="0">
+  </div>
+
+  <div class="row">
+    <button id="mask" aria-pressed="true">M&Aacute;SCARA</button>
+    <button id="pixelated" aria-pressed="true">PIXELATED</button>
+    <button id="ab">A/B</button>
+  </div>
+
+  <p class="note">
+    <b>M&Aacute;SCARA</b> protege a Screen: o registro cai para o valor de
+    <b>display</b> dentro dela e fica cheio no resto do objeto. Desligada, o passe
+    &eacute; cego &mdash; e cego j&aacute; se sabe que d&aacute; errado.
+  </p>
+
+  <p class="note">
+    <b>PIXELATED</b> desligado devolve a interpola&ccedil;&atilde;o do navegador &mdash;
+    &eacute; a diferen&ccedil;a entre o pixel como forma e o pixel como borr&atilde;o.
+  </p>
+
+  <div class="row">
+    <button id="room">QUARTO</button>
+    <button id="vigil">VIG&Iacute;LIA</button>
+    <button id="tela">TELA</button>
+    <button id="solta">SOLTA</button>
+  </div>
+
+  <p class="note">
+    <b>QUARTO</b> acende o que <code>setRoom(false)</code> desligou &mdash; &eacute; o que
+    a escala do buffer existe para comprar de volta. <b>VIG&Iacute;LIA</b> apaga as Velas:
+    o registro promete liberdade para o que n&atilde;o &eacute; real, e &eacute; nesse
+    estado que a promessa se verifica.
+  </p>
+
+  <div class="row">
+    <button id="medir">MEDIR (r&aacute;pido)</button>
+    <button id="medirFull">MEDIR (completo)</button>
+  </div>
+
+  <div class="row">
+    <button data-preset="0">de f&aacute;brica</button>
+    <button data-preset="1">objeto, tela livre</button>
+    <button data-preset="2">mais duro</button>
+    <button data-preset="3">+ resolu&ccedil;&atilde;o baixa</button>
+    <button data-preset="4">sem m&aacute;scara (errado)</button>
+  </div>
+
+  <p class="note">
+    Os presets est&atilde;o em ordem de julgamento: <b>s&oacute; paleta</b> &eacute; o
+    registro sem tocar na legibilidade; <b>PS1</b> &eacute; o piso, para ver onde a
+    Screen morre. A escala &eacute; o dial que compra o quarto e &eacute; o &uacute;nico
+    que custa legibilidade &mdash; s&atilde;o dois eixos, n&atilde;o um.
+  </p>
+
+  <div class="readout" id="out">aguardando o objeto&hellip;</div>
+</aside>
+
+<main>
+  <div id="hint">carregando <code>../index.html</code>&hellip;</div>
+  <iframe id="frame" src="../index.html" title="Tenebrae"></iframe>
+  <pre id="perf"></pre>
+</main>
+
+<script type="module">
+const $ = id => document.getElementById(id)
+const frame = $('frame')
+
+/** The dials, as one object, so A/B and the presets are one call and not five. */
+const state = { scale: 1.5, lofi: 0, levels: 32, dither: 1, pixelated: true,
+                maskOn: true, lofiScreen: 0 }
+
+/**
+ * Presets, and each one is a claim.
+ *
+ * The order is the order they should be judged in, and it is not the order they were
+ * built in. The first pass here shipped a preset that dropped the buffer to 0.40 and
+ * quantised at the same time, and the Screen — 320x180, carrying every word the object
+ * says — was illegible. That is not a taste result, it is a **structural** one:
+ *
+ *   - **palette** costs nothing, is the register, and does not touch legibility.
+ *   - **resolution** is what buys the room back, and the Screen is its ceiling.
+ *
+ * Grinding them together hides which one is doing the damage. `Obra Dinn` is the
+ * precedent for the top of the list: one-bit dither at full resolution, with the type
+ * kept sharp above it. `PS1` is the bottom of the list and is there to show where the
+ * floor is, not as a proposal.
+ */
+const PRESETS = [
+  { scale: 1.5,  lofi: 0,    levels: 32, dither: 1, pixelated: false, maskOn: true,  lofiScreen: 0 },
+  { scale: 1.5,  lofi: 0.9,  levels: 16, dither: 1, pixelated: false, maskOn: true,  lofiScreen: 0 },
+  { scale: 1.5,  lofi: 1,    levels: 10, dither: 1, pixelated: false, maskOn: true,  lofiScreen: 0 },
+  { scale: 0.55, lofi: 0.9,  levels: 16, dither: 1, pixelated: true,  maskOn: true,  lofiScreen: 0 },
+  { scale: 1.5,  lofi: 0.9,  levels: 16, dither: 1, pixelated: false, maskOn: false, lofiScreen: 0 },
+]
+
+let unit = null
+
+/** The object is in an iframe and it is not ready the moment the element exists. */
+function waitForUnit() {
+  const u = frame.contentWindow && frame.contentWindow.__unit
+  if (u && typeof u.setLofi === 'function') {
+    unit = u
+    $('hint').remove()
+    apply()
+    return
+  }
+  setTimeout(waitForUnit, 200)
+}
+frame.addEventListener('load', waitForUnit)
+waitForUnit()
+
+function apply() {
+  if (!unit) return
+  const r = unit.setLofi(state)
+  $('v-scale').textContent = state.scale.toFixed(2)
+  $('v-lofi').textContent = state.lofi.toFixed(2)
+  $('v-levels').textContent = String(state.levels)
+  $('v-dither').textContent = state.dither.toFixed(2)
+  $('pixelated').setAttribute('aria-pressed', String(state.pixelated))
+  $('mask').setAttribute('aria-pressed', String(state.maskOn))
+  $('v-screen').textContent = state.lofiScreen.toFixed(2)
+  $('out').innerHTML =
+    'buffer   <b>' + r.buffer + '</b>\n' +
+    'megapix  <b>' + r.megapixels + '</b>\n' +
+    'níveis   <b>' + r.levels + '</b> por canal  (' +
+      (Math.pow(r.levels, 3) / 1e6).toFixed(1) + 'M cores)\n' +
+    'lofi     <b>' + r.lofi.toFixed(2) + '</b>\n' +
+    'máscara  <b>' + (r.maskOn ? 'a Screen está protegida' : 'passe cego') + '</b>\n\n' +
+    'A 1.5 o buffer é ~2.25x os pixels de 1.0.\nLuz se paga por pixel iluminado.'
+}
+
+for (const k of ['scale', 'lofi', 'levels', 'dither', 'lofiScreen']) {
+  $(k).addEventListener('input', e => {
+    state[k] = k === 'levels' ? +e.target.value : +e.target.value
+    apply()
+  })
+}
+
+$('pixelated').addEventListener('click', () => { state.pixelated = !state.pixelated; apply() })
+$('mask').addEventListener('click', () => { state.maskOn = !state.maskOn; apply() })
+
+/** A/B: hold the shipped image against the current one without losing the dials. */
+let shipped = null
+$('ab').addEventListener('click', e => {
+  if (shipped) { Object.assign(state, shipped); shipped = null; e.target.setAttribute('aria-pressed', 'false') }
+  else {
+    shipped = { ...state }
+    Object.assign(state, { scale: 1.5, lofi: 0, pixelated: false })
+    e.target.setAttribute('aria-pressed', 'true')
+  }
+  sync(); apply()
+})
+
+function sync() {
+  $('scale').value = state.scale; $('lofi').value = state.lofi
+  $('levels').value = state.levels; $('dither').value = state.dither
+  $('lofiScreen').value = state.lofiScreen
+}
+
+for (const b of document.querySelectorAll('[data-preset]')) {
+  b.addEventListener('click', () => {
+    Object.assign(state, PRESETS[+b.dataset.preset]); shipped = null
+    $('ab').setAttribute('aria-pressed', 'false')
+    sync(); apply()
+  })
+}
+
+/* The scene states worth judging the register against. */
+let roomOn = false
+$('room').addEventListener('click', e => {
+  roomOn = !roomOn; unit && unit.setRoom(roomOn)
+  e.target.setAttribute('aria-pressed', String(roomOn))
+})
+$('vigil').addEventListener('click', e => {
+  const on = e.target.getAttribute('aria-pressed') !== 'true'
+  /* the crossfader *is* the Vigil, and 0 is the end of it: every Candle dead, the
+     Screen and the moon left. `?vigil=100` is the same state from a URL. */
+  unit && unit.light(on ? 0 : 1)
+  e.target.setAttribute('aria-pressed', String(on))
+})
+$('tela').addEventListener('click', () => unit && unit.focusWork(0))
+$('solta').addEventListener('click', () => unit && unit.unfocus())
+
+async function measure(quick) {
+  if (!unit) return
+  const pre = $('perf')
+  pre.style.display = 'block'
+  pre.textContent = 'medindo… ' + (quick ? '~10s' : '~25s') +
+    '  (não troque de aba — rAF morre em aba oculta)'
+  try { pre.textContent = await unit.perf(quick ? 1 : 0) }
+  catch (err) { pre.textContent = 'falhou: ' + err.message }
+}
+$('medir').addEventListener('click', () => measure(true))
+$('medirFull').addEventListener('click', () => measure(false))
+</script>
+</body>
+</html>

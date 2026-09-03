@@ -44,7 +44,7 @@ function remember(value) {
 
 /* No backtick may appear inside this template literal, comments included. */
 const CSS = `
-  .cs-bar { position:fixed; left:0; right:0; bottom:0; z-index:80;
+  .cs-bar { position:relative; width:100%; z-index:80;
     display:flex; gap:18px; align-items:center; justify-content:center; flex-wrap:wrap;
     padding:14px 20px calc(14px + env(safe-area-inset-bottom));
     background:rgba(8,7,6,.94); border-top:1px solid #2A241C;
@@ -102,7 +102,12 @@ export function createConsent(onDecide) {
       <button type="button" data-yes>${UI.consentAccept}</button>
       <button type="button" data-no>${UI.consentDecline}</button>
     </div>`
-  document.body.appendChild(bar)
+  /* The bottom edge is shared: this bar, the other language's and the phone's
+     turn notice. `#avisos` in `index.html` is the stack that keeps them from
+     covering each other — three things pinned to `bottom:0` independently is how
+     two of them become invisible. `document.body` is the fallback, which is what
+     the tests get and what a page without the stack would get. */
+  ;(document.getElementById('avisos') || document.body).appendChild(bar)
 
   /* A forced reflow rather than a frame: rAF fires zero times in a hidden tab, and a
      bar that never slides up is a bar nobody can answer. Same reason as contact.js. */

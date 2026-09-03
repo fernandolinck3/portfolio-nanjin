@@ -46,8 +46,10 @@ a browser viewport — "the screen" never means the visitor's monitor.
 ## The setting
 
 **Altar**:
-What the Unit rests on and everything around it: a slab of black veined marble, an embroidered
-linen cloth, and the Candles. Baroque and liturgical rather than occult-satanic — the register is
+What the Unit rests on and everything around it: a top of **dark walnut**, an embroidered
+linen cloth, and the Candles. It read "black veined marble" here until 2026-09-03 and had been
+walnut in `scene.js` long before that — the reference's table is dark walnut, and the tone was
+fitted by measurement rather than chosen. Ruled by Fernando when the divergence surfaced. Baroque and liturgical rather than occult-satanic — the register is
 a side chapel, not a ritual site.
 _Avoid_: table, desk, plinth, scene
 

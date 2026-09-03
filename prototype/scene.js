@@ -280,6 +280,47 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromEquirectangular(envTexture()).texture;
 
 /**
+ * A measured room to reflect, arriving **after** the boot rather than during it.
+ *
+ * Gold reads as gold because of what it reflects, and until now it reflected a canvas
+ * gradient: two radial blobs and a warm bounce. Enough to keep the gilt from being
+ * flat grey, not enough to make it metal — a real interior has dozens of small
+ * sources at different distances and a gradient has none.
+ *
+ * Ruled by eye on 2026-09-03: a **baroque theatre**, gilt ornament and red velvet over
+ * cream and gold. It won over a Victorian drawing room (good, but domestic; loses the
+ * ornament) and over a sepulchral chapel that was tried first and was wrong for a
+ * reason worth keeping: its cool ceiling was half of what made it interesting, and
+ * the register here is an old baroque mansion, not a cold sacral room. The losing
+ * files were deleted the same day. `public/hdri/CREDITS.md` carries the provenance.
+ *
+ * **Loaded lazily on purpose.** The file is 1,6 MB and T-21 bought the opening down to
+ * 2,42s by removing dwell, not by adding a blocking fetch. The procedural environment
+ * lights the first frame, this arrives when it arrives, and a failed fetch changes
+ * nothing. `?hdri=0` keeps the procedural one, which is how the two get compared.
+ */
+const ENV_FILES = { teatro: 'teatro-1k.hdr' };
+const ENV_PICK = new URLSearchParams(location.search).get('env');
+if (!location.search.includes('hdri=0')) {
+  const file = ENV_FILES[ENV_PICK] || ENV_FILES.teatro;
+  import('three/examples/jsm/loaders/RGBELoader.js')
+    .then(({ RGBELoader }) => new Promise((res, rej) => {
+      new RGBELoader().load(import.meta.env.BASE_URL + 'hdri/' + file, res, undefined, rej);
+    }))
+    .then(tex => {
+      tex.mapping = THREE.EquirectangularReflectionMapping;
+      const prev = scene.environment;
+      scene.environment = pmrem.fromEquirectangular(tex).texture;
+      /* the equirect only exists to build the prefiltered cube, and it is the big one
+         of the two — 1k of float RGB is several megabytes resident */
+      tex.dispose();
+      prev?.dispose?.();
+      console.log('[tenebrae] hdri environment in:', file);
+    })
+    .catch(e => console.warn('no hdri environment; keeping the procedural one', e));
+}
+
+/**
  * Tenebrism, measured (ADR-0018).
  *
  * This used to be three directional lights — key, fill and a cold rim — with the
@@ -1308,6 +1349,44 @@ function slab(w, d, h, r, hole) {
 }
 
 /** A rectangular hole, in shape coordinates. */
+/**
+ * A shaped top — the outline of a table rather than of a board.
+ *
+ * `slab()` makes a rounded rectangle, which is right for the Chassis and wrong for
+ * the Altar: a Napoleon III table has **bowed long sides, generous shaped corners and
+ * ends that curve**, and the difference between that and a rounded rectangle is most
+ * of why the mensa read as a plank however good the wood got.
+ *
+ *   `bow` — how far the middle of each side pushes outward, in world units.
+ *   `r`   — how far back the corners start, which is what makes the ends read as
+ *           shaped rather than clipped.
+ *
+ * Quadratic curves throughout, because the shape wants **continuity of direction**,
+ * not of curvature: a table edge is drawn by a template, not by a spline. The extrude
+ * matches `slab()` exactly — same bevel, same rotation, same UV consequence, which
+ * matters because the UVs come out in world units and the tiling depends on it.
+ */
+function shapedTop(w, d, h, { bow = 0, r = 0, hole = null } = {}) {
+  const hw = w / 2, hd = d / 2, sideBow = bow * 1.35;
+  const s = new THREE.Shape();
+  s.moveTo(-hw + r, -hd);
+  s.quadraticCurveTo(0, -hd - bow, hw - r, -hd);          /* front edge, bowed out */
+  s.quadraticCurveTo(hw, -hd, hw, -hd + r);               /* corner */
+  s.quadraticCurveTo(hw + sideBow, 0, hw, hd - r);        /* right end, bowed out */
+  s.quadraticCurveTo(hw, hd, hw - r, hd);                 /* corner */
+  s.quadraticCurveTo(0, hd + bow, -hw + r, hd);           /* back edge */
+  s.quadraticCurveTo(-hw, hd, -hw, hd - r);               /* corner */
+  s.quadraticCurveTo(-hw - sideBow, 0, -hw, -hd + r);     /* left end */
+  s.quadraticCurveTo(-hw, -hd, -hw + r, -hd);             /* corner */
+  if (hole) s.holes.push(rectPath(hole));
+  const g = new THREE.ExtrudeGeometry(s, {
+    depth: h, bevelEnabled: true, bevelThickness: .012, bevelSize: .012,
+    bevelSegments: 3, curveSegments: 24,
+  });
+  g.rotateX(-Math.PI / 2); g.computeVertexNormals();
+  return g;
+}
+
 function rectPath({ w, d, y = 0, x = 0 }) {
   const p = new THREE.Path();
   p.moveTo(x - w / 2, y - d / 2);
@@ -2188,7 +2267,7 @@ const altar = new THREE.Group(); scene.add(altar);
  * the Chassis and the Pads already use. This is the "bevels are free" line from
  * `docs/realism-budget.md`, spent on the largest surface in the frame.
  */
-const mensa = new THREE.Mesh(slab(14.6, 8.6, .62, .07),
+const mensa = new THREE.Mesh(shapedTop(14.6, 8.6, .62, { bow: .42, r: 2.6 }),
   new THREE.MeshStandardMaterial({
     map: woodTexture(false), bumpMap: woodTexture(true), bumpScale: .8,
     roughnessMap: wearMap(7711, 220, .38, 3),
@@ -2201,6 +2280,61 @@ const mensa = new THREE.Mesh(slab(14.6, 8.6, .62, .07),
   }));
 /* `slab` extrudes from y=0 upward, so the top lands at 0 where the Box's centre did */
 mensa.position.y = -.62; altar.add(mensa);
+
+/**
+ * Dark figured wood on the Altar top, after the boot — the second measured surface.
+ *
+ * This is the largest surface in the frame and the one the instrument sits on, so it
+ * is where drawn grain was least convincing: a canvas gradient repeats its own idea of
+ * wood, and a table top is exactly where an eye looks for grain that does not.
+ *
+ * **Figured wood, not veneer.** The first try was a black walnut *veneer* — straight,
+ * even, machine-sliced — and the word for it was the right one: robotic lines.
+ * Uniformity is what a veneer sheet *is* by manufacture, and it is the opposite of
+ * what an antique table has.
+ *
+ * **The tint goes to white, and that is not a reversal of a fitted number.**
+ * `0x554438` existed to darken a *drawn* wood that was pale; the comment above records
+ * the surface blowing toward white at exposure 1.75. This photograph is already dark
+ * walnut, and multiplying one by the other throws away the grain it was brought in
+ * for. Same rule the acoustic panels follow: the colour lives in the map now.
+ *
+ * **`MENSA_TILE` is a sheet of wood in world units, not a multiplier.** `slab()` is an
+ * `ExtrudeGeometry` whose UV generator emits shape coordinates in world units —
+ * measured here, the mensa's UVs run -7.30..7.30 by -4.30..4.30. Copying the drawn
+ * texture's `repeat.set(2, 1.4)` therefore laid twenty-nine tiles across a table a
+ * metre and a half wide, and grain finer than a pixel averages to one flat colour.
+ *
+ * The top is still half of what it should be: the reference is a Napoleon III
+ * marquetry table, near-black wood carrying **gilt inlay**, a bronze beaded edge and a
+ * shaped top. That ornament is a drawn graphic layer over this material — which is
+ * what the Plate already does and what `CONTEXT.md` calls the Print. Next piece, and
+ * not a texture swap.
+ */
+if (!location.search.includes('tex=0')) {
+  const load = new THREE.TextureLoader();
+  const base = import.meta.env.BASE_URL + 'textures/';
+  const MENSA_TILE = 5.2;
+  const grain = (t, srgb) => {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(1 / MENSA_TILE, 1 / MENSA_TILE);
+    t.anisotropy = 8;
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  };
+  Promise.all([
+    load.loadAsync(base + 'nogueira-cor.jpg').then(t => grain(t, true)),
+    load.loadAsync(base + 'nogueira-arm.jpg').then(t => grain(t, false)),
+    load.loadAsync(base + 'nogueira-nor.jpg').then(t => grain(t, false)),
+  ]).then(([cor, arm, nor]) => {
+    const m = mensa.material;
+    m.map?.dispose(); m.bumpMap?.dispose(); m.roughnessMap?.dispose();
+    m.map = cor; m.bumpMap = null; m.normalMap = nor; m.roughnessMap = arm;
+    m.color.setHex(0xFFFFFF);
+    m.needsUpdate = true;
+    console.log('[tenebrae] walnut altar in');
+  }).catch(e => console.warn('no walnut; keeping the drawn top', e));
+}
 
 /**
  * The cloth, darkened — and flagged.
@@ -2229,6 +2363,52 @@ const GILT = new THREE.MeshStandardMaterial({
      coat that is not physically there. Roughness carries the gilt on its own. */
   color: 0xC9A03C, metalness: 1, roughness: .22,
 });
+
+/**
+ * The table stops being a plank: a bronze edge and an apron under the top.
+ *
+ * The mensa was one rounded slab on four turned legs, and the word for that from
+ * across the room is *board*. What makes an antique table read as furniture is not
+ * the wood — it is that the edge is **profiled** and that there is structure between
+ * the top and the legs. Fernando's reference is a Napoleon III marquetry table: a
+ * gadrooned bronze rim around a shaped top, an ornamented frieze below it, turned
+ * legs under that.
+ *
+ * Two meshes, no new lights, and geometry is paid for once (ADR-0019). This is the
+ * cheapest half of that silhouette; the shaped serpentine outline and the gilt inlay
+ * on the top are the other half, and the inlay is a drawn layer rather than a model —
+ * the same thing the Plate calls the Print.
+ *
+ * Built **here** and not beside the mensa two hundred lines up, because `GILT` is
+ * declared immediately above and a reference to it from up there is a temporal dead
+ * zone. Same reason the temperature block sits where it does.
+ */
+{
+  /**
+   * The rim wraps the edge — it does not sit on the top.
+   *
+   * First attempt was 0.16 proud in plan and only 0.26 tall, which from above read as
+   * a **gold flange around the table**, like a picture frame lying on the floor. A
+   * bronze bead on furniture is the opposite proportion: barely proud in plan, tall
+   * enough to cover the thickness of the top. It is seen on the *side* of the table,
+   * and from above it should be almost invisible.
+   *
+   * So: 0.09 proud, 0.46 tall, and its top surface parked below the wood's, leaving
+   * the tabletop clear. The inner opening is square-cornered because `rectPath` is,
+   * and it is buried inside the slab where no one can see a corner.
+   */
+  const rim = new THREE.Mesh(
+    shapedTop(14.78, 8.78, .46, { bow: .43, r: 2.64, hole: { w: 14.30, d: 8.30 } }), GILT);
+  rim.position.y = -.54;
+  altar.add(rim);
+
+  /* The apron: inset from the top all round, hanging to just above where the legs
+     start. It shares the mensa's material on purpose — one wood, one swap, and the
+     photograph that lands on the top lands here too. */
+  const apron = new THREE.Mesh(shapedTop(13.6, 7.6, .74, { bow: .38, r: 2.3 }), mensa.material);
+  apron.position.y = -1.36;
+  altar.add(apron);
+}
 function candlestick(x, z, height) {
   const g = new THREE.Group(); g.position.set(x, 0, z); altar.add(g);
   const prof = [
@@ -2451,6 +2631,51 @@ const floor = new THREE.Mesh(new THREE.PlaneGeometry(SIDE_X * 2, DEPTH),
     color: 0x6B584A, roughness: .56, metalness: 0,
   }));
 floor.rotation.x = -Math.PI / 2; floor.position.set(0, FLOOR_Y, WALL_Z + DEPTH / 2); room.add(floor);
+
+/**
+ * A measured floor over the drawn one, arriving after the boot.
+ *
+ * Herringbone parquet, and that is the register talking rather than taste: plank
+ * flooring reads workshop, parquet reads **house** — the baroque mansion this object
+ * sits in, and the same floor as the theatre in the environment map.
+ *
+ * Two files at 512px, 126 KB together, reduced from Poly Haven's 1k with `sips`: this
+ * floor is seen at a shallow angle, mostly dark, under a rug for half its area, and
+ * none of that detail survives the angle. `public/textures/CREDITS.md` has the
+ * provenance.
+ *
+ * **No AO map on purpose.** three reads `aoMap` off a second UV channel that
+ * `PlaneGeometry` does not have, and occlusion on a flat plane describes nothing. The
+ * `arm` file is here for its green channel — roughness — which is the half that works.
+ */
+if (!location.search.includes('tex=0')) {
+  const load = new THREE.TextureLoader();
+  const base = import.meta.env.BASE_URL + 'textures/';
+  const tile = (t, srgb) => {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    /* one tile every ~2.6 world units, so the herringbone reads as boards rather than
+       as a pattern printed on the room */
+    t.repeat.set(SIDE_X * 2 / 2.6, DEPTH / 2.6);
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  };
+  Promise.all([
+    load.loadAsync(base + 'parquet-cor.jpg').then(t => tile(t, true)),
+    load.loadAsync(base + 'parquet-arm.jpg').then(t => tile(t, false)),
+    load.loadAsync(base + 'parquet-nor.jpg').then(t => tile(t, false)),
+  ]).then(([cor, arm, nor]) => {
+    const m = floor.material;
+    m.map?.dispose(); m.bumpMap?.dispose(); m.roughnessMap?.dispose();
+    m.map = cor;
+    m.bumpMap = null;              /* the drawn bump ran along planks, not herringbone */
+    m.normalMap = nor;
+    m.roughnessMap = arm;
+    m.color.setHex(0xFFFFFF);      /* the tint existed to keep drawn wood from going flat */
+    m.roughness = .72;
+    m.needsUpdate = true;
+    console.log('[tenebrae] parquet floor in');
+  }).catch(e => console.warn('no parquet; keeping the drawn floor', e));
+}
 
 const rug = new THREE.Mesh(new THREE.PlaneGeometry(19, 13),
   new THREE.MeshStandardMaterial({ map: rugTexture(), roughness: .98, metalness: 0, color: 0x9a8f86 }));
@@ -2739,6 +2964,53 @@ let vigil = +(new URLSearchParams(location.search).get('vigil') || 0) / 100;
  */
 const RAKE_LAYER = 2;
 const rake = new THREE.DirectionalLight(0x7FD9B0, 0);
+
+/* Everything about temperature lives here, immediately after the last light is created
+   and **before** `applyVigil` is defined, because `applyVigil` calls into it and
+   `setVigil` can run during start-up. Collected further down the file it is a temporal
+   dead zone waiting to happen. */
+
+/**
+ * Warmth is **morning's** warmth, and the Vigil spends it.
+ *
+ * The finding this came from: the rig was fitted for the *night* — moon blue, phosphor
+ * green — and the object had no day state at all, so night colours showed at every
+ * hour. That is what read as cold. Five sources lean cold and none of them were
+ * decided together: the moonlight (`0x8FA6C4`), the Screen glow and the phosphor rake
+ * (both `0x7FD9B0`), the Moon Deck lamp (`0x8FBEDC`) and Lyra's picture light
+ * (`0x8FD9C4`). Three of the five are phosphor green, which is *digital occultism* —
+ * a different register from **old baroque mansion**.
+ *
+ * So temperature is not a setting beside the rite, it is one end of it. At `vigil` 0
+ * the cold lights sit `MORNING_WARMTH` of the way toward the Candles' amber; as the
+ * Vigil rises they slide back to the colours ADR-0018 measured. Nightfall stops being
+ * a dimmer and becomes a change of light, which is what a night is.
+ */
+const COLD_LIGHTS = [];
+scene.traverse(o => {
+  if (!o.isLight || !o.color) return;
+  const c = o.color;
+  /* cold means blue or green carries more than red — enough to catch the moon and the
+     three phosphors, and to leave the key, the Candles and the wall wash alone */
+  if (c.b > c.r * 1.02 || (c.g > c.r * 1.02 && c.b > c.r * 0.85)) {
+    COLD_LIGHTS.push([o, c.clone()]);
+  }
+});
+const WARM_ANCHOR = new THREE.Color(0xFFB162);   /* the Candles' own colour */
+let MORNING_WARMTH = .7;
+function applyWarmth() {
+  const k = MORNING_WARMTH * (1 - vigil);
+  for (const [l, base] of COLD_LIGHTS) l.color.copy(base).lerp(WARM_ANCHOR, k);
+  return k;
+}
+function setWarmth(k) {
+  MORNING_WARMTH = Math.max(0, Math.min(1, k));
+  const now = applyWarmth();
+  return {
+    morning: MORNING_WARMTH, now, vigil, lights: COLD_LIGHTS.length,
+    colours: COLD_LIGHTS.map(([l]) => '#' + l.color.getHexString()),
+  };
+}
 rake.position.set(-3.4, .34, -2.2); unit.add(rake);
 rake.layers.set(RAKE_LAYER);
 
@@ -2750,6 +3022,8 @@ const ENV0 = scene.environmentIntensity ?? 1;
    about the same numbers is how they drift. */
 
 function applyVigil() {
+  /* the temperature is part of the rite, not a setting beside it — see applyWarmth */
+  applyWarmth();
   dim(key, KEY0 * candle(vigil, ...RAMPS[2]));
   /* The moon does not go out. It is the only thing in here that is not a flame,
      and the room ending on it is the point of the rite. */
@@ -4415,6 +4689,11 @@ window.__unit = {
   setQuality(level) {
     PIXEL_RATIO = level >= 2 ? Math.min(devicePixelRatio, 1.5) : level >= 1 ? 1 : 0.75;
     renderer.setPixelRatio(PIXEL_RATIO);
+    /* The composer holds its own ratio and does not learn about this one. Without the
+       next line the canvas shrank and the chain did not, so `survive` cost almost
+       exactly what `crisp` cost — the setting that exists to buy a frame back was not
+       buying one. See `post.js`. */
+    post.setPixelRatio(PIXEL_RATIO);
     renderer.setSize(W(), H());
     SCREEN_STEP = level >= 2 ? 1 / 24 : level >= 1 ? 1 / 15 : 1 / 10;
     /* occlusion and bloom are full-screen passes; at `survive` they are the first
@@ -4431,6 +4710,61 @@ window.__unit = {
     scene.traverse(o => { if (o.isMesh && o.material) o.material.needsUpdate = true; });
     return { level, pixelRatio: PIXEL_RATIO, screenFps: Math.round(1 / SCREEN_STEP) };
   },
+
+  /**
+   * The low-fi register — resolution and palette, as two separate dials.
+   *
+   * Treating "a PS1 look" as one setting is the mistake. It is three things, they cost
+   * different amounts, and only one is about money: **scale** (the buffer the scene is
+   * rasterised into — the one that pays, since lighting is charged per lit pixel and
+   * `docs/realism-budget.md` measured fifteen lights at 87% of the frame);
+   * **levels/dither** (the palette, costing nothing); and vertex snapping with affine
+   * texture warp, which is the console's actual signature, is **not built**, and is the
+   * pair that reads as *game console* where the first two read as *print*.
+   *
+   * `pixelated` is not a detail: the browser upscales the canvas back to CSS size
+   * whatever happens, and smooth upscaling turns the exercise into a blur — the N64
+   * look, not this one.
+   *
+   *   __unit.setLofi({ scale: .4, levels: 24, dither: 1, lofi: 1, pixelated: true })
+   */
+  setLofi({ scale, levels, dither, lofi, pixelated, maskOn, lofiScreen, feather } = {}) {
+    if (scale !== undefined) {
+      PIXEL_RATIO = Math.max(0.1, Math.min(2, scale));
+      renderer.setPixelRatio(PIXEL_RATIO);
+      post.setPixelRatio(PIXEL_RATIO);
+      renderer.setSize(W(), H());
+      post.setSize(W(), H());
+    }
+    if (pixelated !== undefined) {
+      renderer.domElement.style.imageRendering = pixelated ? 'pixelated' : '';
+    }
+    /* The mask defaults **on** the moment the register is switched on. A flat pass over
+       the Screen is the one outcome already known to be wrong — it made 320x180 of
+       type illegible — and a default that has to be remembered is not a default. */
+    const p = post.set({
+      lofi, levels, dither, lofiScreen, feather,
+      maskOn: maskOn !== undefined ? maskOn : (lofi !== undefined && lofi > 0 ? true : undefined),
+    });
+    return {
+      scale: PIXEL_RATIO,
+      buffer: Math.round(W() * PIXEL_RATIO) + 'x' + Math.round(H() * PIXEL_RATIO),
+      megapixels: +(W() * PIXEL_RATIO * H() * PIXEL_RATIO / 1e6).toFixed(3),
+      pixelated: renderer.domElement.style.imageRendering === 'pixelated',
+      lofi: p.lofi, levels: p.levels, dither: p.dither,
+      maskOn: p.maskOn, lofiScreen: p.lofiScreen,
+    };
+  },
+
+  /** The room by degree, which is the shape the decision actually has. The ROOM dial
+      under `?debug` is this, and so is `?room=40`. */
+  setRoomAmount(k) { return setRoomAmount(k) },
+  /** The Pool — darkness by distance from a point on the floor, costing no light.
+      `__unit.setPool({ amount: .85, near: 5, far: 26 })`. */
+  setPool(p) { return setPool(p) },
+  /** `__unit.setWarmth(.7)` — how far the cold lights sit toward the Candles' amber
+      **at morning**. The Vigil spends it back down to the fitted night. */
+  setWarmth(k) { return setWarmth(k) },
 
   /**
    * Measure what this scene actually costs, and what each part of it costs.
@@ -4474,12 +4808,23 @@ window.__unit = {
       ratio: PIXEL_RATIO, step: SCREEN_STEP, screen: SCREEN_ON,
       shadows: renderer.shadowMap.enabled, decor: decor.group.visible,
       room: room.visible, env: scene.environmentIntensity,
+      /* the room is two switches, not one: `setRoom` hides meshes and `setRoomLights`
+         hides the lights inside them. Pricing it with only the first flipped prices an
+         unlit room, and the lights are the half that costs — ADR-0019. */
+      roomLights: roomOnlyLights.some(l => l && l.visible),
     };
-    const setRatio = r => { PIXEL_RATIO = r; renderer.setPixelRatio(r); renderer.setSize(W(), H()); };
+    /* `post.setPixelRatio` matters more here than anywhere: without it the ratio rows
+       below priced a smaller canvas fed by a full-size chain, which is not what
+       lowering the ratio does in the shipped path either. */
+    const setRatio = r => {
+      PIXEL_RATIO = r; renderer.setPixelRatio(r); post.setPixelRatio(r);
+      renderer.setSize(W(), H()); post.setSize(W(), H());
+    };
     const restore = () => {
       setRatio(S0.ratio); SCREEN_STEP = S0.step; SCREEN_ON = S0.screen;
       renderer.shadowMap.enabled = S0.shadows; decor.group.visible = S0.decor;
       room.visible = S0.room; scene.environmentIntensity = S0.env;
+      setRoomLights(S0.roomLights);
     };
 
     const cases = [
@@ -4489,6 +4834,17 @@ window.__unit = {
       ['shadows off',             () => { renderer.shadowMap.enabled = false; }],
       ['pixel ratio 1.0',         () => setRatio(1)],
       ['pixel ratio 0.75',        () => setRatio(.75)],
+      /* below here is the low-fi register's own axis, and the two rows that price the
+         room coming back — the question `setRoom(false)` has been standing in for */
+      ['pixel ratio 0.50',        () => setRatio(.5)],
+      ['pixel ratio 0.35',        () => setRatio(.35)],
+      ['pixel ratio 0.25',        () => setRatio(.25)],
+      ['0.35 with the room back', () => {
+        setRatio(.35); room.visible = true; decor.group.visible = true; setRoomLights(true);
+      }],
+      ['the room back at 1.0',    () => {
+        room.visible = true; decor.group.visible = true; setRoomLights(true);
+      }],
       ['furnishing hidden',       () => { decor.group.visible = false; }],
       ['whole room hidden',       () => { room.visible = false; }],
       ['environment off',         () => { scene.environmentIntensity = 0; }],
@@ -4760,7 +5116,13 @@ function dim(light, intensity) {
  * Built here rather than beside the renderer because `RenderPass` needs the scene
  * fully populated, and the room, the Altar and the props are all assembled above.
  */
-const post = createPost(renderer, scene, camera, { width: W(), height: H() });
+const post = createPost(renderer, scene, camera, {
+  width: W(), height: H(),
+  /* The Screen's rectangle, so the low-fi register can leave it alone. Same numbers
+     `focus.js` is given, from the same two constants — if the opening ever moves, both
+     follow it, and neither carries its own copy. */
+  screen: { centre: new THREE.Vector3(0, FACE_Y, SCREEN_Z), w: OPENING.w, d: OPENING.d },
+});
 
 /**
  * Zoom to the Screen, hand the Work to the DOM (prototype — reverses ADR-0017).
@@ -4908,6 +5270,112 @@ room.traverse(o => {
   if ((o.isMesh || o.isInstancedMesh) && o !== floor) roomScenery.push(o);
 });
 portrait.group?.traverse?.(o => { if (o.isMesh) roomScenery.push(o); });
+
+/**
+ * The Pool — darkness that grows with distance from a point on the floor.
+ *
+ * `CONTEXT.md` says the room is lit in pools with darkness between them, and until now
+ * the only way to make one was to add a light. ADR-0019 priced that: every visible
+ * light compiles into the shader and is evaluated by every lit fragment, and fifteen
+ * of them are 87% of the frame. So the room stayed off.
+ *
+ * This is the same reading with none of that bill: **radial fog centred on a point in
+ * the world**, not on the camera. Distance is measured on the floor plane from
+ * `centre`, and surfaces fade toward `farCol` as they recede. It is not a light, it
+ * does not enter the light loop, and it costs four instructions in materials that were
+ * already being drawn. Read off `29.circular-fog.js`; see
+ * `docs/research/basement-laboratory.md`.
+ *
+ * The Unit and the Altar are not patched — they are not under `room`, so they are
+ * exempt by construction rather than by a list. `mat.poolExempt = true` opts a
+ * material out; nothing sets it yet. It exists because Lyra's portrait hangs on the
+ * far wall where the pool is strongest, and whether the pool is allowed to take her is
+ * a decision to make by looking.
+ */
+const POOL = {
+  amount:  { value: 0 },                            /* 0 is the shipped image */
+  centre:  { value: new THREE.Vector2(0, 0) },      /* world x,z — the Altar */
+  near:    { value: 3.5 },
+  far:     { value: 16 },
+  nearCol: { value: new THREE.Color(0x000000) },
+  farCol:  { value: new THREE.Color(0x000000) },
+};
+
+/** One function, reused **by reference** on every pooled material: three's default
+    `customProgramCacheKey` is `onBeforeCompile.toString()`, so sharing the reference
+    makes them share one program variant instead of compiling their own. */
+function poolPatch(shader) {
+  shader.uniforms.uPoolAmount = POOL.amount;
+  shader.uniforms.uPoolCentre = POOL.centre;
+  shader.uniforms.uPoolNear = POOL.near;
+  shader.uniforms.uPoolFar = POOL.far;
+  shader.uniforms.uPoolNearCol = POOL.nearCol;
+  shader.uniforms.uPoolFarCol = POOL.farCol;
+
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', '#include <common>\nvarying vec3 vPoolPos;')
+    /* begin_vertex is where "transformed" comes into existence, and instancing is
+       applied later in project_vertex — so an instanced mesh needs its own matrix here
+       or every copy reports the position of the original. */
+    .replace('#include <begin_vertex>', [
+      '#include <begin_vertex>',
+      '#ifdef USE_INSTANCING',
+      '  vPoolPos = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;',
+      '#else',
+      '  vPoolPos = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+      '#endif',
+    ].join('\n'));
+
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', [
+      '#include <common>',
+      'uniform float uPoolAmount, uPoolNear, uPoolFar;',
+      'uniform vec2 uPoolCentre;',
+      'uniform vec3 uPoolNearCol, uPoolFarCol;',
+      'varying vec3 vPoolPos;',
+    ].join('\n'))
+    /* dithering_fragment is the last chunk in the standard fragment shader */
+    .replace('#include <dithering_fragment>', [
+      '#include <dithering_fragment>',
+      'if (uPoolAmount > 0.0) {',
+      '  float poolD = distance(uPoolCentre, vPoolPos.xz);',
+      '  float poolF = smoothstep(uPoolNear, uPoolFar, poolD) * uPoolAmount;',
+      '  gl_FragColor.rgb = mix(gl_FragColor.rgb, mix(uPoolNearCol, uPoolFarCol, poolF), poolF);',
+      '}',
+    ].join('\n'));
+}
+
+const pooledMats = new Set();
+function poolMaterials(root) {
+  root.traverse(o => {
+    if (!o.material) return;
+    for (const mat of (Array.isArray(o.material) ? o.material : [o.material])) {
+      if (!mat || pooledMats.has(mat) || mat.poolExempt) continue;
+      mat.onBeforeCompile = poolPatch;
+      mat.needsUpdate = true;
+      pooledMats.add(mat);
+    }
+  });
+}
+/* the floor is inside `room` and is the surface the pool reads on most, so this covers
+   it even though `setRoom` deliberately leaves it visible */
+poolMaterials(room);
+
+function setPool(p = {}) {
+  if (p.amount !== undefined) POOL.amount.value = Math.max(0, Math.min(1, p.amount));
+  if (p.near !== undefined) POOL.near.value = p.near;
+  if (p.far !== undefined) POOL.far.value = p.far;
+  if (p.centre !== undefined) POOL.centre.value.set(p.centre[0], p.centre[1]);
+  if (p.nearCol !== undefined) POOL.nearCol.value.setHex(p.nearCol);
+  if (p.farCol !== undefined) POOL.farCol.value.setHex(p.farCol);
+  return {
+    amount: POOL.amount.value, near: POOL.near.value, far: POOL.far.value,
+    centre: [POOL.centre.value.x, POOL.centre.value.y],
+    nearCol: '#' + POOL.nearCol.value.getHexString(),
+    farCol: '#' + POOL.farCol.value.getHexString(),
+    materials: pooledMats.size,
+  };
+}
 function setRoom(on) {
   for (const m of roomScenery) m.visible = on;
   return { shown: on, meshes: roomScenery.length };
@@ -4930,6 +5398,28 @@ function setRoom(on) {
 const roomOnlyLights = [wallWash, pictureLight, ...decor.lamps ?? []];
 function setRoomLights(on) {
   for (const l of roomOnlyLights) if (l) l.visible = on;
+}
+
+/** What each of those was set to before the room was switched off. Captured rather
+    than written down, because re-typing fitted numbers into a second place is how two
+    versions of a rig start to disagree. */
+const ROOM_BASE = roomOnlyLights.map(l => (l ? l.intensity : 0));
+
+/**
+ * The room as an amount rather than a switch — `__unit.setRoomAmount(.4)`.
+ *
+ * A boolean was right while the room was a thing that had been turned off. It is the
+ * wrong shape for bringing it back: what has to be judged is *how much room* the frame
+ * can carry. Meshes are free (ADR-0019) so they return whole above zero; the lights
+ * are the bill, so they scale — through `dim()`, because a light at intensity 0 that
+ * is still `visible` compiles into the shader and is evaluated by every lit fragment
+ * for nothing.
+ */
+function setRoomAmount(k) {
+  k = Math.max(0, Math.min(1, k));
+  setRoom(k > 0);
+  roomOnlyLights.forEach((l, i) => { if (l) dim(l, ROOM_BASE[i] * k); });
+  return { amount: k, lights: roomOnlyLights.filter(l => l && l.visible).length };
 }
 
 setRoom(false);
@@ -5260,6 +5750,95 @@ requestAnimationFrame(frame);
  * tool for making a clip, not part of the object. It sits at the very end because it
  * hands `window.__unit` to the script, and that object is built above.
  */
+/**
+ * The room's dials and addresses live **here**, at the bottom, and not beside the
+ * engraving dials where they were first written.
+ *
+ * They reach forward to `POOL`, `setPool`, `setRoomAmount` and `intro`, all declared
+ * with the room a thousand lines below the workbench row. Read at import time from
+ * that position, `?room=60` and `?sala` threw a `ReferenceError` before the first
+ * frame — the temporal-dead-zone trap that has killed this scene once already, and one
+ * `npm run check` cannot see because bundling is not executing. A URL flag runs at
+ * import; a click handler does not. Anything that touches the scene graph on load
+ * belongs after the scene graph exists.
+ */
+
+/* ROOM — not one of the engraving dials, so not `dial()`: that one writes into `ENG`
+   and schedules a Plate rebuild, and this touches the scene graph. Kept in the debug
+   row on purpose — the room coming back is an open question with a measurement
+   attached, not a setting a visitor is meant to find. */
+{
+  const el = document.getElementById('room'), out = document.getElementById('roomv');
+  const show = k => { out.textContent = k === 0 ? 'off' : String(Math.round(k * 100)); };
+  el.addEventListener('input', () => show(setRoomAmount(+el.value / 100).amount));
+  const q = new URLSearchParams(location.search).get('room');
+  if (q !== null && !isNaN(+q)) { el.value = String(+q); show(setRoomAmount(+q / 100).amount); }
+}
+
+/* POOL — same reasoning as ROOM. */
+{
+  const el = document.getElementById('pool'), out = document.getElementById('poolv');
+  const show = k => { out.textContent = k === 0 ? 'off' : String(Math.round(k * 100)); };
+  el.addEventListener('input', () => show(setPool({ amount: +el.value / 100 }).amount));
+  const q = new URLSearchParams(location.search).get('pool');
+  if (q !== null && !isNaN(+q)) { el.value = String(+q); show(setPool({ amount: +q / 100 }).amount); }
+}
+
+/* WARM — morning's temperature. The dial shows the morning value; what the object is
+   showing right now also depends on where the Vigil stands. */
+{
+  const el = document.getElementById('warm'), out = document.getElementById('warmv');
+  const show = k => { out.textContent = k === 0 ? 'rig' : String(Math.round(k * 100)); };
+  el.value = String(Math.round(MORNING_WARMTH * 100)); show(MORNING_WARMTH);
+  el.addEventListener('input', () => show(setWarmth(+el.value / 100).morning));
+  const q = new URLSearchParams(location.search).get('warm');
+  if (q !== null && !isNaN(+q)) { el.value = String(+q); show(setWarmth(+q / 100).morning); }
+}
+
+/**
+ * `?sala` — one address that shows the room, because three steps was two too many.
+ *
+ * The room only became visible in a working session by clicking FREECAM and typing
+ * camera numbers into the console. That is a workbench gesture, and asking anyone to
+ * repeat it in order to *look at a thing* is how a change goes unjudged. Same three
+ * moves, done for you: skip the opening, unlock the camera, park it where the walls,
+ * the window and the Altar are all in frame.
+ *
+ * It does **not** propose a camera for the visitor. That is the open decision — see
+ * `50.camera-rail` in `docs/research/basement-laboratory.md` — and it needs a control
+ * on the Plate, not a query string.
+ */
+if (location.search.includes('sala')) {
+  intro.skip();
+  FREECAM = true;
+  if (freecamBtn) freecamBtn.textContent = 'FREECAM ON';
+  CAM.pan = { x: 0, y: 2.2, z: 0 };
+  setRoomAmount(1);
+  if (POOL.amount.value === 0) setPool({ amount: .85, near: 5, far: 26 });
+  window.__unit.setCam({ tilt: 35, yaw: 0, dist: 26 });
+}
+
+/**
+ * `?lofi` — the low-fi register on the real object rather than in the workbench.
+ *
+ * `prototype/lofi-fit/` is where the dials get moved and the cost gets read; this is
+ * the other half, one URL that puts the preset on the shipped page at full size with
+ * the opening playing. It deliberately **does not touch the resolution**: the two axes
+ * were bolted together once and the Screen paid for it, so the buffer has to be asked
+ * for by name — `?lofi=0.55`.
+ *
+ * Not a setting anyone reaches without typing it. Nothing about this is decided, and a
+ * register this loud does not arrive by default on one session's enthusiasm.
+ */
+if (location.search.includes('lofi')) {
+  const q = new URLSearchParams(location.search).get('lofi');
+  const scale = q && !isNaN(+q) && +q > 0 ? +q : null;
+  window.__unit.setLofi({
+    ...(scale === null ? {} : { scale, pixelated: scale < 1 }),
+    levels: 16, dither: 1, lofi: 0.9, maskOn: true, lofiScreen: 0,
+  });
+}
+
 if (location.search.includes('film')) {
   import('./film.js').then(m => m.runFilm(window.__unit, renderer.domElement));
 }

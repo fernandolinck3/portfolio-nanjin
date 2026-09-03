@@ -37,7 +37,7 @@ const KEY = 'tenebrae.lang.asked'
 
 /** A barra veste a do consentimento: mesma família, para não parecer outra coisa. */
 const CSS = `
-  .lg-bar { position:fixed; left:0; right:0; bottom:0; z-index:79;
+  .lg-bar { position:relative; width:100%; z-index:79;
     display:flex; gap:18px; align-items:center; justify-content:center; flex-wrap:wrap;
     padding:14px 20px calc(14px + env(safe-area-inset-bottom));
     background:rgba(8,7,6,.94); border-top:1px solid #2A241C;
@@ -109,7 +109,12 @@ export function offerLanguage() {
   /* Mora no body e não no #frame: um telefone em pé aplica rotate(90deg) ali, e um
      elemento transformado é o bloco de contenção de tudo que está dentro. O espelho,
      o formulário e a barra de cookie chegaram aqui antes, pelo mesmo motivo. */
-  document.body.appendChild(bar)
+  /* The bottom edge is shared: this bar, the other language's and the phone's
+     turn notice. `#avisos` in `index.html` is the stack that keeps them from
+     covering each other — three things pinned to `bottom:0` independently is how
+     two of them become invisible. `document.body` is the fallback, which is what
+     the tests get and what a page without the stack would get. */
+  ;(document.getElementById('avisos') || document.body).appendChild(bar)
 
   const close = () => { remember(); bar.remove() }
   bar.querySelector('[data-stay]').addEventListener('click', close)

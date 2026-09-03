@@ -60,6 +60,47 @@ const GradeShader = {
     lift: { value: new THREE.Color(0x000000) },
     gain: { value: new THREE.Color(0xFFF0DC) },   // where the highlights go
     saturation: { value: 1.06 },
+
+    /**
+     * The low-fi register, folded in here rather than added as a pass.
+     *
+     * This file argues one line above that *a pass costs what it costs whether or
+     * not its output is used*, and that is why occlusion and bloom are out of the
+     * chain rather than turned down. A separate quantise pass would have made the
+     * same mistake: a second full-screen draw, paid on every frame, to do nothing
+     * whenever the register is off. Eleven instructions inside a pass that already
+     * runs cost nothing measurable and cannot be forgotten in the chain.
+     *
+     * `lofi` is the master, and **at 0 this shader is the shipped one, pixel for
+     * pixel** — the mix at the end collapses to the ungraded branch. That property
+     * is the whole safety of the experiment: it is switched on, not converted to.
+     */
+    lofi: { value: 0 },       // 0..1 — how much of the quantised image survives
+    levels: { value: 32 },    // colour steps per channel; 32 is the PS1's 5 bits
+    dither: { value: 1 },     // 0..1 — strength of the ordered pattern
+
+    /**
+     * The Screen is exempt, and that is the whole design rather than a concession.
+     *
+     * A register applied flat across the frame is an effect. This object cannot
+     * afford one: the Screen is 320x180 and every word it says lives there, so a
+     * pass that treats it like any other surface trades the content for a texture.
+     * The first version of this did exactly that and the Screen became unreadable —
+     * which is not a matter of degree, it is the pass being wrong about what it is
+     * looking at.
+     *
+     * So the quantiser is told where the Screen is. `sq0..sq3` are its four corners
+     * projected into UV, updated every frame from the same camera that drew them, and
+     * inside that quad the strength falls from `lofi` to `lofiScreen` — not to zero,
+     * because a display sitting in a quantised room and showing none of it reads as
+     * pasted on. A trace of the register keeps it in the same picture; the type stays
+     * legible because the *palette* is what softens, never the resolution.
+     */
+    sq0: { value: new THREE.Vector2() }, sq1: { value: new THREE.Vector2() },
+    sq2: { value: new THREE.Vector2() }, sq3: { value: new THREE.Vector2() },
+    maskOn: { value: 0 },        // 0 = flat register, 1 = the Screen is protected
+    lofiScreen: { value: 0 },    // what survives *inside* the Screen. Zero: he asked twice.
+    feather: { value: 0.004 },   // soft edge, in the cross-product's own units
   },
   vertexShader: /* glsl */`
     varying vec2 vUv;
@@ -70,6 +111,9 @@ const GradeShader = {
   fragmentShader: /* glsl */`
     uniform sampler2D tDiffuse;
     uniform float time, grain, vignette, saturation;
+    uniform float lofi, levels, dither;
+    uniform vec2 sq0, sq1, sq2, sq3;
+    uniform float maskOn, lofiScreen, feather;
     uniform vec3 lift, gain;
     varying vec2 vUv;
 
@@ -78,6 +122,50 @@ const GradeShader = {
       p = fract(p * vec2(443.897, 441.423));
       p += dot(p, p.yx + 19.19);
       return fract((p.x + p.y) * p.x);
+    }
+
+    /**
+     * Ordered dither, 8x8, built by recursion instead of a lookup table.
+     *
+     * The obvious way to write a Bayer matrix is a constant array indexed by the
+     * pixel, and the obvious way is the one that does not compile everywhere:
+     * GLSL ES 1.0 forbids indexing a constant array by a non-constant expression.
+     * This is the standard closed form instead — a 2x2 that recurses into 4x4 and
+     * 8x8 — and it is pure arithmetic, so it has no such restriction.
+     *
+     * It is fed gl_FragCoord, which is **the internal buffer's pixel grid, not the
+     * page's**. That is the entire point: when the buffer is smaller than the canvas
+     * the pattern is one chunky dot per rendered pixel, upscaled by the browser
+     * along with everything else. Feed it vUv scaled by anything and it becomes
+     * fine noise that reads as grain, which this shader already has and does not
+     * need twice.
+     */
+    float bayer2(vec2 a) { a = floor(a); return fract(a.x / 2.0 + a.y * a.y * 0.75); }
+    float bayer4(vec2 a) { return bayer2(0.5 * a) * 0.25 + bayer2(a); }
+    float bayer8(vec2 a) { return bayer4(0.5 * a) * 0.25 + bayer2(a); }
+
+    /**
+     * Is this pixel inside the Screen?
+     *
+     * Four edges, one cross product each, and the sign of a fifth against a corner
+     * to learn which way the quad wound this frame — a projected quad flips its
+     * winding as the object tilts, and a test that assumes one direction protects
+     * the whole frame *except* the Screen the moment it flips.
+     *
+     * No perspective divide beyond the one already done on the CPU: the Screen is a
+     * planar quad, so its projection is a convex quad in UV and four half-plane tests
+     * are exact for it.
+     */
+    float edgeOf(vec2 p, vec2 a, vec2 b) {
+      vec2 e = b - a, v = p - a;
+      return e.x * v.y - e.y * v.x;
+    }
+    float insideScreen(vec2 p) {
+      float w = sign(edgeOf(sq2, sq0, sq1));
+      float d = min(
+        min(edgeOf(p, sq0, sq1) * w, edgeOf(p, sq1, sq2) * w),
+        min(edgeOf(p, sq2, sq3) * w, edgeOf(p, sq3, sq0) * w));
+      return smoothstep(0.0, max(feather, 1e-5), d);
     }
 
     void main() {
@@ -101,6 +189,32 @@ const GradeShader = {
       float g = hash(vUv * 900.0 + fract(time) * 100.0) - 0.5;
       c.rgb += g * grain * (0.35 + l * (1.0 - l) * 2.6);
 
+      c.rgb = max(c.rgb, 0.0);
+
+      /**
+       * Quantise last, because quantising is the last thing a display does.
+       *
+       * The grade, the vignette and the grain all describe a continuous image; the
+       * register being borrowed here is what happens when that image is written to
+       * a framebuffer that cannot hold it. Doing it before the grain would let the
+       * grain re-introduce values the palette does not have, which is the same as
+       * not quantising at all.
+       *
+       * The dither offset is scaled by one step of the palette: it is there to
+       * decide which of the two neighbouring steps a pixel lands on, not to add
+       * brightness. At dither 0 the same code is a hard posterise, and the banding
+       * that appears is the argument for the pattern.
+       */
+      float k = lofi;
+      if (maskOn > 0.5) k = mix(lofi, lofiScreen * lofi, insideScreen(vUv));
+      if (k > 0.0) {
+        /* not named "step": that is a GLSL built-in, and shadowing a built-in with
+           a variable is legal in the spec and rejected by some drivers. */
+        float band = 1.0 / max(levels, 2.0);
+        vec3 q = c.rgb + (bayer8(gl_FragCoord.xy) - 0.5) * band * dither;
+        c.rgb = mix(c.rgb, floor(q / band + 0.5) * band, k);
+      }
+
       gl_FragColor = vec4(max(c.rgb, 0.0), c.a);
     }`,
 }
@@ -117,9 +231,25 @@ const GradeShader = {
  * after `OutputPass`, which is what performs the tone mapping and the sRGB
  * conversion, so vignette and grain land on display values.
  */
-export function createPost(renderer, scene, camera, { width, height }) {
+export function createPost(renderer, scene, camera, { width, height, screen }) {
   const composer = new EffectComposer(renderer)
   composer.setSize(width, height)
+
+  /**
+   * The Screen's four corners, in world space, computed once.
+   *
+   * It is a horizontal quad on the Plate's face — the object is looked at from
+   * above — so the corners are the rectangle `screen` describes, and they never
+   * move relative to the Unit. What moves is the camera, which is why they are
+   * projected every frame rather than stored as UV.
+   */
+  const corners = screen ? [
+    new THREE.Vector3(screen.centre.x - screen.w / 2, screen.centre.y, screen.centre.z - screen.d / 2),
+    new THREE.Vector3(screen.centre.x + screen.w / 2, screen.centre.y, screen.centre.z - screen.d / 2),
+    new THREE.Vector3(screen.centre.x + screen.w / 2, screen.centre.y, screen.centre.z + screen.d / 2),
+    new THREE.Vector3(screen.centre.x - screen.w / 2, screen.centre.y, screen.centre.z + screen.d / 2),
+  ] : null
+  const projected = new THREE.Vector3()
 
   composer.addPass(new RenderPass(scene, camera))
 
@@ -158,22 +288,58 @@ export function createPost(renderer, scene, camera, { width, height }) {
     /** Called once a frame from the render loop. */
     render(t) {
       grade.uniforms.time.value = t
+      /* Only while the mask is doing something. Four `project()` calls are cheap and
+         four of them every frame for a register nobody turned on is still four more
+         than nothing, and this file's whole argument is that unused work gets paid
+         for anyway. */
+      if (corners && grade.uniforms.maskOn.value > 0.5 && grade.uniforms.lofi.value > 0) {
+        const u = [grade.uniforms.sq0, grade.uniforms.sq1, grade.uniforms.sq2, grade.uniforms.sq3]
+        for (let i = 0; i < 4; i++) {
+          projected.copy(corners[i]).project(camera)
+          u[i].value.set(projected.x * 0.5 + 0.5, projected.y * 0.5 + 0.5)
+        }
+      }
       if (enabled) composer.render()
       else renderer.render(scene, camera)
     },
     setSize(w, h) { composer.setSize(w, h) },
+    /**
+     * The composer keeps its **own** pixel ratio, and this is the only way to move it.
+     *
+     * `EffectComposer` reads `renderer.getPixelRatio()` once, in its constructor, and
+     * multiplies every render target by that number from then on. So a caller that
+     * lowers the renderer's ratio and stops there gets a canvas that shrinks and a
+     * chain that does not: the scene is still rasterised at the old size and handed
+     * to a smaller canvas at the end. The picture changes and the frame time does
+     * not — which is the exact opposite of the point when the ratio is being lowered
+     * to buy back a frame.
+     */
+    setPixelRatio(r) { composer.setPixelRatio(r) },
     /** `__unit.setPost()` — every one of these needs eyes on it. */
-    set({ on, grain, vignette, saturation, lift }) {
+    set({ on, grain, vignette, saturation, lift, lofi, levels, dither,
+          maskOn, lofiScreen, feather }) {
       if (on !== undefined) enabled = !!on
       if (grain !== undefined) grade.uniforms.grain.value = grain
       if (lift !== undefined) grade.uniforms.lift.value.setHex(lift)
       if (vignette !== undefined) grade.uniforms.vignette.value = vignette
       if (saturation !== undefined) grade.uniforms.saturation.value = saturation
+      if (lofi !== undefined) grade.uniforms.lofi.value = lofi
+      if (levels !== undefined) grade.uniforms.levels.value = levels
+      if (dither !== undefined) grade.uniforms.dither.value = dither
+      if (maskOn !== undefined) grade.uniforms.maskOn.value = maskOn ? 1 : 0
+      if (lofiScreen !== undefined) grade.uniforms.lofiScreen.value = lofiScreen
+      if (feather !== undefined) grade.uniforms.feather.value = feather
       return {
         on: enabled,
         grain: grade.uniforms.grain.value, vignette: grade.uniforms.vignette.value,
         lift: '#' + grade.uniforms.lift.value.getHexString(),
         saturation: grade.uniforms.saturation.value,
+        lofi: grade.uniforms.lofi.value, levels: grade.uniforms.levels.value,
+        dither: grade.uniforms.dither.value,
+        maskOn: grade.uniforms.maskOn.value > 0.5,
+        lofiScreen: grade.uniforms.lofiScreen.value,
+        feather: grade.uniforms.feather.value,
+        screenKnown: !!corners,
       }
     },
   }
