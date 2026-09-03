@@ -3267,6 +3267,10 @@ function applyVigil() {
     const k = Math.max(0, Math.min(1, 1 - vigil / .72));
     baroque.materials.FLAME.emissiveIntensity = 3.2 * k * k;
     for (const f of baroque.flames) f.visible = k > .01;
+    /* The fire is the last thing in the room to go, and it does not go out — it sinks.
+       A fire that blows out like a candle is the tell that it was never a fire. */
+    const ember = Math.max(0, Math.min(1, 1 - vigil / .94));
+    baroque.materials.fireGlow.emissiveIntensity = 2.4 * (0.14 + 0.86 * ember * ember);
   }
   shaftUniforms.uColor.value.copy(skyLight.color);
   shaftUniforms.uStrength.value = .15 * (1 - vigil) + .05 * vigil;

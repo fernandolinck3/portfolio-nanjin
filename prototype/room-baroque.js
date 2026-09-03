@@ -548,6 +548,126 @@ export function createBaroque(room, {
     group.add(bust)
   }
 
+  /* ---------- the fireplace ---------- */
+
+  /**
+   * A chimneypiece on the right wall, with a fire that is emissive and not a light.
+   *
+   * It earns its place three times over. It is the object a nineteenth-century room is
+   * *organised around*, so having one settles what the rest of the furniture is doing.
+   * It puts a warm source **low and to one side**, which is the one direction this
+   * scene has never been lit from — everything else comes from above or from the
+   * window. And it gives the Vigil something to do besides subtract: a fire does not
+   * blow out like a candle, it sinks to embers, so it is the slowest thing in the room
+   * to go and the last colour left before the moon.
+   *
+   * The surround is a lathe-turned jamb repeated twice under a mantel shelf, which is
+   * how a real one is built and why it costs three meshes.
+   */
+  const fireGlow = new THREE.MeshStandardMaterial({
+    color: 0x1A0A04, emissive: 0xFF7A22, emissiveIntensity: 2.4,
+    roughness: 1, metalness: 0,
+  })
+  if (layout !== 'vazio') {
+    const fp = new THREE.Group()
+    fp.position.set(sideX - .18, floorY, wallZ + depth * .50)
+    fp.rotation.y = -Math.PI / 2
+    group.add(fp)
+
+    const MARBLE = new THREE.MeshStandardMaterial({
+      color: 0x6E6258, roughness: .38, metalness: 0,
+    })
+    /* jambs */
+    for (const side of [-1, 1]) {
+      const jamb = new THREE.Mesh(lathe([
+        [0, 0], [.42, 0], [.46, .10], [.34, .22], [.30, 3.0], [.40, 3.16],
+        [.44, 3.30], [0, 3.30],
+      ], 20), MARBLE)
+      jamb.position.set(side * 1.75, 0, .30)
+      fp.add(jamb)
+    }
+    /* the lintel and the mantel shelf over it */
+    const lintel = new THREE.Mesh(new THREE.BoxGeometry(4.1, .62, .74), MARBLE)
+    lintel.position.set(0, 3.6, .30)
+    fp.add(lintel)
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(4.7, .22, 1.0), MARBLE)
+    shelf.position.set(0, 4.0, .34)
+    fp.add(shelf)
+
+    /* the opening: a dark recess, so the fire has somewhere to be */
+    const recess = new THREE.Mesh(new THREE.BoxGeometry(3.0, 3.3, .7),
+      new THREE.MeshStandardMaterial({ color: 0x14100C, roughness: 1 }))
+    recess.position.set(0, 1.65, -.05)
+    fp.add(recess)
+
+    /* the fire: three low emissive lumps and two flames, because a fire seen from
+       across a room is a glow with movement in it and nothing more */
+    for (let i = 0; i < 3; i++) {
+      const ember = new THREE.Mesh(
+        new THREE.SphereGeometry(.34 - i * .06, 10, 8), fireGlow)
+      ember.position.set((i - 1) * .62, .30, .18)
+      ember.scale.y = .58
+      fp.add(ember)
+    }
+    for (const fx of [-.42, .38]) {
+      const f = flame(FLAME, 1.9)
+      f.position.set(fx, .48, .18)
+      fp.add(f)
+      flames.push(f)
+    }
+
+    /* the overmantel: a framed canvas, so the wall above the fire is not a blank */
+    const over = painting(3.0, 3.4, 91)
+    over.position.set(0, 6.0, .18)
+    fp.add(over)
+  }
+
+  /* ---------- the door ---------- */
+
+  /**
+   * A panelled door on the left wall — a room with no way out is a set.
+   *
+   * Closed, and closed on purpose: an open door needs somewhere to lead, and the one
+   * thing worse than no exit is an exit onto nothing. Six raised panels, a gilt
+   * architrave, and a handle. It is furniture-grade joinery described by two boxes and
+   * a moulding run, which is the whole argument of this file.
+   */
+  if (layout !== 'vazio') {
+    const door = new THREE.Group()
+    door.position.set(-sideX + .16, floorY, wallZ + depth * .78)
+    door.rotation.y = Math.PI / 2
+    group.add(door)
+
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(3.4, 6.6, .18), WOOD)
+    leaf.position.set(0, 3.3, 0)
+    door.add(leaf)
+
+    for (let r = 0; r < 3; r++) {
+      for (const c of [-1, 1]) {
+        const panel = new THREE.Mesh(
+          new THREE.ExtrudeGeometry(roundedShape(1.3, 1.7, .10),
+            { depth: .06, bevelEnabled: true, bevelThickness: .04, bevelSize: .04, bevelSegments: 2 }),
+          GILT_DARK)
+        panel.position.set(c * .78, 1.15 + r * 2.05, .11)
+        door.add(panel)
+      }
+    }
+    const knob = new THREE.Mesh(lathe([
+      [0, 0], [.10, 0], [.16, .07], [.13, .16], [.05, .20], [0, .20],
+    ], 14), GILT)
+    knob.rotation.x = -Math.PI / 2
+    knob.position.set(1.35, 3.1, .16)
+    door.add(knob)
+
+    /* the architrave, the same profile family as the cornice */
+    const arch = moulding(
+      [[0, 0], [.26, 0], [.26, .12], [.14, .18], [.16, .30], [0, .34]], 7.0, PLASTER)
+    arch.rotation.z = -Math.PI / 2
+    arch.rotation.y = Math.PI / 2
+    arch.position.set(-2.0, 0, .10)
+    door.add(arch)
+  }
+
   /* ---------- books, because a room needs something that was used ---------- */
 
   if (layout === 'cheio') {
@@ -567,5 +687,5 @@ export function createBaroque(room, {
     }
   }
 
-  return { group, flames, materials: { FLAME, GILT: GILT_DARK, PLASTER, VELVET } }
+  return { group, flames, materials: { FLAME, GILT: GILT_DARK, PLASTER, VELVET, fireGlow } }
 }
