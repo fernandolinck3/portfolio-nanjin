@@ -413,11 +413,18 @@ export function createBaroque(room, {
    * deeply*, not pleated often and shallowly — the fold count is the difference
    * between a curtain and a beach umbrella.
    */
-  if (layout !== 'vazio') {
-    const pelmet = drape(7.6, 1.5, 4, .26)
-    pelmet.position.set(0, floorY + 5.4, wallZ + .56)
-    group.add(pelmet)
-  }
+  /**
+   * There is no pelmet, and that is the second answer rather than a missing piece.
+   *
+   * Two versions were built and both failed the same way: a gathered cloth strip hung
+   * across the top of the window sits **against the brightest thing in the room**, so
+   * its folds alternate lit and unlit and the whole valance reads as a striped awning.
+   * Fewer, deeper folds made the stripes wider and no less striped.
+   *
+   * The window is the room's one hero — it carries the sun, the moon and the shaft.
+   * Anything that competes with it loses on purpose. The two side drapes frame it
+   * without crossing it, which is what they are for.
+   */
 
   /* ---------- paintings ---------- */
 
@@ -465,11 +472,13 @@ export function createBaroque(room, {
   }
 
   if (layout !== 'vazio') {
-    const walls = [
+    const walls = layout === 'cheio' ? [
       { sx: -1, z: depth * .66, w: 2.2, h: 2.8, y: 3.4, seed: 7 },
       { sx: -1, z: depth * .82, w: 1.7, h: 2.1, y: 3.1, seed: 19 },
       { sx: 1, z: depth * .40, w: 2.5, h: 3.2, y: 3.5, seed: 33 },
       { sx: 1, z: depth * .64, w: 1.8, h: 2.3, y: 3.2, seed: 51 },
+    ] : [
+      { sx: 1, z: depth * .40, w: 2.5, h: 3.2, y: 3.5, seed: 33 },
     ]
     for (const p of walls) {
       const art = painting(p.w, p.h, p.seed)
@@ -487,7 +496,7 @@ export function createBaroque(room, {
    * a running clock in a scene where the light is a rite would be two clocks
    * disagreeing.
    */
-  if (layout !== 'vazio') {
+  if (layout === 'cheio') {
     const clock = new THREE.Group()
     clock.position.set(sideX - 4.6, floorY + 5.0, wallZ + .55)
     group.add(clock)
@@ -541,7 +550,7 @@ export function createBaroque(room, {
 
   /* ---------- books, because a room needs something that was used ---------- */
 
-  if (layout !== 'vazio') {
+  if (layout === 'cheio') {
     const SPINES = [0x4A2320, 0x2C3A2E, 0x3A2E44, 0x53401F, 0x24303E]
     const stack = new THREE.Group()
     stack.position.set(-sideX + 1.9, floorY, wallZ + depth * .70)
