@@ -30,6 +30,17 @@
  * decisão deve ser revista**, junto com a legenda que falta — e provavelmente a
  * resposta certa é gravar os dois nomes, não traduzir um deles.
  *
+ * ## Inglês americano, e por quê
+ *
+ * `analog`, `rigor`, `behavior`, `catalog` — não `analogue`, `rigour`, `behaviour`,
+ * `catalogue`. A escolha em si é indiferente; a **mistura** não é. Uma página que
+ * escreve "behaviour" ao lado de "Analytics" e "Organization" lê como texto montado
+ * de pedaços, que é exatamente a impressão que uma versão traduzida não pode dar.
+ *
+ * Americano por alcance: é a variante que a maior parte do mercado de recrutamento
+ * em tecnologia usa, e a que um leitor britânico lê sem tropeçar — o contrário não é
+ * igualmente verdade.
+ *
  * ## As linhas quebradas à mão
  *
  * Muitas `lines` são metade de uma frase, quebradas em ~58 caracteres porque o Screen
@@ -51,7 +62,7 @@ export const EN: Readonly<Record<string, string>> = {
 
   /* ---- QUEM ---------------------------------------------------------- */
   'QUEM': 'WHO',
-  'QUEM — Growth, CRO e front-end, e como eu junto os três': 'WHO — Growth, CRO and front-end, and how I join the three',
+  'QUEM — Growth, CRO e front-end, e como eu junto os três': 'WHO — Growth, CRO and front-end, and how they fit together',
   'GROWTH · CRO · EXPERIÊNCIAS DIGITAIS': 'GROWTH · CRO · DIGITAL PRODUCT',
   'ESTRATÉGIA': 'STRATEGY',
   'MENSAGEM': 'MESSAGING',
@@ -86,7 +97,7 @@ export const EN: Readonly<Record<string, string>> = {
   'Porto Alegre': 'Porto Alegre',
   'Rio Grande do Sul': 'Rio Grande do Sul',
   'Brasil': 'Brazil',
-  'A unidade despertou.': 'The unit has woken.',
+  'A unidade despertou.': 'The unit is awake.',
   'Comece aqui.': 'Start here.',
   'As teclas escolhem': 'The keys choose',
   'o módulo.': 'the module.',
@@ -96,14 +107,14 @@ export const EN: Readonly<Record<string, string>> = {
   'PROJETOS — Sites, landing pages e o raciocínio por trás': 'PROJECTS — Sites, landing pages, and the thinking behind them',
   'PROJETO': 'PROJECT',
   'PORTFÓLIO PESSOAL': 'PERSONAL PORTFOLIO',
-  'SITE INTERATIVO': 'INTERACTIVE SITE',
-  'Site interativo': 'Interactive site',
+  'SITE INTERATIVO': 'INTERACTIVE WEBSITE',
+  'Site interativo': 'Interactive website',
   'Portfólio pessoal': 'Personal portfolio',
   'Um portfólio concebido como instrumento.': 'A portfolio conceived as an instrument.',
   'Seis teclas acessam os módulos, a LUA percorre o':
     'Six keys reach the modules, the LUA walks the',
   'conteúdo e o SOL aprofunda a seleção.':
-    'content and the SOL goes deeper into it.',
+    'content and the SOL opens what is selected.',
 
   'VISÃO GERAL': 'OVERVIEW',
 
@@ -112,16 +123,16 @@ export const EN: Readonly<Record<string, string>> = {
 
   'REFERÊNCIAS': 'REFERENCES',
   'Mapas celestes, gravuras esotéricas, mecanismos':
-    'Celestial maps, esoteric engravings, analogue',
+    'Celestial maps, esoteric engravings, analog',
 
 
   'GRAECUS': 'GRAECUS',
   'Graecus': 'Graecus',
-  'SITE INSTITUCIONAL + BLOG': 'COMPANY SITE + BLOG',
-  'Site institucional + blog': 'Company site + blog',
+  'SITE INSTITUCIONAL + BLOG': 'CORPORATE WEBSITE + BLOG',
+  'Site institucional + blog': 'Corporate website + blog',
   'Site institucional e blog em WordPress com tema':
-    'A WordPress company site and blog on a custom theme,',
-  'personalizado, sem page builder.': 'custom-built, with no page builder.',
+    'A WordPress corporate website and blog on a theme built for it,',
+  'personalizado, sem page builder.': 'hand-built, with no page builder.',
 
 
 
@@ -160,7 +171,7 @@ export const EN: Readonly<Record<string, string>> = {
     'creation.',
   'EDITORIAL': 'EDITORIAL',
   'A produção editorial acrescenta rigor, consistência':
-    'Editorial production adds rigour, consistency and',
+    'Editorial production adds rigor, consistency and',
   'e experiência com comunicação multilíngue.':
     'experience with multilingual communication.',
   'EXECUÇÃO': 'EXECUTION',
@@ -175,13 +186,13 @@ export const EN: Readonly<Record<string, string>> = {
     'those layers.',
   'CRONOLOGIA': 'TIMELINE',
   'AGÊNCIAS': 'AGENCIES',
-  'Agências e independente': 'Agencies and freelance',
+  'Agências e independente': 'Agency and freelance work',
   'MSC CROCIERE': 'MSC CROCIERE',
   'MSC Crociere': 'MSC Crociere',
   'NELOGICA': 'NELOGICA',
   'Nelogica': 'Nelogica',
-  'Nenhuma camada': 'No layer here',
-  'foi descartada.': 'was discarded.',
+  'Nenhuma camada': 'No layer was',
+  'foi descartada.': 'thrown away.',
   'Gire a LUA para': 'Turn the LUA to',
   'acompanhar a sequência.': 'follow the sequence.',
 
@@ -195,13 +206,13 @@ export const EN: Readonly<Record<string, string>> = {
   'OS DADOS ORIENTAM A DECISÃO': 'THE DATA GUIDES THE DECISION',
   'POR QUÊ': 'WHY',
   'As evidências e o comportamento observado definem o':
-    'Evidence and observed behaviour set the starting point.',
+    'Evidence and observed behavior set the starting point.',
   'ponto de partida. A solução precisa melhorar o que':
     'The solution has to improve what matters without giving',
   'importa sem abrir mão de clareza, personalidade e':
-    'up clarity, personality and the pleasure of using the',
+    'up clarity, personality and the pleasure of using',
   'prazer de uso.':
-    'thing.',
+    '',
 
   'O PROBLEMA VEM ANTES': 'THE PROBLEM COMES FIRST',
   'Escolher o formato cedo demais pode produzir uma boa':
@@ -229,13 +240,13 @@ export const EN: Readonly<Record<string, string>> = {
   'Uma métrica só importa quando muda uma decisão. Antes':
     'A metric only matters when it changes a decision. Before',
   'da medição, é preciso definir o que faria o trabalho':
-    'measuring, you have to define what would make the work',
+    'measuring, you have to define what would make the work carry',
   'avançar, mudar de direção ou parar.':
-    'go on, change direction or stop.',
+    'on, change direction or stop.',
 
   'Algumas regras sobrevivem': 'Some rules outlive',
   'às ferramentas.': 'the tools.',
-  'Gire a LUA para o próximo.': 'Turn the LUA for next.',
+  'Gire a LUA para o próximo.': 'Turn the LUA for the next.',
   'O SOL explica o porquê.': 'The SOL explains why.',
 
   /* ---- HABILIDADES ---------------------------------------------------- */
@@ -301,7 +312,7 @@ export const EN: Readonly<Record<string, string>> = {
 
   /* Graecus e o portfólio, na mesma régua dos quatro — 2026-09-02 */
   'Site institucional e blog de uma consultoria de':
-    'A company site and blog for a growth consultancy:',
+    'A corporate website and blog for a growth consultancy:',
   'growth: seis linhas de serviço, de mídia paga a':
     'six service lines, from paid media to data',
   'engenharia de dados, sob uma marca só.':
@@ -336,7 +347,7 @@ export const EN: Readonly<Record<string, string>> = {
   'do próprio aparelho.': 'the device display itself.',
   'O MOTIVO': 'THE REASON',
   'Estratégia, mensagem, design, front-end e análise na':
-    'Strategy, message, design, front-end and analysis',
+    'Strategy, messaging, design, front-end and analytics',
   'mesma pessoa viram uma lista de cargos quando escritas':
     'in one person become a list of job titles when',
   'em coluna. Aqui são a coisa que o visitante opera':
@@ -352,7 +363,7 @@ export const EN: Readonly<Record<string, string>> = {
   'rastreador lia 465 caracteres; passou a ler 5.675.':
     'used to read 465 characters; it now reads 5,675.',
   'analógicos e terminais monocromáticos. O objeto de':
-    'analogue mechanisms and monochrome terminals. The',
+    'analog mechanisms and monochrome terminals. The',
   'referência é um pedal da Old Blood Noise Endeavors.':
     'reference object is an Old Blood Noise Endeavors pedal.',
 
@@ -367,18 +378,18 @@ export const EN: Readonly<Record<string, string>> = {
 
   'CMP INOX': 'CMP INOX',
   'CMP Inox': 'CMP Inox',
-  'SITE INSTITUCIONAL': 'COMPANY SITE',
-  'Site institucional': 'Company site',
+  'SITE INSTITUCIONAL': 'CORPORATE WEBSITE',
+  'Site institucional': 'Corporate website',
   'Site institucional de uma distribuidora de aço inox,':
-    'A company site for a stainless steel supplier, with',
+    'A corporate website for a stainless steel supplier, with',
   'com catálogo, tabelas técnicas e orçamento.':
-    'a catalogue, technical tables and a quote form.',
+    'a catalog, technical tables and a quote form.',
 
   'MAIARA TEIXEIRA': 'MAIARA TEIXEIRA',
   'Maiara Teixeira': 'Maiara Teixeira',
   'Maiara Teixeira Advocacia': 'Maiara Teixeira Advocacia',
-  'SITE DE ADVOCACIA': 'LAW PRACTICE SITE',
-  'Site de advocacia': 'Law practice site',
+  'SITE DE ADVOCACIA': 'LAW FIRM WEBSITE',
+  'Site de advocacia': 'Law firm website',
   'Site de uma advocacia de direito imobiliário e':
     'A site for a real estate and succession law',
   'sucessões, com agendamento e tema claro e escuro.':
@@ -408,18 +419,18 @@ export const EN: Readonly<Record<string, string>> = {
 
   /* CMP Inox */
   'Uma distribuidora de aço inox com trinta anos de':
-    'A stainless steel supplier, thirty years in the',
+    'A stainless steel supplier, thirty years in',
   'mercado, que vendia por telefone e por indicação.':
-    'market, that sold by telephone and by referral.',
+    'business, that sold by phone and by referral.',
   'O site é para o comprador que já sabe o que quer e':
-    'The site is for the buyer who already knows what he',
+    'The site is for the buyer who already knows what they',
   'só precisa conferir se a liga está lá.':
-    'wants and only needs to check the alloy is there.',
+    'want and only need to check the alloy is there.',
   'O COMPRADOR': 'THE BUYER',
   'Ninguém abre um catálogo de aço por curiosidade.':
-    'Nobody opens a steel catalogue out of curiosity. He',
+    'Nobody opens a steel catalog out of curiosity. They',
   'Ele chega com uma liga e uma bitola anotadas, e a':
-    'arrives with an alloy and a gauge written down, and',
+    'arrive with an alloy and a gauge written down, and',
   'hierarquia responde a isso: produto antes de':
     'the hierarchy answers that: product before company,',
   'empresa, tabela técnica antes de argumento.':
@@ -448,7 +459,7 @@ export const EN: Readonly<Record<string, string>> = {
   'Quem procura um advogado de inventário costuma':
     'Someone looking for a probate lawyer usually comes',
   'chegar num momento difícil, comparando alguns nomes':
-    'at a hard moment, weighing a few names and looking',
+    'at a difficult time, weighing a few names and looking',
   'e buscando quem já tenha feito aquilo antes.':
     'for whoever has done it before.',
   'O site foi construído para responder a isso.':

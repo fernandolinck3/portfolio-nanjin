@@ -295,8 +295,6 @@ const WORKS_PT: readonly Work[] = [
       '/works/graecus-blog-article.jpg',
       '/works/graecus-faq-open.jpg',
       '/works/graecus-mobile-home.jpg',
-      '/works/graecus-mdsale.jpg',
-      '/works/graecus-namorados.jpg',
     ],
     blurb: [
       'Site institucional e blog em WordPress com tema',
