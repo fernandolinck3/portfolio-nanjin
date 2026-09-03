@@ -13,6 +13,7 @@ import { padMaps, faderSlot, faderCap } from './control-faces.js';
 import { deckMaps, deckGlow } from './deck-faces.js'
 import { createRoomDecor } from './room-decor.js'
 import { createBaroque } from './room-baroque.js'
+import { marquetryTexture } from './marquetry.js'
 import { createAltarProps } from './altar-props.js'
 import { createPost } from './post.js'
 import { createFocus } from './focus.js'
@@ -2281,6 +2282,39 @@ const mensa = new THREE.Mesh(shapedTop(14.6, 8.6, .62, { bow: .42, r: 2.6 }),
   }));
 /* `slab` extrudes from y=0 upward, so the top lands at 0 where the Box's centre did */
 mensa.position.y = -.62; altar.add(mensa);
+
+/**
+ * The inlay — the half of the reference that is not wood.
+ *
+ * A Napoleon III table is that table because of **the ornament cut into it**, not
+ * because of its timber, and ornament is a drawing. So this is a separate thin plane
+ * four thousandths above the top carrying brass on transparency: the wood below keeps
+ * its grain and roughness, this keeps the drawing. Exactly the split `CONTEXT.md`
+ * already names between the Plate and its Print.
+ *
+ * `PlaneGeometry` and not `shapedTop` on purpose: the plane's UVs run 0..1, which is
+ * what the canvas expects, and the *shape* comes from the texture's own alpha —
+ * which also means the ornament can overhang or fall short of the bowed edge without
+ * anyone re-cutting geometry to match.
+ *
+ * The centre is left plain, and that is the design rather than an omission: the Unit
+ * stands there. Marquetry under a machine is marquetry nobody sees and a busy ground
+ * for the one thing that matters. Real tables are plain in the middle for the same
+ * reason — things get put on them.
+ */
+const inlay = new THREE.Mesh(
+  new THREE.PlaneGeometry(14.6, 8.6),
+  new THREE.MeshStandardMaterial({
+    map: marquetryTexture(THREE, { w: 14.6, d: 8.6, px: 128, bow: .42 }),
+    transparent: true, metalness: 1, roughness: .34,
+    /* brass on wood is a hair proud of it; without the offset the two surfaces fight
+       for the same depth and the ornament flickers as the camera moves */
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  }));
+inlay.rotation.x = -Math.PI / 2;
+inlay.position.y = .004;
+inlay.renderOrder = 1;
+altar.add(inlay);
 
 /**
  * Dark figured wood on the Altar top, after the boot — the second measured surface.
