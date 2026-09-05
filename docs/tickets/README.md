@@ -19,6 +19,21 @@ traps so it can be picked up without reading the whole thread.
                 └── T-06 portrait         └── needs a high-res Calendarium Perpetuum
 ```
 
+**O quarto navegável** — cadeia nova, 2026-09-05, saída de `docs/specs/quarto-navegavel.md`.
+Track B, e a única corrente do board com quatro elos:
+
+```
+  T-32 o instrumento encolhe
+    ├── T-33 a mobília se reagrupa
+    └── T-34 estações, trilho e controles   (também bloqueado por T-30)
+          └── T-35 som, e a viagem no tempo
+```
+
+`T-32` é a chave: enquanto o tampo do Altar cobrir 66% da largura do quarto, a mobília não tem onde
+ficar e o trilho não tem por onde passar. `T-30` deixa de ser opcional — `T-34` dá um décimo
+significado a um controle, e fazer isso sem a gravação na Plate é acrescentar o problema que o T-30
+já contabiliza.
+
 Track B is prototype work and lands in `prototype/scene.js`. It is **disjoint from track A** — the
 two can run in parallel without touching the same files, right up until T-04 ports the scene across.
 T-04 is the merge point and should not start while track B is mid-flight.
@@ -57,6 +72,10 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-29 | [O Preview do GTM não conecta](T-29-o-preview-do-gtm-nao-conecta.md) | A | — | precisa do sintoma exato |
 | T-30 | [Nine controls and no legend](T-30-the-object-has-no-legend.md) | B | — | ready — 11 dos 15 pontos perdidos na crítica |
 | T-31 | [O portfólio em inglês](T-31-o-portfolio-em-ingles.md) | A | — | **done 2026-09-02** — `/` e `/en/`, indexáveis |
+| T-32 | [O instrumento encolhe](T-32-the-instrument-shrinks.md) | B | — | ready — destrava T-33 e T-34 |
+| T-33 | [A mobília se reagrupa](T-33-the-furniture-regroups.md) | B | T-32 | blocked |
+| T-34 | [O quarto vira a navegação](T-34-the-room-becomes-the-navigation.md) | B | T-32, T-30 | blocked — o maior da track |
+| T-35 | [O objeto faz som](T-35-the-object-makes-a-sound.md) | B | T-34 | blocked |
 
 ## Where T-21 to T-25 came from
 
