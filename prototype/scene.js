@@ -13,6 +13,7 @@ import { padMaps, faderSlot, faderCap } from './control-faces.js';
 import { deckMaps, deckGlow } from './deck-faces.js'
 import { createRoomDecor } from './room-decor.js'
 import { createBaroque } from './room-baroque.js'
+import { createMobilia } from './room-mobilia.js'
 import { marquetryTexture } from './marquetry.js'
 import { createAltarProps } from './altar-props.js'
 import { createPost } from './post.js'
@@ -2621,7 +2622,6 @@ function stoneTexture(bump) {
 }
 
 /** A worn medallion rug, muted red, to break up the boards. */
-function rugTexture() {
 /**
  * The rug, drawn as a rug is drawn — not as a red rectangle with a ring on it.
  *
@@ -2646,6 +2646,7 @@ function rugTexture() {
  * under a camera that looks straight down, and a photograph of someone else's carpet
  * arrives with someone else's proportions and someone else's borders cropped off.
  */
+function rugTexture() {
   const W = 1024, H = 700;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d');
@@ -2709,7 +2710,6 @@ function rugTexture() {
       boteh(x, y, 27, (row + col) % 2 === 0);
     }
   }
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
   g.restore();
 
   /* ---- the medallion, and the corners that answer it ---- */
@@ -2782,6 +2782,7 @@ function rugTexture() {
   g.fillStyle = 'rgba(255,246,230,.045)';
   for (let y = 0; y < H; y += 4) g.fillRect(0, y, W, 1);
 
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
 }
 
 const stoneMat = new THREE.MeshStandardMaterial({
@@ -3194,6 +3195,22 @@ const baroque = createBaroque(room, {
   floorY: FLOOR_Y, ceilY: CEIL_Y, sideX: SIDE_X, wallZ: WALL_Z, depth: DEPTH,
   gilt: GILT, layout: LAYOUT,
 });
+
+/**
+ * A mobília modelada — oito peças CC0 da Poly Haven. Ver `room-mobilia.js` e ADR-0029.
+ *
+ * **Não baixa nada aqui.** `ROOM_K` começa em 0 — o quarto está desligado para quem
+ * chega em `nanj.in` e só acende no `?sala` ou na bancada — então quem dispara os oito
+ * `fetch` é `setRoomAmount`, na primeira vez que o quarto passa a existir. Construído
+ * do jeito óbvio, no topo do módulo, isto fazia todo visitante baixar 2,3 MB de móveis
+ * que ele nunca vê, disputando banda com uma abertura que custou uma sessão inteira
+ * para chegar aos 2,42 s do T-21.
+ *
+ * Não usa `layout`. Os três arranjos de `createBaroque` são três respostas sobre
+ * *ornamento* — quantos quadros, quantos castiçais, tem busto ou não. Um quarto sem
+ * onde sentar não é um arranjo mais sóbrio, é um quarto sem móveis.
+ */
+const mobilia = createMobilia(room, { floorY: FLOOR_Y });
 
 /* canvas type is drawn once at load, before the webfonts land */
 document.fonts?.ready?.then(() => summoning.refresh());
@@ -4961,7 +4978,7 @@ window.__unit = {
   },
   pads: () => padMeshes,
   /** The scene graph and the Unit inside it, for passes that restyle rather than pose. */
-  roots: () => ({ scene, unit, room, altar }),
+  roots: () => ({ scene, unit, room, altar, decor: decor.group, mobilia: mobilia.group }),
   /**
    * The controls, as functions.
    *
@@ -5179,6 +5196,7 @@ window.__unit = {
     const S0 = {
       ratio: PIXEL_RATIO, step: SCREEN_STEP, screen: SCREEN_ON,
       shadows: renderer.shadowMap.enabled, decor: decor.group.visible,
+      mobilia: mobilia.group.visible,
       room: room.visible, env: scene.environmentIntensity,
       /* the room is two switches, not one: `setRoom` hides meshes and `setRoomLights`
          hides the lights inside them. Pricing it with only the first flipped prices an
@@ -5195,6 +5213,7 @@ window.__unit = {
     const restore = () => {
       setRatio(S0.ratio); SCREEN_STEP = S0.step; SCREEN_ON = S0.screen;
       renderer.shadowMap.enabled = S0.shadows; decor.group.visible = S0.decor;
+      mobilia.group.visible = S0.mobilia;
       room.visible = S0.room; scene.environmentIntensity = S0.env;
       setRoomLights(S0.roomLights);
     };
@@ -5218,6 +5237,10 @@ window.__unit = {
         room.visible = true; decor.group.visible = true; setRoomLights(true);
       }],
       ['furnishing hidden',       () => { decor.group.visible = false; }],
+      /* A mobília modelada é a única geometria da cena que não foi escrita — se ela
+         custar, é a primeira linha que alguém vai querer ler. Só diz alguma coisa com o
+         quarto ligado: com `ROOM_K` em 0 ela nem baixou, e a linha marca zero. */
+      ['modelled furniture hidden', () => { mobilia.group.visible = false; }],
       ['whole room hidden',       () => { room.visible = false; }],
       ['environment off',         () => { scene.environmentIntensity = 0; }],
       ['all of the above cheap',  () => { SCREEN_STEP = 1 / 10; renderer.shadowMap.enabled = false; setRatio(.75); }],
@@ -5748,10 +5771,35 @@ function setPool(p = {}) {
     materials: pooledMats.size,
   };
 }
+let roomShown = true;
 function setRoom(on) {
+  roomShown = on;
   for (const m of roomScenery) m.visible = on;
   return { shown: on, meshes: roomScenery.length };
 }
+
+/**
+ * A mobília chega tarde, e duas coisas nesta cena são varreduras de uma vez só.
+ *
+ * `roomScenery` é montado no topo do arquivo com um `room.traverse`, e `setRoom(false)`
+ * apaga malha por malha em vez de apagar o Group — de propósito, para as luzes
+ * sobreviverem. `poolMaterials(room)` costura o shader do Pool em cada material, uma vez.
+ * As duas rodam muito antes de oito `fetch` de glTF terminarem, então sem isto os móveis
+ * ficariam **acesos com a sala apagada** e **fora do Pool**, escurecendo com a distância
+ * enquanto tudo em volta escurece.
+ *
+ * É o mesmo formato de erro que `groundShadows(scene)` teria cometido, e que
+ * `room-mobilia.js` evita escrevendo as sombras à mão. A diferença é que estas duas
+ * varreduras não são de lá, então a correção é aqui, onde elas moram.
+ */
+mobilia.pronto.then(() => {
+  poolMaterials(mobilia.group);
+  mobilia.group.traverse(o => {
+    if (!(o.isMesh || o.isInstancedMesh)) return;
+    roomScenery.push(o);
+    o.visible = roomShown;
+  });
+});
 /**
  * Lights that lit only the room go out with it.
  *
@@ -5785,6 +5833,9 @@ function setRoomLights(on) {
 function setRoomAmount(k) {
   k = Math.max(0, Math.min(1, k));
   setRoom(k > 0);
+  /* a mobília modelada é a única coisa da cena que vem da rede depois da abertura, e
+     ela só existe se houver quarto para pousar nele — ver `room-mobilia.js` */
+  if (k > 0) mobilia.carregar();
   /**
    * **This function does not touch a single light**, and that is the fix rather than an
    * omission.
@@ -6214,7 +6265,13 @@ if (location.search.includes('sala')) {
   CAM.pan = { x: 0, y: 2.2, z: 0 };
   setRoomAmount(1);
   if (POOL.amount.value === 0) setPool({ amount: .85, near: 5, far: 26 });
-  window.__unit.setCam({ tilt: 35, yaw: 0, dist: 26 });
+  /* Era `tilt: 35, dist: 26`, enquadrado quando a metade da frente da sala estava
+     vazia e não havia nada ali para cortar. Com a mobília de `room-mobilia.js` no
+     chão, esse enquadramento passava a mostrar dois sofás pela metade na borda de
+     baixo — e o endereço existe justamente para não obrigar ninguém a digitar números
+     de câmera no console antes de olhar para uma coisa. Mais alto e mais longe: a sala
+     inteira cabe, das cornijas ao armário do canto. */
+  window.__unit.setCam({ tilt: 45, yaw: 0, dist: 31 });
 }
 
 /**

@@ -694,5 +694,15 @@ export function createBaroque(room, {
     }
   }
 
+  /* ---------- the chair: it left, and it left the file ----------
+     A table with no chair is a display case, and that argument still holds — what
+     changed is who builds the chair. This one was a lathe for the legs, an extruded
+     rounded rectangle for the seat, velvet where a body touches it and gilt on the
+     crest, and from the resting camera it read as a chair. From closer it read as
+     four boxes agreeing to be one. `room-mobilia.js` puts a modelled chair on the
+     same spot, turned the same eight degrees, for the reason written down there:
+     the Unit is the craft proof, the seating is not, and hand-building the seating
+     was buying the wrong thing with the session. See `docs/adr/0029`. */
+
   return { group, flames, materials: { FLAME, GILT: GILT_DARK, PLASTER, VELVET, fireGlow } }
 }
