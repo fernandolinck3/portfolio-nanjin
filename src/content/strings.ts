@@ -74,6 +74,24 @@ export function stringsFor(locale: Locale) {
     touchBackLabel: t('Voltar um nível', 'Back one level'),
     touchRowLabel: t('Controles de toque', 'Touch controls'),
 
+    /* ---- as duas linhas de navegação do painel do retrato ---------------- */
+
+    /**
+     * O painel do retrato é cromo, não conteúdo, e por isso mora aqui.
+     *
+     * As perguntas e as respostas do oráculo são conteúdo de portfólio e vivem em
+     * `modules.ts`, com espelho e teste. Estas duas linhas não dizem nada sobre o
+     * trabalho: dizem para onde o clique leva, que é exatamente o que `strings.ts`
+     * guarda. `t(pt, en)` exige as duas metades, então nenhuma delas pode chegar em
+     * inglês sem alguém ter escrito o inglês.
+     *
+     * Em caixa baixa, ao contrário da fileira de toque: a Plate é gravada e fala em
+     * caixa alta, e o painel do retrato é uma tela onde **ela** fala.
+     */
+    perguntar: t('› perguntar alguma coisa', '› ask her something'),
+    voltarPainel: t('‹ voltar', '‹ back'),
+    outraPergunta: t('‹ outra pergunta', '‹ another question'),
+
     /** Um convite, não uma exigência: a página funciona virada, só fica menor. */
     turnPhone: t('Vire o celular para uma tela maior', 'Turn your phone for a larger screen'),
 

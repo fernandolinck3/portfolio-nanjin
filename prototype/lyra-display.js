@@ -63,7 +63,17 @@
 import { REACTION_FRAMES, REACTION_W, REACTION_H } from './screen/reaction-frames.js'
 import { drawSprite } from './screen/drawn.js'
 import { createKnobReaction } from './screen/reaction.js'
-import { ORACLE } from '../src/content/modules.ts'
+import { ORACLE, MODULES } from '../src/content/modules.ts'
+import { UI } from '../src/content/strings.ts'
+
+/**
+ * A bio, e ela nao e conteudo novo — e o Modulo QUEM lido de onde ele ja mora.
+ *
+ * `name`, `role` e `disciplines` sao os mesmos campos que a Tela desenha e que o
+ * espelho publica; nada disto precisa de entrada em `en.ts` nem de teste novo, porque
+ * ja tem os dois. O painel do retrato passa a ser mais um leitor deles.
+ */
+const QUEM = MODULES.find(m => m.id === 'identity') || null
 
 /* As duas paletas de `screen/render.js`, repetidas de proposito e nao importadas: la
    elas vivem em `let` de modulo que ele reescreve a cada quadro conforme o fader, e
@@ -82,16 +92,22 @@ const cor = T => `rgb(${T[0] | 0},${T[1] | 0},${T[2] | 0})`
 /**
  * A caixa de dialogo, medida e nao escolhida.
  *
- * Quatro linhas porque sao quatro perguntas, e `LH = 14` porque a fonte e a mesma
- * `11px VT323` do balao da Tela e catorze e o menor passo em que duas linhas dela nao
- * se tocam. O resto do painel e da figura: o que sobra acima da caixa divide por 40 —
- * a altura do sprite — e a escala e o quociente inteiro. **Meia celula e uma borda
- * serrilhada num desenho cuja graca inteira e a celula.**
+ * Cinco linhas, e a quinta e o preco de a bio vir primeiro: quatro perguntas mais uma
+ * linha que diz para onde o clique leva. Sem ela um dos tres estados da caixa seria
+ * uma rua sem saida. `LH = 14` porque a fonte e a mesma `11px VT323` do balao da Tela
+ * e catorze e o menor passo em que duas linhas dela nao se tocam.
  *
- * A 240 x 324 a conta fecha: 248 de folga acima, escala 6, 168 x 240 de figura, e ela
- * para quatro pixels antes da caixa. Trocar o tamanho do painel refaz a conta sozinha.
+ * A escala do desenho e inteira — **meia celula e uma borda serrilhada num desenho
+ * cuja graca inteira e a celula** — e sai de quanto ha acima da caixa. `barra` e o
+ * quanto do desenho a caixa **pode** cobrir: doze pixels de origem, que na figura sao
+ * duas celulas da barra do manto e nada mais. Sem essa folga a quinta linha custaria
+ * uma escala inteira (de 6 para 5, 17% dela) para nao encostar na bainha de um manto.
+ * E o que uma visual novel faz: a caixa de texto pousa sobre a arte, nao ao lado.
+ *
+ * A 240 x 324 a conta fecha em escala 6 — 168 x 240 de figura, do pixel 6 ao 246,
+ * com a caixa comecando em 234. Trocar o tamanho do painel refaz tudo sozinho.
  */
-const CAIXA = { linhas: 4, lh: 14, pad: 6, base: 8 }
+const CAIXA = { linhas: 5, lh: 14, pad: 6, base: 8, barra: 12 }
 const FONTE = '11px VT323, monospace'
 
 /** Dia, meio, noite — a mesma direcao do fader. */
@@ -110,6 +126,47 @@ function encurtar(g, texto, largura) {
   let s = texto
   while (s.length > 1 && g.measureText(s + '\u2026').width > largura) s = s.slice(0, -1)
   return s + '\u2026'
+}
+
+/**
+ * Uma lista em linhas, quebrada **por item** e nao por palavra.
+ *
+ * `quebrar` corta onde ha espaco, e num texto de itens separados por ponto medio o
+ * espaco antes do separador e um lugar legal de cortar: as cinco disciplinas saiam
+ * como `ESTRATEGIA · MENSAGEM · DESIGN · FRONT-END ·` e `ANALISE`, com o separador
+ * pendurado no fim de uma linha apontando para nada. Empacotar por item nunca deixa
+ * um separador orfao e ainda equilibra melhor — tres e dois em vez de quatro e um.
+ */
+function emLinhas(g, itens, largura, sep = ' \u00b7 ') {
+  const larg = a => g.measureText(a.join(sep)).width
+  if (!itens.length) return []
+  if (larg(itens) <= largura) return [itens.join(sep)]
+
+  /* Duas linhas equilibradas em vez de gulosas. O guloso enche a primeira e sobra uma
+     palavra sozinha na segunda — cinco disciplinas saiam quatro e uma, e "ANALISE"
+     pendurada embaixo le como erro de digitacao. Sao quatro cortes possiveis numa
+     lista de cinco: testar todos e ficar com o que deixa a linha mais larga menos
+     larga custa nada e le como uma linha escrita, nao como uma sobra. */
+  let melhor = null
+  for (let k = 1; k < itens.length; k++) {
+    const a = itens.slice(0, k), b = itens.slice(k)
+    const wa = larg(a), wb = larg(b)
+    if (wa > largura || wb > largura) continue
+    const pior = Math.max(wa, wb)
+    if (!melhor || pior < melhor.pior) melhor = { pior, linhas: [a.join(sep), b.join(sep)] }
+  }
+  if (melhor) return melhor.linhas
+
+  /* nao coube em duas: guloso, que ao menos nao perde item nenhum */
+  const fora = []
+  let linha = ''
+  for (const item of itens) {
+    const tenta = linha ? linha + sep + item : item
+    if (linha && g.measureText(tenta).width > largura) { fora.push(linha); linha = item }
+    else linha = tenta
+  }
+  if (linha) fora.push(linha)
+  return fora
 }
 
 /** Quebra por largura medida, e nao por contagem de caracteres: VT323 nao e mono. */
@@ -138,13 +195,26 @@ export function criarLyra({ w = 240, h = 324 } = {}) {
 
   const CX_H = CAIXA.pad * 2 + CAIXA.linhas * CAIXA.lh
   const CX_Y = h - CX_H - CAIXA.base
-  const S = Math.max(1, Math.floor(Math.min((CX_Y - 4) / REACTION_H, w / (REACTION_W + 2))))
+  const S = Math.max(1, Math.floor(Math.min((CX_Y + CAIXA.barra) / REACTION_H, w / (REACTION_W + 2))))
   const bx = Math.round((w - REACTION_W * S) / 2)
-  const by = Math.max(2, Math.round(CX_Y - 4 - REACTION_H * S))
+  const by = Math.max(2, Math.round(CX_Y + CAIXA.barra - REACTION_H * S))
 
-  /* -1 e a lista de perguntas; 0..3 e a resposta daquela. `sobre` e a linha sob o
-     ponteiro, e existe para que a caixa tenha o mesmo retorno que um botao tem. */
+  /**
+   * Os tres estados da caixa, e por que a bio e o primeiro.
+   *
+   * A estacao do retrato **e** o Modulo QUEM. Com as perguntas na chegada, a coisa
+   * principal da estacao de quem ele e passava a ser uma piada, e o nome dele ficava
+   * num visor de 347 por 219 no canto — que na pose fechada nem existe, porque ela
+   * apaga o visor. A bio na chegada devolve a estacao ao seu assunto e poe o oraculo
+   * onde ele pertence: **atras de um clique, e nao na frente do nome dele.**
+   *
+   * Nenhum estado e rua sem saida. `bio` abre as perguntas, `perguntas` volta para a
+   * bio, `resposta` volta para as perguntas — e sair de perto reseta tudo.
+   */
+  const BIO = 'bio', PERGUNTAS = 'perguntas', RESPOSTA = 'resposta'
+  let estado = BIO
   let escolha = -1
+  /* a linha sob o ponteiro: e o que da a uma linha o retorno que um botao tem */
   let sobre = -1
 
   /**
@@ -156,6 +226,49 @@ export function criarLyra({ w = 240, h = 324 } = {}) {
    * que ela espera.
    */
   function ponteiro(nx, ny) { reacao.notify(nx * 2 + ny) }
+
+  /**
+   * As linhas da caixa, montadas para o estado corrente.
+   *
+   * Uma funcao so, e ela devolve a mesma forma nos tres estados: `{ txt, cor, alvo }`
+   * por linha, onde `alvo` diz o que um clique naquela linha faz. Desenhar e acertar
+   * o clique passam a ler a **mesma** lista, entao uma linha nao pode existir para o
+   * olho e nao para o ponteiro — que e a classe de bug que separa quem desenha de quem
+   * testa o acerto.
+   */
+  function linhas(g, INK, MID, DEEP, util) {
+    const fora = []
+    if (estado === BIO) {
+      if (QUEM?.name) fora.push({ txt: QUEM.name, cor: INK })
+      if (QUEM?.role) fora.push({ txt: QUEM.role, cor: MID })
+      for (const l of emLinhas(g, QUEM?.disciplines || [], util)) {
+        if (fora.length < CAIXA.linhas - 1) fora.push({ txt: l, cor: DEEP })
+      }
+      while (fora.length < CAIXA.linhas - 1) fora.push({ txt: '', cor: MID })
+      if (ORACLE.length) fora.push({ txt: UI.perguntar, cor: MID, alvo: 'abrir' })
+      return fora
+    }
+    if (estado === PERGUNTAS) {
+      for (let i = 0; i < Math.min(CAIXA.linhas - 1, ORACLE.length); i++) {
+        fora.push({ txt: ORACLE[i].q, cor: MID, alvo: i })
+      }
+      while (fora.length < CAIXA.linhas - 1) fora.push({ txt: '', cor: MID })
+      fora.push({ txt: UI.voltarPainel, cor: MID, alvo: 'bio' })
+      return fora
+    }
+    const { q, a } = ORACLE[escolha]
+    fora.push({ txt: q, cor: DEEP })
+    for (const l of quebrar(g, a[bandaDe(vigilAtual)], util)) {
+      if (fora.length < CAIXA.linhas - 1) fora.push({ txt: l, cor: INK })
+    }
+    while (fora.length < CAIXA.linhas - 1) fora.push({ txt: '', cor: MID })
+    fora.push({ txt: UI.outraPergunta, cor: MID, alvo: 'perguntas' })
+    return fora
+  }
+
+  /* A Vigilia do ultimo quadro pintado. A resposta e lida dela e o acerto do clique
+     precisa da mesma lista que o desenho montou, entao os dois leem daqui. */
+  let vigilAtual = 0
 
   /**
    * De pixel do painel para linha da caixa, e `-1` para tudo o que nao e a caixa.
@@ -171,38 +284,47 @@ export function criarLyra({ w = 240, h = 324 } = {}) {
     return i >= 0 && i < CAIXA.linhas ? i : -1
   }
 
-  /** O ponteiro sobre a caixa. Devolve se ha algo sob ele, para o cursor da pagina. */
-  function apontar(px, py) {
+  /** A linha em `px, py` **se ela fizer alguma coisa**; senao `-1`. */
+  function alvoEm(px, py) {
     const i = linhaEm(px, py)
-    sobre = escolha < 0 && i < ORACLE.length ? i : -1
-    return escolha >= 0 ? linhaEm(px, py) >= 0 : sobre >= 0
+    if (i < 0) return -1
+    const L = linhas(medida(), '', '', '', util())
+    return L[i] && L[i].alvo !== undefined ? i : -1
   }
 
-  /**
-   * Um clique na caixa. `true` quando ele foi consumido aqui.
-   *
-   * Com uma resposta aberta, qualquer linha da caixa volta para as perguntas: quem leu
-   * a resposta quer a lista de novo, e um controle de voltar separado numa caixa de
-   * quatro linhas gastaria um quarto dela para dizer o obvio.
-   */
+  /* um contexto so para medir: `quebrar` mede, e medir no contexto que esta pintando
+     obrigaria a montar a lista no meio do desenho */
+  const cm = document.createElement('canvas').getContext('2d')
+  const medida = () => { cm.font = FONTE; return cm }
+  const util = () => w - CAIXA.pad * 2 - 12
+
+  /** O ponteiro sobre a caixa. Devolve se ha algo clicavel sob ele, para o cursor. */
+  function apontar(px, py) {
+    sobre = alvoEm(px, py)
+    return sobre >= 0
+  }
+
+  /** Um clique na caixa. `true` quando ele foi consumido aqui. */
   function clicar(px, py) {
-    const i = linhaEm(px, py)
+    const i = alvoEm(px, py)
     if (i < 0) return false
-    if (escolha >= 0) { escolha = -1; return true }
-    if (i >= ORACLE.length) return false
-    escolha = i
-    reacao.trigger()
+    const alvo = linhas(medida(), '', '', '', util())[i].alvo
+    if (alvo === 'abrir') { estado = PERGUNTAS; reacao.trigger() }
+    else if (alvo === 'bio') { estado = BIO; escolha = -1 }
+    else if (alvo === 'perguntas') { estado = PERGUNTAS; escolha = -1 }
+    else { escolha = alvo; estado = RESPOSTA; reacao.trigger() }
+    sobre = -1
     return true
   }
 
-  function limpar() { escolha = -1; sobre = -1 }
+  /** Volta ao comeco. Sair de perto nao deve guardar uma consulta pela metade. */
+  function limpar() { estado = BIO; escolha = -1; sobre = -1 }
 
-  /** A caixa: as quatro perguntas, ou a resposta que a Vigilia escolheu. */
-  function caixa(vigil, INK, MID, DEEP, BG) {
-    if (!ORACLE.length) return
+  /** A caixa: a bio, as quatro perguntas, ou a resposta que a Vigilia escolheu. */
+  function caixa(INK, MID, DEEP, BG) {
     g.fillStyle = BG
     g.fillRect(0, CX_Y, w, CX_H)
-    /* uma regua e nao um contorno: a caixa e o fundo do painel, nao uma janela sobre
+    /* uma regua e nao um contorno: a caixa e o rodape do painel, nao uma janela sobre
        ele, e quatro lados desenhariam uma janela */
     g.fillStyle = DEEP
     g.fillRect(CAIXA.pad, CX_Y, w - CAIXA.pad * 2, 1)
@@ -210,24 +332,17 @@ export function criarLyra({ w = 240, h = 324 } = {}) {
     g.font = FONTE
     g.textAlign = 'left'
     const x = CAIXA.pad + 2
-    const linha = i => CX_Y + CAIXA.pad + 11 + i * CAIXA.lh
-    const util = w - CAIXA.pad * 2 - 12
-
-    if (escolha < 0) {
-      for (let i = 0; i < Math.min(CAIXA.linhas, ORACLE.length); i++) {
-        g.fillStyle = i === sobre ? INK : MID
-        g.fillText((i === sobre ? '\u203a ' : '  ') + encurtar(g, ORACLE[i].q, util), x, linha(i))
-      }
-      return
-    }
-
-    const { q, a } = ORACLE[escolha]
-    g.fillStyle = DEEP
-    g.fillText('  ' + encurtar(g, q, util), x, linha(0))
-    g.fillStyle = INK
-    const resposta = quebrar(g, a[bandaDe(vigil)], util)
-    for (let i = 0; i < Math.min(CAIXA.linhas - 1, resposta.length); i++) {
-      g.fillText('  ' + resposta[i], x, linha(1 + i))
+    const U = util()
+    const L = linhas(g, INK, MID, DEEP, U)
+    for (let i = 0; i < L.length; i++) {
+      if (!L[i].txt) continue
+      const clicavel = L[i].alvo !== undefined
+      g.fillStyle = clicavel && i === sobre ? INK : L[i].cor
+      const marca = clicavel && typeof L[i].alvo === 'number' ? (i === sobre ? '\u203a ' : '  ') : ''
+      /* o orcamento e o que sobra DEPOIS da marca: cortar o texto para 216 e depois
+         somar a seta a poe fora da caixa, que e o corte silencioso ao contrario */
+      const cabe = U - (marca ? g.measureText(marca).width : 0)
+      g.fillText(marca + encurtar(g, L[i].txt, cabe), x, CX_Y + CAIXA.pad + 11 + i * CAIXA.lh)
     }
   }
 
@@ -236,9 +351,10 @@ export function criarLyra({ w = 240, h = 324 } = {}) {
     for (const k of ['ink', 'mid', 'dim', 'bg']) P[k] = mix(hex(DIA[k]), hex(NOITE[k]), vigil)
     const INK = cor(P.ink), MID = cor(P.mid), DEEP = cor(P.dim), BG = cor(P.bg)
 
+    vigilAtual = vigil
     g.fillStyle = BG; g.fillRect(0, 0, w, h)
     drawSprite(g, REACTION_FRAMES[reacao.frameAt(t * 1000)], bx, by, S, INK, MID, DEEP, BG)
-    caixa(vigil, INK, MID, DEEP, BG)
+    caixa(INK, MID, DEEP, BG)
 
     /**
      * A varredura, e ela e o unico sinal de que aquilo e painel e nao pintura acesa.
