@@ -246,39 +246,60 @@ function encher(raiz, semente) {
  * exatamente ela que a câmera de `?sala` vê, de cima, a 35°.
  */
 const MOBILIA = [
-  /* A sala de estar, virada para o Altar — o visitante olha por cima do encosto.
-     Tudo aqui vive entre z = +5 e z = +6,6, e as duas bordas têm dono.
+  /* **A pegada do Altar encolheu, e é isto que esta tabela gasta.**
 
-     **Nada de chão pode entrar na pegada do Altar.** O tampo mede 15,2 por 9 e está a
-     2,95 do chão, ou seja cobre x −7,6 a +7,6 e z −4,5 a +4,5 como um telhado. A
-     primeira montagem pôs a poltrona em (7,2, −1,4) e ela sumiu: não estava escura,
-     estava debaixo da mesa. Móvel de chão fica fora de |x| > 8,2 **ou** |z| > 5,2, e
-     essa é a regra a conferir antes de qualquer coordenada nova.
+     O tampo cobria `x −7,6..+7,6` e `z −4,5..+4,5` a 2,95 do chão, como um telhado —
+     um móvel posto ali não ficava escuro, sumia, e foi o que aconteceu com a poltrona
+     em (7,2 · −1,4). A regra que sobrava era `|x| > 8,2` **ou** `|z| > 5,2`: uma faixa
+     rente às paredes e uma tira na frente. Estas oito peças não estavam jogadas,
+     estavam **exiladas** — não existia meio de quarto onde agrupar nada, e as
+     coordenadas não eram uma composição, eram o que sobrou.
 
-     A outra borda é o quadro. `?sala` olha de 45° a 31 de distância e o chão que ele
-     enxerga acaba perto de z = +7; móvel além disso é peso baixado à toa. */
-  { arq: 'Sofa_01/Sofa_01_1k.gltf', m: .86, pos: [-4.0, 6.6], ry: .12, cor: 0x7E5A38 },
-  { arq: 'sofa_03/sofa_03_1k.gltf', m: .92, pos: [5.2, 6.2], ry: -.55, cor: 0x8E6A5E },
-  { arq: 'GreenChair_01/GreenChair_01_1k.gltf', m: .95, pos: [-9.1, 5.2], ry: .95, cor: 0x8C9A82 },
+     Com o instrumento em `K = 0,46` a pegada proibida caiu para `|x| < 3,5` **e**
+     `|z| < 2,1`, e o meio abriu. Continua valendo conferir antes de cada coordenada:
+     a mesa ainda é um telhado, só que um telhado pequeno.
 
-  /* a poltrona olha para a lareira, que está na parede direita em z ≈ −1 */
-  { arq: 'ArmChair_01/ArmChair_01_1k.gltf', m: 1.05, pos: [9.0, .1], ry: -Math.PI / 2 + .22, cor: 0x8E6C50 },
+     **Agrupar é o que conserta "parece jogado".** Uma poltrona sozinha encarando a
+     parede lê como objeto posto; duas poltronas e um sofá virados para o fogo leem
+     como um lugar onde alguém senta. São quatro grupos e cada peça pertence a um: o
+     estar virado para o Altar, o canto da lareira, o canto de leitura, a entrada.
 
-  /* A cadeira do Altar, no mesmo lugar e nos mesmos oito graus em que estava a que era
-     de caixas — ver a nota em `room-baroque.js`. **1,30 m é de propósito**, e é a única
-     peça desta lista que não obedece à porta.
+     `ry` é o ângulo em torno da vertical, e `ry = 0` olha para `+z`. Onde uma peça
+     pertence a um grupo, o ângulo dela **aponta para o que o grupo olha** — o Altar em
+     `(0 · 0)` ou a lareira em `(+11,5 · −1)` — em vez de ser um valor achado no olho.
 
-     A sala tem dois registros e sempre teve. O Altar mede 15,2 por 9 e fica 2,95 do
-     chão: pela régua da porta isso é uma mesa de 4,7 m por 2,8 m na altura da cintura,
-     ou seja, monumental de propósito. Uma cadeira de 1,02 m ao lado dela lê como
-     banquinho — foi o que aconteceu na primeira montagem. A cadeira procedural que saiu
-     daqui resolvia isso do mesmo jeito e dizia por quê: proporcionada contra o Altar,
-     não contra um metro. Móvel que encosta no Altar toma o registro do Altar; móvel que
-     está solto no chão toma o registro do quarto. */
-  { arq: 'WoodenChair_01/WoodenChair_01_1k.gltf', m: 1.30, pos: [.9, 5.7], ry: Math.PI - .26, cor: 0xC0A078 },
+     A borda que continua de pé é o quadro: `?sala` olha de 45° a 31 de distância e o
+     chão que ele enxerga acaba perto de `z = +7`. Móvel além disso é peso baixado à
+     toa. */
+  /* o estar: sofá e cadeira virados para o Altar, com o tapete entre eles */
+  { arq: 'Sofa_01/Sofa_01_1k.gltf', m: .86, pos: [-5.2, 4.8], ry: 2.316, cor: 0x7E5A38 },
+  /* o canto da lareira, na parede direita em (+11,5 · −1): o sofá de lado e a
+     poltrona fechando o L, os dois olhando para o fogo */
+  { arq: 'sofa_03/sofa_03_1k.gltf', m: .92, pos: [6.6, .4], ry: 1.849, cor: 0x8E6A5E },
+  /* o canto de leitura, ao pé da estante em (+11 · +3,6) — a cadeira vira as
+     costas para ela e olha para dentro do quarto, que é como se lê sentado */
+  { arq: 'GreenChair_01/GreenChair_01_1k.gltf', m: .95, pos: [8.6, 6.0], ry: -2.18, cor: 0x8C9A82 },
 
-  /* encostados nas paredes, nos vãos que as baias, o espelho e a porta deixam */
-  { arq: 'ClassicConsole_01/ClassicConsole_01_1k.gltf', m: .82, pos: [-10.5, 1.4], ry: Math.PI / 2, cor: 0xB89772 },
+  { arq: 'ArmChair_01/ArmChair_01_1k.gltf', m: 1.05, pos: [8.4, -5.0], ry: 0.659, cor: 0x8E6C50 },
+
+  /* A cadeira do Altar, e ela **volta para 1,02 m**.
+
+     Ela estava em 1,30 m, e o motivo era escrito e correto: a sala tinha dois
+     registros. O Altar media 4,7 por 2,8 m na altura da cintura, monumental de
+     propósito, e uma cadeira de 1,02 m ao lado dele lia como banquinho — móvel que
+     encosta no Altar tomava o registro do Altar.
+
+     **O segundo registro acabou.** Com `K = 0,46` o tampo é uma mesa de 2,21 × 1,33 m
+     a 0,92 m do chão, que é uma mesa. A exceção que a protegia era uma resposta ao erro
+     de razão, e sem o erro ela vira o erro: uma cadeira de 1,30 m encostada numa mesa
+     de 0,92 m é a única peça do quarto que não obedece à porta, e agora sem razão. */
+  { arq: 'WoodenChair_01/WoodenChair_01_1k.gltf', m: 1.02, pos: [.9, 3.4], ry: -2.883, cor: 0xC0A078 },
+
+  /* A entrada. O console sobe para junto da porta — que vai de z +3,5 a +6,2 na
+     parede esquerda — porque um console é onde se larga o que se traz, e um console
+     no meio de uma parede cega é um móvel sem função. Continua encostado: a este é o
+     único grupo do quarto que tem razão para estar na parede. */
+  { arq: 'ClassicConsole_01/ClassicConsole_01_1k.gltf', m: .82, pos: [-10.5, 6.8], ry: Math.PI / 2, cor: 0xB89772 },
   { arq: 'Shelf_01/Shelf_01_1k.gltf', m: 1.75, pos: [11.0, 3.6], ry: -Math.PI / 2, cor: 0x8C6C4A, livros: 5171 },
 
   /* O armário vai para o canto do fundo à esquerda, e é o único lugar da sala onde

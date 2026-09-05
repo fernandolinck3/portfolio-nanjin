@@ -2943,6 +2943,28 @@ const rug = new THREE.Mesh(new THREE.PlaneGeometry(19 * K, 13 * K),
   new THREE.MeshStandardMaterial({ map: rugTexture(), roughness: .98, metalness: 0, color: 0xBFB6AA }));
 rug.rotation.x = -Math.PI / 2; rug.position.set(0, FLOOR_Y + .01, 1.5 * K); room.add(rug);
 
+/**
+ * O segundo tapete: o canto da lareira.
+ *
+ * Um tapete não é ornamento aqui, é o que diz que aquelas peças formam um grupo. O
+ * sofá e a poltrona virados para o fogo já se olham; sem chão comum eles continuam
+ * lendo como dois móveis que por acaso apontam para o mesmo lado. A borda do tapete é
+ * a borda da sala de estar, e é ela que faz o resto do assoalho ler como circulação
+ * em vez de vazio.
+ *
+ * Mesma textura, girada um quarto de volta e num tom mais frio, porque dois tapetes
+ * idênticos no mesmo quadro leem como um erro de cópia. Um desenho a mais, e o
+ * orçamento do `docs/realism-budget.md` é de draw calls, luzes e megapixels — este
+ * não mexe em nenhum dos três.
+ *
+ * A pegada sai das caixas envolventes medidas das duas peças: o sofá ocupa
+ * `x 4,6..8,7 · z −3,3..4,0` e a poltrona `x 6,8..10,1 · z −6,4..−3,3`.
+ */
+const rugFogo = new THREE.Mesh(new THREE.PlaneGeometry(10, 7),
+  new THREE.MeshStandardMaterial({ map: rugTexture(), roughness: .98, metalness: 0, color: 0x9AA0A6 }));
+rugFogo.rotation.x = -Math.PI / 2; rugFogo.rotation.z = Math.PI / 2;
+rugFogo.position.set(7.4, FLOOR_Y + .008, -1.4); room.add(rugFogo);
+
 /* far wall, extruded around a lancet opening */
 const wallShape = new THREE.Shape();
 wallShape.moveTo(-SIDE_X, FLOOR_Y); wallShape.lineTo(SIDE_X, FLOOR_Y);

@@ -37,7 +37,21 @@ function textureFor(work, i) {
 export function createSummoning(scene, works, { floorY }) {
   const sheets = works.map(textureFor)
   const group = new THREE.Group(); scene.add(group)
-  const PED = { x: 5.6, z: -4.2 }
+  /**
+   * O plinto vai para o acervo, e ele **não** encolhe com o instrumento.
+   *
+   * Ele estava em `(5,6 · −4,2)`, que era debaixo do tampo do Altar quando o tampo
+   * cobria `x −7,6..+7,6` — o único motivo de a peça invocada ainda se ver é que ela
+   * sobe acima da mesa. Agora que a pegada caiu para `|x| < 3,5`, o lugar ficou livre
+   * e ficou errado ao mesmo tempo: um plinto colado na mesa não diz de onde a peça
+   * vem.
+   *
+   * Vai para junto da baia de 40 discos, que ocupa `z −7,4..−1,4` na parede esquerda —
+   * o acervo é a estação de PROJETOS, e o plinto é onde uma peça do acervo é posta
+   * para ser olhada. É uma coordenada de **mundo**: o plinto pousa no chão da sala e é
+   * mobília, não parte do instrumento, então `K` não entra aqui.
+   */
+  const PED = { x: -7.6, z: -6.4 }
 
   const stoneMat = new THREE.MeshStandardMaterial({
     color: 0x4A443E, roughness: 0.92, metalness: 0,
