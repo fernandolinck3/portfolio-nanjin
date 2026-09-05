@@ -5788,6 +5788,23 @@ const visorEl = document.getElementById('visor');
 const visorCv = visorEl?.querySelector('canvas');
 const visorCtx = visorCv?.getContext('2d');
 if (visorCv) { visorCv.width = SCREEN_W; visorCv.height = SCREEN_H; }
+/**
+ * Qual das três formas — `?visor=oculo|relogio|vigia`.
+ *
+ * Três e não uma porque **o nome e o desenho são a mesma decisão**. Um óculo promete
+ * que há mais quarto do outro lado; um relógio promete tempo, que é o que o conteúdo
+ * não entrega; uma vigia promete um casco entre quem olha e o que se vê, e é a única
+ * das três que assume que há uma máquina neste quarto em vez de a disfarçar. Escolher
+ * o nome antes de ver as três é escolher no escuro, e este repositório resolve isso
+ * do mesmo jeito desde sempre: mostrando, não descrevendo.
+ *
+ * O padrão é o óculo porque é o que não colide com nada — nem com o `espelho` do
+ * ADR-0002, nem com o espelho modelado sobre a baia de discos.
+ */
+if (visorEl) {
+  const q = new URLSearchParams(location.search).get('visor');
+  visorEl.dataset.forma = ['oculo', 'relogio', 'vigia'].includes(q) ? q : 'oculo';
+}
 let visorLigado = false;
 function visorDeveAparecer() {
   /* longe do Altar e sem uma Work em foco. O `focus` já enquadra a Tela apertado e

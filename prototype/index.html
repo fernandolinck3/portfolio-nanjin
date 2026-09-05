@@ -245,30 +245,106 @@
     background:#141110;border:1px solid #3A2E20;border-radius:3px;letter-spacing:.12em}
   .touch button:active{background:#241D16}
   @media (hover:none){ .touch{display:flex} }
-  /* O visor.
+  /* O visor, em três formas — `?visor=oculo|relogio|vigia`.
 
-     A moldura é o ponto. Um painel de UI no canto seria exatamente o que a crítica
-     proíbe — ajuda, tooltip, onboarding — e mataria o enigma que é metade do valor do
-     objeto. Um objeto **da cena** encostado no canto do quadro não é chrome: é
-     cenário, e o conteúdo dentro dele é o mesmo que a Tela mostra de perto.
+     A moldura é o ponto, e é por isso que existem três. Um painel de UI no canto seria
+     exatamente o que a crítica proíbe — ajuda, tooltip, onboarding — e mataria o
+     enigma que é metade do valor do objeto. Um objeto **da cena** encostado no canto
+     do quadro não é chrome: é cenário. Então a pergunta não é "que moldura fica
+     bonita", é **que objeto está ali** — e o nome e o desenho são a mesma decisão,
+     não duas.
 
-     `image-rendering:pixelated` porque o buffer tem 320x180 e é desenhado para ser
-     lido nesse tamanho: suavizar um pixel-art de 320 de largura o transforma em borrão
-     em vez de o ampliar. */
-  #visor{position:fixed;right:22px;bottom:22px;z-index:4;margin:0;width:448px;max-width:42vw;
-    padding:10px;border-radius:2px;pointer-events:none;
-    background:linear-gradient(160deg,#3A2E1C,#171310 42%,#2A2114);
-    border:1px solid #6A5330;
-    box-shadow:0 0 0 1px #0A0908 inset, 0 18px 46px #000A, 0 0 30px #C9902A22;
+     As três não são variações de estilo. Elas prometem coisas diferentes: um óculo
+     promete que há mais quarto do outro lado, um relógio promete tempo, uma vigia
+     promete um casco entre você e o que se vê.
+
+     `image-rendering:pixelated` em todas porque o buffer tem 320x180 e é desenhado
+     para ser lido nesse tamanho: suavizar um pixel-art de 320 de largura o transforma
+     em borrão em vez de o ampliar. */
+  #visor{position:fixed;right:22px;bottom:22px;z-index:4;margin:0;pointer-events:none;
     opacity:0;transform:translateY(10px) scale(.985);
     transition:opacity .34s ease,transform .34s ease}
   #visor[data-on]{opacity:1;transform:none}
   #visor canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;
-    image-rendering:pixelated;background:#050706;
-    box-shadow:0 0 0 1px #0A0908, 0 0 22px #7ED6B033 inset}
+    image-rendering:pixelated;background:#050706}
   /* fora do caminho da faixa de bancada, que ocupa a base inteira */
   body[data-debug] #visor{bottom:64px}
-  @media (max-width:720px){ #visor{width:auto;left:12px;right:12px;max-width:none} }
+
+  /* 1 — O ÓCULO. Arco pleno com fecho de pedra, dourado sobre gesso escuro. O quarto
+     já é barroco e já tem uma janela em ogiva: esta é a mesma família. */
+  #visor[data-forma=oculo]{width:452px;max-width:42vw;padding:74px 26px 26px;
+    border-radius:50% 50% 10px 10px / 44% 44% 8px 8px;
+    background:
+      radial-gradient(120% 62% at 50% 0,#8A6C38 0 34%,#3E2F16 60%,#1C1610 100%),
+      linear-gradient(#241C12,#12100E);
+    border:2px solid #B08C4E;
+    box-shadow:0 0 0 1px #0A0908 inset, 0 22px 54px #000C, 0 0 40px #C9902A33}
+  /* o fecho do arco, e ele precisa aparecer: é o que diz "arco" em vez de "caixa
+     com o topo arredondado" */
+  #visor[data-forma=oculo]::before{content:"";position:absolute;left:50%;top:-14px;
+    width:52px;height:38px;transform:translateX(-50%);
+    background:linear-gradient(#F0D49A,#8A6634 62%,#5A3F1C);
+    clip-path:polygon(26% 0,74% 0,100% 100%,0 100%);
+    box-shadow:0 3px 9px #000A}
+  /* o aro interno acompanha a curva do arco em vez de cortar um retângulo nela */
+  #visor[data-forma=oculo]::after{content:"";position:absolute;inset:9px;
+    border:1px solid #C9A05A55;border-radius:50% 50% 6px 6px / 44% 44% 5px 5px;
+    pointer-events:none}
+  #visor[data-forma=oculo] canvas{border-radius:3px;
+    box-shadow:0 0 0 2px #B08C4E, 0 0 0 6px #100D0B, 0 0 24px #7ED6B02E inset}
+
+  /* 2 — O RELÓGIO. Caixa de madeira com coroa e pés, e a Tela onde ficaria o
+     mostrador. É a forma que mais lê como mobília — e a que promete uma coisa que o
+     conteúdo não entrega. */
+  #visor[data-forma=relogio]{width:452px;max-width:42vw;padding:26px 22px 22px;
+    border-radius:14px 14px 3px 3px;
+    background:linear-gradient(168deg,#573B22,#241A12 44%,#3E2A18);
+    border:1px solid #6A4A28;
+    box-shadow:0 0 0 1px #0A0908 inset, 0 20px 50px #000B, 0 0 26px #C9902A1E}
+  /* a coroa: um arco raso de latão sobre o topo da caixa */
+  #visor[data-forma=relogio]::before{content:"";position:absolute;left:18%;right:18%;top:-13px;
+    height:26px;border-radius:50% 50% 0 0 / 100% 100% 0 0;
+    background:linear-gradient(#C9A05A,#5A3E1C);
+    box-shadow:0 3px 8px #0009}
+  /* os dois pés, num gradiente só */
+  #visor[data-forma=relogio]::after{content:"";position:absolute;left:14%;right:14%;bottom:-9px;
+    height:10px;border-radius:0 0 3px 3px;
+    background:
+      linear-gradient(#4A3320,#20160F) left 0 top 0 / 22% 100% no-repeat,
+      linear-gradient(#4A3320,#20160F) right 0 top 0 / 22% 100% no-repeat}
+  #visor[data-forma=relogio] canvas{border-radius:2px;
+    box-shadow:0 0 0 2px #8A6C3A, 0 0 0 6px #160F0A, 0 0 20px #7ED6B028 inset}
+
+  /* 3 — A VIGIA. Aro de latão rebitado e o vidro atrás. É a única das três que não é
+     barroca — e a Unidade também não é, então ela é a que assume que há uma máquina
+     no quarto em vez de a disfarçar. O aro custa largura: a Tela cabe em 72% do
+     diâmetro, então o objeto ocupa mais canto para a mesma legibilidade. */
+  #visor[data-forma=vigia]{width:460px;max-width:44vw;aspect-ratio:1;padding:0;
+    display:grid;place-items:center;border-radius:50%;
+    background:radial-gradient(circle at 34% 26%,#8C6C3C,#3C2C18 60%,#171008);
+    border:1px solid #A5854A;
+    box-shadow:0 0 0 12px #241B10 inset, 0 0 0 13px #6A5330 inset,
+      0 22px 54px #000B, 0 0 30px #C9902A1E}
+  /* os oito rebites, num elemento só: `box-shadow` repete a mesma forma em oito
+     deslocamentos, que é mais barato que oito nós e não some num `max-width` */
+  #visor[data-forma=vigia]::before{content:"";position:absolute;width:9px;height:9px;
+    border-radius:50%;background:#E0BE80;
+    box-shadow:
+      0 -208px #C9A05A, 147px -147px #C9A05A, 208px 0 #C9A05A, 147px 147px #C9A05A,
+      0 208px #C9A05A, -147px 147px #C9A05A, -208px 0 #C9A05A, -147px -147px #C9A05A}
+  /* o reflexo do vidro, uma faixa só e de raspão */
+  #visor[data-forma=vigia]::after{content:"";position:absolute;inset:13px;border-radius:50%;
+    background:linear-gradient(148deg,#FFFFFF12 0 22%,#FFFFFF00 42%);pointer-events:none}
+  /* 80% e não mais: um 16:9 inscrito num círculo cabe em 87% do diâmetro, e nesse
+     limite os cantos encostam no aro. **É o custo da forma** — a mesma legibilidade
+     das outras duas exigiria um círculo de 622 px, que não é mais um canto. */
+  #visor[data-forma=vigia] canvas{width:80%;border-radius:2px;
+    box-shadow:0 0 0 1px #0A0908, 0 0 26px #7ED6B02E inset}
+
+  @media (max-width:720px){
+    #visor[data-forma]{width:auto;left:12px;right:12px;max-width:none;aspect-ratio:auto}
+    #visor[data-forma=vigia]::before{display:none}
+  }
   /* A linha das estações, e ela toma a faixa inteira.
 
      Os outros mostradores da bancada leem um número e cabem entre dois vizinhos. Este
