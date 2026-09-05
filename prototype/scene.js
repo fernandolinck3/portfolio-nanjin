@@ -133,6 +133,58 @@ document.getElementById('stage').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x060505);
 
+/**
+ * A escala do instrumento contra o quarto.
+ *
+ * A régua da sala é a **porta** de `room-baroque.js` — 6,6 unidades para os 2,05 m de
+ * uma porta real, ou seja 3,2 unidades por metro. Por ela o quarto tem 7,25 × 6,56 m e
+ * o tampo do Altar tinha **4,81 × 2,88 m**: 66% da largura do quarto, contra os ~21%
+ * que uma bancada real ocupa. Erro de razão de aproximadamente 2×.
+ *
+ * Ele aparecia como três queixas separadas — a Unidade parece grande, a mesa parece
+ * grande, a mobília parece jogada — e é uma só. **A mobília não estava jogada, estava
+ * exilada:** o tampo cobria `x −7,6..+7,6` e `z −4,5..+4,5` a 2,95 do chão, como um
+ * telhado, e a única regra que sobrava para um móvel de chão era ficar rente às
+ * paredes. Não existia meio de quarto onde agrupar nada.
+ *
+ * A razão entre a Unidade e o tampo, essa, estava boa — 39%, contra os 60–75% de um
+ * controlador sobre uma mesa. **O par é coerente entre si; o erro era do par contra o
+ * quarto.** Por isso os dois descem juntos, com um fator só, e nada dentro do
+ * instrumento precisou ser redesenhado.
+ *
+ * `0,46` e não menos. Realismo estrito seria `k ≈ 0,33` e transformaria o Altar numa
+ * mesinha. Em 0,46 o tampo fica 2,21 × 1,33 m — grande para uma mesa, correto para um
+ * altar — e a Unidade fica 0,86 × 0,47 m, a medida de um all-in-one de verdade.
+ *
+ * Crescer o quarto em vez disso foi contado e descartado: em `room-baroque.js` só 12
+ * de 34 posições são paramétricas, e `WIN`, `SHAFT_LEN`, `skyLight.position` e
+ * `setPool({ near, far })` quebram sem aviso. Ver `docs/specs/quarto-navegavel.md`.
+ *
+ * **O que é medido contra o instrumento entra no grupo; o que é medido contra o chão
+ * não.** As pernas do Altar, o tapete e as distâncias de câmera são deste lado da
+ * linha e estão marcados com `K` onde aparecem. O plinto da invocação fica de fora:
+ * ele pousa no chão da sala e é mobília, não parte do instrumento.
+ */
+const K = .46;
+
+/**
+ * O instrumento: a Unidade, o Altar e a luz que os acende.
+ *
+ * Existe antes de tudo porque `unit` e `altar` nascem dentro dele — eram filhos
+ * diretos da cena, ambos na origem e em escala 1, e é essa a única coisa que muda.
+ * A escala é aplicada aqui e não no fim: um grupo que passa a vida em escala 1 e
+ * encolhe na última linha do arquivo é um grupo que mede errado para todo mundo que
+ * o consultou no meio.
+ *
+ * O topo do tampo está em `y = 0`, que é o plano de escala — então ele não se move, e
+ * continua a 2,95 do chão (0,92 m pela régua da porta). As pernas é que precisam
+ * saber, porque vivem em `room` e não aqui.
+ */
+const instrumento = new THREE.Group();
+instrumento.name = 'instrumento';
+instrumento.scale.setScalar(K);
+scene.add(instrumento);
+
 const camera = new THREE.PerspectiveCamera(38, W() / H(), 0.1, 100);
 /* CAM is the angle off vertical, in degrees. 0 is the spec-sheet view straight down;
    larger angles put the candlesticks into profile so they read as candles at all. */
@@ -213,7 +265,10 @@ function placeCamera() {
   const p = CAM.pan || (CAM.pan = { x: 0, y: 0, z: 0 });
   camera.position.set(p.x + Math.sin(y) * h, p.y + Math.cos(a) * CAM.dist, p.z + Math.cos(y) * h);
   /* look a little higher as the view comes up, so the window enters frame naturally */
-  camera.lookAt(p.x, p.y + .35 + Math.max(0, (CAM.tilt - 34) / 40) * 2.4, p.z);
+  /* `.35` e uma altura no instrumento e encolhe com ele; o termo do tilt e um
+     enquadramento do quarto — ele existe para trazer a janela ao quadro — e o quarto
+     nao encolheu, entao esse fica em unidades de mundo. */
+  camera.lookAt(p.x, p.y + .35 * K + Math.max(0, (CAM.tilt - 34) / 40) * 2.4, p.z);
 }
 placeCamera();
 
@@ -356,10 +411,26 @@ if (!location.search.includes('hdri=0')) {
  * returned. They are a starting point with arithmetic behind them, not a taste
  * judgement — `__unit.setLight()` is how they get judged.
  */
-const key = new THREE.SpotLight(0xffc98a, 17, 22, 0.86, 0.85, 2);
+/**
+ * O key entra no `instrumento`, e por isso os números dele passaram por `K`.
+ *
+ * Um grupo em escala carrega a **posição** da luz e mais nada: `distance` e `decay`
+ * são lidos em unidades de mundo dentro do shader, e o three não os escala junto. Com
+ * o key 0,46× mais perto do Altar e `decay: 2`, a mesma intensidade cairia sobre o
+ * tampo **4,7× mais forte** — a cena inteira estouraria e a Vigília começaria branca.
+ *
+ * Então a conversão é a da física e não do olho: `intensity × K²`, porque a
+ * iluminação cai com o quadrado da distância; `distance × K`, porque o alcance é um
+ * comprimento. O que o Altar recebe fica idêntico ao que recebia. O que muda — e é o
+ * que se queria — é que o quarto, que não encolheu, passa a receber proporcionalmente
+ * menos: quatro poças de luz num quarto escuro, que é a forma da referência.
+ *
+ * `KEY0` mais abaixo lê `key.intensity` depois disto, então a Vigília acerta sozinha.
+ */
+const key = new THREE.SpotLight(0xffc98a, 17 * K * K, 22 * K, 0.86, 0.85, 2);
 key.position.set(-2.4, 4.6, 1.6);
 key.target.position.set(0, .2, -.2);
-scene.add(key); scene.add(key.target);
+instrumento.add(key); instrumento.add(key.target);
 
 /* The moon in the sky — `moon` is already the Moon Deck. Parallel rays, cold,
    and it survives the Vigil — at the end of the
@@ -389,16 +460,21 @@ key.castShadow = true;
    spot's cone covers the Altar and nothing else, so 1024 texels land denser here
    than 2048 did there — cheaper *and* crisper. */
 key.shadow.mapSize.set(1024, 1024);
-key.shadow.camera.near = 0.5;
-key.shadow.camera.far = 22;
+/* `near`/`far` e os dois vieses sao comprimentos de mundo, e o key agora esta 0,46x
+   mais perto do que ilumina. Sem `K` o frustum gastaria metade do seu alcance atras
+   do Altar — precisao de profundidade jogada fora — e os vieses, que sao medidos em
+   unidades e nao em texels, ficariam 2x maiores do que foram ajustados: a Plate
+   voltaria a flutuar acima da propria sombra. */
+key.shadow.camera.near = 0.5 * K;
+key.shadow.camera.far = 22 * K;
 /* A spot's shadow camera is a perspective one and three derives its fov from the
    cone angle, so the ortho box the directional needed is gone. The cone is already
    the tight framing that comment above asks for — every texel it spends lands on
    the Altar and the Unit rather than on eleven units of empty floor. */
 /* the Plate is a plane a hair above the Chassis: without a bias they z-fight in
    shadow and the whole faceplate crawls with acne */
-key.shadow.bias = -0.0008;
-key.shadow.normalBias = 0.022;
+key.shadow.bias = -0.0008 * K;
+key.shadow.normalBias = 0.022 * K;
 key.shadow.radius = 3;
 
 /* ---------- ornament: drawn once, baked into the metal ---------- */
@@ -1424,7 +1500,7 @@ function plateGeom(w, d, hole) {
   return g;
 }
 
-const unit = new THREE.Group(); scene.add(unit);
+const unit = new THREE.Group(); instrumento.add(unit);
 
 /* chassis */
 /**
@@ -2256,7 +2332,7 @@ function clothTexture() {
   return t;
 }
 
-const altar = new THREE.Group(); scene.add(altar);
+const altar = new THREE.Group(); instrumento.add(altar);
 
 /**
  * The desk, with an edge.
@@ -2477,13 +2553,15 @@ function candlestick(x, z, height) {
   /* 5.5 while three falloff-free directionals were doing the work; the fit against
      the reference puts it here now that this light is actually carrying the Altar.
      Lower number, far larger share — it went from 2% of the Altar to 54%. */
-  const light = new THREE.PointLight(0xFFB162, 3.6, 15, 2);
+  /* mesma conversao do key: `K**2` na intensidade, `K` no alcance. Uma vela que
+     encolheu junto com o Altar continua entregando ao tampo a luz que entregava. */
+  const light = new THREE.PointLight(0xFFB162, 3.6 * K * K, 15 * K, 2);
   light.position.copy(flame.position); g.add(light);
   return {
     group: g, flame, halo, light,
     /* `x`/`y`/`z` are the flame's rest position, so the sway has something to be
        relative to — offsetting from wherever it happens to be would drift */
-    base: { flame: 1, light: 3.6, halo: .3, x: flame.position.x, y: flame.position.y, z: flame.position.z },
+    base: { flame: 1, light: 3.6 * K * K, halo: .3, x: flame.position.x, y: flame.position.y, z: flame.position.z },
   };
 }
 
@@ -2858,9 +2936,12 @@ if (!location.search.includes('tex=0')) {
   }).catch(e => console.warn('no parquet; keeping the drawn floor', e));
 }
 
-const rug = new THREE.Mesh(new THREE.PlaneGeometry(19, 13),
+/* O tapete e do Altar — ele foi desenhado para caber sob o tampo e sobrar uma borda
+   — entao encolhe com ele. Fica em `room` e nao no `instrumento` porque
+   `__unit.setRoom(false)` tem que continuar apagando o chao inteiro de uma vez. */
+const rug = new THREE.Mesh(new THREE.PlaneGeometry(19 * K, 13 * K),
   new THREE.MeshStandardMaterial({ map: rugTexture(), roughness: .98, metalness: 0, color: 0xBFB6AA }));
-rug.rotation.x = -Math.PI / 2; rug.position.set(0, FLOOR_Y + .01, 1.5); room.add(rug);
+rug.rotation.x = -Math.PI / 2; rug.position.set(0, FLOOR_Y + .01, 1.5 * K); room.add(rug);
 
 /* far wall, extruded around a lancet opening */
 const wallShape = new THREE.Shape();
@@ -3224,8 +3305,15 @@ const legProfile = [
 const legMat = new THREE.MeshStandardMaterial({
   map: woodTexture(false), color: 0x8A7563, roughness: .55, metalness: 0,
 });
-for (const lx of [-6.2, 6.2]) for (const lz of [-3.5, 3.5]) {
-  const h = (-.62 - FLOOR_Y) / 2.16;
+/* As pernas sao de `room` e nao do `instrumento` — elas tocam o chao, e o chao nao
+   encolheu. Entao `K` entra a mao, e so nas duas coisas que sao medidas contra o
+   tampo: **onde** ficam os quatro cantos, e **onde** termina o torneado, que e a face
+   de baixo da mensa (`-.62` em coordenadas do Altar). O comprimento nao leva `K`: a
+   perna vai do chao ate a mesa, e por isso ela cresce 14% em vez de encolher 54%.
+   O raio tambem nao: `.26` de raio maximo sao 8 cm pela regua da porta, que e a
+   grossura certa para a mesa de 2,21 m que o tampo virou. */
+for (const lx of [-6.2 * K, 6.2 * K]) for (const lz of [-3.5 * K, 3.5 * K]) {
+  const h = (-.62 * K - FLOOR_Y) / 2.16;
   const leg = new THREE.Mesh(
     new THREE.LatheGeometry(legProfile.map(([r, y]) => new THREE.Vector2(r, y * h)), 32), legMat);
   leg.position.set(lx, FLOOR_Y, lz); room.add(leg);
@@ -4978,7 +5066,7 @@ window.__unit = {
   },
   pads: () => padMeshes,
   /** The scene graph and the Unit inside it, for passes that restyle rather than pose. */
-  roots: () => ({ scene, unit, room, altar, decor: decor.group, mobilia: mobilia.group }),
+  roots: () => ({ scene, instrumento, unit, room, altar, decor: decor.group, mobilia: mobilia.group }),
   /**
    * The controls, as functions.
    *
@@ -5881,7 +5969,13 @@ setRoomLights(false);
  * through the same rig everything else does and hands over cleanly at the end.
  */
 const intro = createIntro({
-  apply(c) { Object.assign(CAM, c); placeCamera(); },
+  /* `OPEN` e `REST` sao distancias **ao instrumento**, e a longa nota de `intro.js`
+     que as justifica — 5.6 dava 401px de Tela, 4.6 da 494 — foi medida com ele em
+     escala 1. Converter aqui, no unico lugar que sabe o que `K` vale, mantem aquele
+     raciocinio legivel la em vez de o substituir por dois numeros sem historia.
+     `?sala` nao passa por aqui: o `dist: 31` dele enquadra o quarto, em unidades de
+     mundo, e nao deve encolher. */
+  apply(c) { Object.assign(CAM, c, { dist: c.dist * K }); placeCamera(); },
   onBoot(k) { setBoot(k); },
   /* Hold at the opening pose until the Plate has its final texture, so the one
      remaining rebuild lands while the camera is far off and the Screen is dark. */
