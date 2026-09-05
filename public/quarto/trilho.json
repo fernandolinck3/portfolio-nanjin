@@ -57,9 +57,9 @@
     },
     {
       "id": "leitura",
-      "modulo": "path",
+      "modulo": "criteria",
       "nome": "A leitura",
-      "feita_de": "A estante com os livros, a cadeira virada para dentro do quarto",
+      "feita_de": "A estante de seis prateleiras, a cadeira virada para dentro do quarto",
       "olhar": [
         9.8,
         0.0,
@@ -69,13 +69,14 @@
         3.92,
         1.9,
         1.92
-      ]
+      ],
+      "por_que": "CRITERIOS sao cinco principios num layout de indice, e uma estante e onde doutrina fica escrita. A estante tem seis prateleiras, medidas pelo histograma de `prateleiras()` em room-mobilia.js: cinco principios cabem com uma sobrando."
     },
     {
       "id": "lareira",
-      "modulo": "criteria",
+      "modulo": "path",
       "nome": "A lareira",
-      "feita_de": "A lareira, o sofa e a poltrona sobre o segundo tapete",
+      "feita_de": "A lareira e a cornija, o sofa e a poltrona sobre o segundo tapete",
       "olhar": [
         8.8,
         -0.6,
@@ -85,7 +86,8 @@
         3.52,
         1.9,
         -0.76
-      ]
+      ],
+      "por_que": "TRAJETO e uma cronologia, e uma cronologia quer uma linha — a cornija da lareira e uma linha. E a lareira e onde se reconta: sofa e poltrona virados para o fogo sao o lugar do \"onde eu trabalhei\"."
     },
     {
       "id": "oficina",
