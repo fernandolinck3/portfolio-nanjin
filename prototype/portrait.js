@@ -149,8 +149,21 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
   const OLHO = { x, y: y + height * 0.11, z: wallFace + 0.06 }
   let gx = 0, gy = 0
 
+  /**
+   * `mirar` continua sendo a porta, e o que mudou e o que ha atras dela.
+   *
+   * Era um deslocamento de iris. `REACTION_FRAMES` nao tem iris — e uma pintura em
+   * baixa resolucao sem celulas de olho isolaveis — mas tem dez quadros de reacao. A
+   * chamada agora **avisa** o painel de que houve movimento na frente dele, e ele
+   * reage com a animacao que ela tem. Ver o cabecalho de `lyra-display.js`.
+   *
+   * `mirar(null)` nao faz nada por design: longe do quadro nao ha ponteiro sobre ela.
+   */
   let alvoManual = null
-  function mirar(alvo) { alvoManual = alvo }
+  function mirar(alvo) {
+    alvoManual = alvo
+    if (alvo && lyra.ponteiro) lyra.ponteiro(alvo[0], alvo[1])
+  }
 
   /* the moulding — four bars, mitred by overlap rather than by geometry */
   const M = 0.26, D = 0.22
@@ -339,7 +352,7 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
     tempo += dt; relogio += dt; desde += dt
     if (relogio < PASSO) return
     relogio = 0
-    lyra.pintar(tempo, { vigil, olhar: [gx, gy] })
+    lyra.pintar(tempo, { vigil })
     desde = 0
     painel.paint()
     tex.needsUpdate = true

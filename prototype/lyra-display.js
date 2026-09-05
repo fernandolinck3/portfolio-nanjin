@@ -1,40 +1,47 @@
 /**
- * A Lyra do retrato — e ela e **a mesma Lyra da Tela**, nao uma segunda.
+ * A Lyra do retrato — e ela e **a mesma Lyra do modulo PROJETOS**.
  *
- * Este arquivo errou o personagem duas vezes antes de acertar, e as duas valem
- * registro porque a causa foi a mesma: deduzir do codigo em vez de olhar o desenho.
+ * Este arquivo errou o personagem tres vezes, e a causa foi sempre a mesma: deduzir do
+ * codigo em vez de olhar o desenho.
  *
  * 1. **Um rosto inventado aqui.** Tenebrista, procedural, meu. Passou por ovo branco,
- *    nevoa e desenho de arame antes de ficar apenas aceitavel — e o problema nunca foi
- *    calibragem, era que havia duas Lyras. Um personagem desenhado duas vezes e a
- *    armadilha do `CLAUDE.md` em outra forma: duas listas divergem, uma nao pode.
- * 2. **`drawWizard`, de `screen/figure.js`.** Achei que fosse a do mostrador porque e
- *    a unica figura *procedural* la. Nao e: e o ramo de fallback. Alem de errada, ela
- *    desenha pixel a pixel com custo quadratico na escala e **travou o renderer** ao
- *    ser pedida grande.
+ *    nevoa e desenho de arame, e o problema nunca foi calibragem — era que havia duas
+ *    Lyras. Um personagem desenhado duas vezes e a armadilha do `CLAUDE.md` em outra
+ *    forma: duas listas divergem, uma nao pode.
+ * 2. **`drawWizard`.** Escolhida porque e a unica figura *procedural* em
+ *    `screen/figure.js`, o que nao a torna a do mostrador — e o ramo de fallback. Alem
+ *    de errada, desenha pixel a pixel com custo quadratico na escala e travou o
+ *    renderer ao ser pedida grande.
+ * 3. **`BUST`, de `screen/drawn.js`.** Mais perto: e desenhada a mao e e um busto de
+ *    verdade. Ainda errada — e o ramo `figure === 'drawn'`, que a bancada usa para
+ *    comparar as duas versoes.
  *
- * O que a Unidade mostra e `BUST`, de `screen/drawn.js` — 28x32 desenhada a mao em
- * quatro tons, com chapeu de aba, massa de cabelo enquadrando o rosto, e os olhos que
- * o cabecalho de la diz serem o ponto: *dois quadrados escuros leem como mascara; dois
- * quadrados escuros com um pixel aceso leem como alguem olhando para voce.*
+ * O que a Unidade **ships** e `figure = 'reaction'`, e o que ela desenha e
+ * `REACTION_FRAMES`: dez quadros de 28x40 gerados de `reaction.png`, ela reagindo a um
+ * Deck ser girado — ergue as sobrancelhas, sorri, inclina a cabeca, pisca uma vez e
+ * assenta. E a que aparece no quadrinho ao lado da lista em PROJETOS.
  *
- * A forma de descobrir isso nao foi ler mais codigo — foi **renderizar os candidatos
- * em PNG e olhar**. Tres desenhos, tres imagens, um segundo de decisao.
+ * O jeito de fechar isso foi ler `render.js` na linha que desenha, e nao inferir do
+ * arquivo que exporta.
  *
- * ## O olhar, sem redesenhar a arte
+ * ## O olhar mudou de motor, e o motivo e a arte
  *
- * O sprite e uma grade de caracteres, entao os olhos sao **celulas com endereco**:
- * colunas 9-11 e 15-17, linhas 15-17. Para ela olhar, o bloco de cada olho e recortado
- * na carga, o buraco e tapado com o tom do rosto, e o bloco e redesenhado deslocado em
- * ate uma celula. Uma celula, a esta escala, e uma dezena de pixels de tela.
+ * Nas duas versoes anteriores o olhar era um deslocamento: a iris num plano proprio, e
+ * depois o bloco do olho no sprite. Nenhum dos dois serve aqui, e nao por preguica —
+ * `REACTION_FRAMES` e uma **pintura em baixa resolucao**, dithered, sem celulas de olho
+ * isolaveis. Renderizada a 14x com regua, o rosto e uma massa palida com marcas
+ * sutis: nao existe o par de quadrados escuros que o `BUST` tem.
  *
- * Recortar em vez de escrever os glifos a mao e o que faz isso sobreviver a arte
- * mudar: se ela for redesenhada e os olhos continuarem nesses retangulos, nada aqui
- * precisa ser tocado.
+ * Mas o proprio nome dela diz o que fazer. Ela e uma **reacao** — a maquina de estado
+ * em `screen/reaction.js` toca os quadros 1..9 quando um Deck gira e volta ao 0. No
+ * retrato, quem gira e o **ponteiro**: mexer o mouse na frente dela a faz reagir. O
+ * visitante continua sendo notado, que era o que a interacao valia; o que muda e que
+ * ela responde com a animacao que ela tem, em vez de com um olho que ela nao tem.
  */
 
-import { BUST, drawSprite } from './screen/drawn.js'
-import { drawRobe } from './screen/figure.js'
+import { REACTION_FRAMES, REACTION_W, REACTION_H } from './screen/reaction-frames.js'
+import { drawSprite } from './screen/drawn.js'
+import { createKnobReaction } from './screen/reaction.js'
 
 /* As duas paletas de `screen/render.js`, repetidas de proposito e nao importadas: la
    elas vivem em `let` de modulo que ele reescreve a cada quadro conforme o fader, e
@@ -50,65 +57,43 @@ const hex = c => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), pars
 const mix = (A, B, k) => A.map((v, i) => v + (B[i] - v) * k)
 const cor = T => `rgb(${T[0] | 0},${T[1] | 0},${T[2] | 0})`
 
-/** Onde os olhos moram no sprite. Medido em `BUST`, nao chutado. */
-const OLHOS = [{ c: 9, r: 15 }, { c: 15, r: 15 }]
-const OLHO_W = 3, OLHO_H = 3
-
-/* O rosto sem os olhos, e os dois olhos soltos — recortados uma vez na carga. */
-const ROSTO = BUST.map(r => r.split(''))
-const RECORTES = OLHOS.map(({ c, r }) => {
-  const bloco = []
-  for (let j = 0; j < OLHO_H; j++) {
-    bloco.push(ROSTO[r + j].slice(c, c + OLHO_W).join(''))
-    for (let i = 0; i < OLHO_W; i++) ROSTO[r + j][c + i] = '#'   // o tom do rosto
-  }
-  return bloco
-})
-const SEM_OLHOS = ROSTO.map(r => r.join(''))
-
 export function criarLyra({ w = 120, h = 162 } = {}) {
   const c = document.createElement('canvas')
   c.width = w; c.height = h
   const g = c.getContext('2d')
   g.imageSmoothingEnabled = false
 
-  /**
-   * O enquadramento, e ele e aritmetica inteira de proposito.
-   *
-   * O sprite tem 28 celulas de largura. `S` e quantos pixels de fonte cada celula
-   * ocupa, e tem de ser **inteiro**: meia celula e uma borda serrilhada num desenho
-   * cuja graca inteira e a celula. Com w = 120, S = 4 da 112 de largura e sobra uma
-   * margem de 4 de cada lado.
-   */
-  const S = Math.max(1, Math.floor(w / (BUST[0].length + 2)))
-  const bx = Math.round((w - BUST[0].length * S) / 2)
-  const by = Math.max(0, Math.round(h * .04))
-  const baixo = by + BUST.length * S
+  /* Uma instancia propria, e nao a do mostrador: os dois reagem a coisas diferentes —
+     lá o Deck, aqui o ponteiro — e compartilhar a maquina de estado faria girar o Deck
+     animar o retrato do outro lado do quarto. */
+  const reacao = createKnobReaction({ idle: true })
 
-  function pintar(t, { vigil = 0, olhar = [0, 0] } = {}) {
+  /**
+   * A escala e **inteira** de proposito: meia celula e uma borda serrilhada num
+   * desenho cuja graca inteira e a celula. Com w = 120 e um sprite de 28, `S = 4` da
+   * 112 de largura e sobra uma margem de 4 de cada lado.
+   */
+  const S = Math.max(1, Math.floor(w / (REACTION_W + 2)))
+  const bx = Math.round((w - REACTION_W * S) / 2)
+  const by = Math.round((h - REACTION_H * S) / 2)
+
+  /**
+   * O ponteiro faz o papel do Deck.
+   *
+   * `notify` recebe um valor continuo e dispara quando o percurso acumulado passa de
+   * um limiar — foi escrito para o giro de um Deck e serve igual para a travessia de
+   * um ponteiro. Somar os dois eixos da uma unica grandeza monotonica, que e a forma
+   * que ela espera.
+   */
+  function ponteiro(nx, ny) { reacao.notify(nx * 2 + ny) }
+
+  function pintar(t, { vigil = 0 } = {}) {
     const P = {}
     for (const k of ['ink', 'mid', 'dim', 'bg']) P[k] = mix(hex(DIA[k]), hex(NOITE[k]), vigil)
     const INK = cor(P.ink), MID = cor(P.mid), DEEP = cor(P.dim), BG = cor(P.bg)
 
     g.fillStyle = BG; g.fillRect(0, 0, w, h)
-
-    /**
-     * O manto continua o busto, e nao e desenhado a mao — `drawn.js` diz por que:
-     * *um rosto e um conjunto de decisoes e tem de ser desenhado; um manto e uma
-     * forma.* E a mesma divisao que a Tela da Unidade usa, com o mesmo `drawRobe`, e e
-     * a parte dela que balanca.
-     */
-    if (baixo < h) drawRobe(g, Math.round(w / 2), baixo - S, h + S, S, 'present', t, INK, MID, DEEP, BG)
-
-    drawSprite(g, SEM_OLHOS, bx, by, S, INK, MID, DEEP, BG)
-
-    /* Uma celula de curso em cada eixo. Mais que isso e estrabismo. */
-    const gx = Math.round(Math.max(-1, Math.min(1, olhar[0])))
-    const gy = Math.round(Math.max(-1, Math.min(1, olhar[1])))
-    RECORTES.forEach((bloco, i) => {
-      const o = OLHOS[i]
-      drawSprite(g, bloco, bx + (o.c + gx) * S, by + (o.r - gy) * S, S, INK, MID, DEEP, BG)
-    })
+    drawSprite(g, REACTION_FRAMES[reacao.frameAt(t * 1000)], bx, by, S, INK, MID, DEEP, BG)
 
     /**
      * A varredura, e ela e o unico sinal de que aquilo e painel e nao pintura acesa.
@@ -127,5 +112,5 @@ export function criarLyra({ w = 120, h = 162 } = {}) {
   }
 
   pintar(0, {})
-  return { canvas: c, pintar, width: w, height: h }
+  return { canvas: c, pintar, ponteiro, width: w, height: h }
 }
