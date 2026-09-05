@@ -97,6 +97,21 @@ const FONTE = '11px VT323, monospace'
 /** Dia, meio, noite — a mesma direcao do fader. */
 const bandaDe = vigil => (vigil < 1 / 3 ? 0 : vigil < 2 / 3 ? 1 : 2)
 
+/**
+ * Corta a pergunta que nao cabe, e nao a quebra.
+ *
+ * A caixa tem quatro linhas porque sao quatro perguntas: uma pergunta que quebrasse em
+ * duas empurraria a quarta para fora e o oraculo perderia um quarto de si em silencio.
+ * Cortar com reticencias mostra o problema para quem reescrever o texto, em vez de
+ * escondê-lo — o texto mora em `modules.ts` e quem o edita nao le este arquivo.
+ */
+function encurtar(g, texto, largura) {
+  if (g.measureText(texto).width <= largura) return texto
+  let s = texto
+  while (s.length > 1 && g.measureText(s + '\u2026').width > largura) s = s.slice(0, -1)
+  return s + '\u2026'
+}
+
 /** Quebra por largura medida, e nao por contagem de caracteres: VT323 nao e mono. */
 function quebrar(g, texto, largura) {
   const saida = []
@@ -201,14 +216,14 @@ export function criarLyra({ w = 240, h = 324 } = {}) {
     if (escolha < 0) {
       for (let i = 0; i < Math.min(CAIXA.linhas, ORACLE.length); i++) {
         g.fillStyle = i === sobre ? INK : MID
-        g.fillText((i === sobre ? '\u203a ' : '  ') + ORACLE[i].q, x, linha(i))
+        g.fillText((i === sobre ? '\u203a ' : '  ') + encurtar(g, ORACLE[i].q, util), x, linha(i))
       }
       return
     }
 
     const { q, a } = ORACLE[escolha]
     g.fillStyle = DEEP
-    g.fillText('  ' + q, x, linha(0))
+    g.fillText('  ' + encurtar(g, q, util), x, linha(0))
     g.fillStyle = INK
     const resposta = quebrar(g, a[bandaDe(vigil)], util)
     for (let i = 0; i < Math.min(CAIXA.linhas - 1, resposta.length); i++) {

@@ -4741,7 +4741,8 @@ el.addEventListener('pointermove', e => {
     /* a linha sob o ponteiro, e ela só existe de perto: na pose da estação uma
        pergunta mede três pixels de tela e apontar para ela seria sorte */
     const sobreLinha = naConsulta && noPainel(hitRetrato)
-      && portrait.apontar(hitRetrato.uv.x, hitRetrato.uv.y);
+      ? portrait.apontar(hitRetrato.uv.x, hitRetrato.uv.y)
+      : portrait.apontar(null);
     const estSob = ctl || sobreRetrato ? 0 : pickQuarto(e);
     if (estSob !== hoverEstacao) {
       hoverEstacao = estSob;
@@ -5002,6 +5003,9 @@ addEventListener('resize', () => {
   /* the composer owns its own render targets and does not learn about this
      otherwise — a resized canvas over stale targets is how post ends up stretched */
   post.setSize(W(), H());
+  /* a pose fechada resolve a largura pelo aspecto, e girar o telefone parado nela não
+     recomeça viagem nenhuma — sem isto o painel volta a sair pelos lados */
+  trilho.reenquadrar();
 });
 /* the canvas is sized before layout settles often enough to be worth a second pass */
 requestAnimationFrame(() => {

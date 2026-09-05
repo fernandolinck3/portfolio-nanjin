@@ -234,16 +234,45 @@ export function createTrilho({ camera, base }) {
        Altar. Aproximar-se de um quadro andando pela curva do trilho seria dar meia
        volta na sala para chegar a dois metros de onde já se está. */
     if (comPerto && e.perto) {
-      return {
-        olhar: new THREE.Vector3(...e.perto.olhar),
-        pos: new THREE.Vector3(...e.perto.camera),
-      }
+      const olhar = new THREE.Vector3(...e.perto.olhar)
+      const pos = new THREE.Vector3(...e.perto.camera)
+      return { olhar, pos: recuarSePreciso(olhar, pos, e.perto.cabe) }
     }
     return {
       tRail: ts[n - 1],
       olhar: new THREE.Vector3(...e.olhar),
       pos: new THREE.Vector3(...e.camera),
     }
+  }
+
+  /**
+   * A pose fechada recua sozinha quando a tela é estreita.
+   *
+   * `camera.fov` do three.js é **vertical**, e nada neste projeto compensa aspecto: em
+   * uma tela alta e fina, o quanto se vê de largura encolhe com ela. Nas outras cinco
+   * estações isso significa ver menos quarto, o que é uma moldura pior e nada mais. No
+   * retrato significa outra coisa desde que o painel dele passou a fazer perguntas: o
+   * único controle da estação sai da tela. Medido num quadro de 402 por 874, o painel
+   * ia de x = -63 a x = 465 — as duas pontas de cada pergunta fora da vista.
+   *
+   * `cabe` é a meia-largura, em unidades de mundo, que **tem** de caber. A conta é a
+   * mesma da vertical com o aspecto no meio, e o `max` guarda a pose medida: em tela
+   * larga a altura manda e nada muda, em tela estreita a largura manda e a câmera
+   * recua até a conta fechar. Uma estação sem `cabe` não recua nunca.
+   *
+   * O preço é resolução: a 402 de largura a câmera vai a uns 7 unidades e a célula do
+   * desenho dela cai para uns 10 pixels de tela. Menos do que a pose larga dá, e ainda
+   * assim a única forma de a pergunta existir — uma linha ilegível e uma linha fora da
+   * tela não são a mesma coisa.
+   */
+  function recuarSePreciso(olhar, pos, cabe) {
+    if (!cabe || !camera?.aspect) return pos
+    const tan = Math.tan(camera.fov * Math.PI / 360)
+    const preciso = cabe / (tan * camera.aspect)
+    const dir = pos.clone().sub(olhar)
+    const agora = dir.length()
+    if (!(preciso > agora)) return pos
+    return olhar.clone().addScaledVector(dir.divideScalar(agora), preciso)
   }
 
   /**
@@ -316,6 +345,23 @@ export function createTrilho({ camera, base }) {
     get panoramico() { return longe },
     get temPanorama() { return !!panorama },
     get pronto() { return !!curva },
+    /**
+     * Refaz o enquadramento da pose fechada. Chamado no `resize`.
+     *
+     * `alvoDe` resolve a largura no instante em que a viagem começa, e girar o telefone
+     * parado na pose fechada não recomeça viagem nenhuma — a câmera ficaria onde a
+     * conta antiga a pôs, com o painel cortado de novo. Isto recalcula o destino e
+     * repõe a câmera nele sem animar: quem já chegou não deve ver uma viagem por ter
+     * mudado o tamanho da janela.
+     */
+    reenquadrar() {
+      if (!curva || !perto || andando) return false
+      para = alvoDe(estacao, true)
+      de = para
+      t = 1
+      passo(0)
+      return true
+    },
     /** Devolve `true` no quadro em que a viagem termina, para quem quiser saber. */
     update(dt) { return passo(dt) },
   }

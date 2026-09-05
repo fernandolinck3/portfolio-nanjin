@@ -191,7 +191,10 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
    * tela deixaria a caixa contando uma consulta que ninguem esta fazendo.
    */
   const pxDe = (u, v) => [u * PAINEL.w, (1 - v) * PAINEL.h]
-  const apontar = (u, v) => lyra.apontar(...pxDe(u, v))
+  /* `apontar(null)` e o ponteiro **fora** do painel, e nao a ausencia de noticia. Sem
+     essa chamada a marca de seleção fica estacionada na ultima linha visitada: quem
+     chama so a chamava quando havia acerto, entao sair do quadro nao apagava nada. */
+  const apontar = (u, v) => lyra.apontar(...(u == null ? [-1, -1] : pxDe(u, v)))
   const consultar = (u, v) => lyra.clicar(...pxDe(u, v))
   const soltarConsulta = () => lyra.limpar()
 
