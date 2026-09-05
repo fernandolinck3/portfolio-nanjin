@@ -6488,9 +6488,7 @@ if (location.search.includes('trilho')) {
   /* o JSON baixa junto com o quarto, e nunca antes dele — `ROOM_K` começa em 0 e a
      regra do `room-mobilia.js` vale para qualquer asset novo do quarto */
   trilho.carregar(import.meta.env.BASE_URL + 'quarto/trilho.json').then(d => {
-    if (!d) return;
-    trilho.ancorar();
-    flashLcd('TRILHO · SEIS ESTAÇÕES', 2200);
+    if (d) flashLcd('TRILHO · SEIS ESTAÇÕES', 2200);
   });
 }
 

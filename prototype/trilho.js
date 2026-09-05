@@ -138,9 +138,25 @@ export function createTrilho({ camera, base }) {
     return true
   }
 
-  /** Onde a câmera fica e para onde olha, numa estação — o Altar inclusive. */
+  /**
+   * Onde a câmera fica e para onde olha, numa estação — o Altar inclusive.
+   *
+   * **O repouso do Altar é lido na saída, não no carregamento.** A primeira versão o
+   * fotografava dentro do `.then()` do `fetch`, e isso amarrava a pose de volta ao
+   * instante em que a rede respondesse: se o JSON chegasse antes do primeiro quadro,
+   * `camera.position` ainda era o que fosse na inicialização do módulo e a primeira
+   * volta ao Altar pousava num lugar qualquer. Aqui não há corrida — quando se sai do
+   * Altar, a câmera **está** no repouso do rig, por definição.
+   *
+   * Ler em vez de escrever à mão também é o que impede uma quarta mão na câmera: o
+   * `?sala`, o `?trilho` e a abertura param em lugares diferentes, e uma constante
+   * aqui seria uma delas discordando das outras.
+   */
   function alvoDe(n) {
-    if (n === 0) return altar
+    if (n === 0) {
+      if (!altar) altar = { pos: camera.position.clone(), olhar: base.clone() }
+      return altar
+    }
     const e = dados[n - 1]
     return {
       tRail: ts[n - 1],
@@ -195,18 +211,6 @@ export function createTrilho({ camera, base }) {
     /** O rig não pode disputar a câmera com o trilho — mesma regra do `focus`. */
     get dirigindo() { return !!curva && estacao !== 0 },
     get pronto() { return !!curva },
-    /**
-     * Guarda o repouso do Altar como ponto de partida e de volta.
-     *
-     * Lido do rig e não escrito à mão: o `?sala` e a abertura param em lugares
-     * diferentes, e uma constante aqui seria uma quarta mão na câmera.
-     */
-    ancorar() {
-      altar = {
-        pos: camera.position.clone(),
-        olhar: base.clone(),
-      }
-    },
     /** Devolve `true` no quadro em que a viagem termina, para quem quiser saber. */
     update(dt) { return passo(dt) },
   }

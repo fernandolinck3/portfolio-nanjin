@@ -11,7 +11,7 @@
       "id": "retrato",
       "modulo": "identity",
       "nome": "O retrato",
-      "feita_de": "Lyra emoldurada, o busto no pedestal, a luz de quadro",
+      "feita_de": "Lyra emoldurada com a placa de nome, a luz de quadro, o armario gotico ao lado. O busto NAO fica aqui: room-baroque.js o poe na parede direita, perto da oficina, e so no layout cheio.",
       "olhar": [-5.4, 0.9, -10.0],
       "camera": [-2.16, 1.9, -4.0]
     },
@@ -51,7 +51,7 @@
       "id": "oficina",
       "modulo": "skills",
       "nome": "A oficina",
-      "feita_de": "A baia de pedais, os cabos, os dois monitores",
+      "feita_de": "A baia de pedais, os cabos, os dois monitores, e o busto no pedestal quando o layout e cheio",
       "olhar": [10.0, -0.2, -4.4],
       "camera": [4.0, 1.9, -1.76]
     }
