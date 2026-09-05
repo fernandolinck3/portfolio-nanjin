@@ -5895,6 +5895,7 @@ if (visorEl) {
   visorEl.dataset.forma = ['tela', 'oculo', 'relogio', 'vigia'].includes(q) ? q : 'relogio';
 }
 let visorLigado = false;
+let visorSai = 0;
 
 /**
  * A largura da Tela na tela, em pixels — e é ela que decide, não a estação.
@@ -5938,8 +5939,17 @@ function pintarVisor() {
     visorLigado = deve;
     /* `hidden` sai antes de a transição começar, senão ela roda num elemento que não
        está no layout e o visor aparece pronto em vez de chegar */
-    if (deve) { visorEl.hidden = false; requestAnimationFrame(() => visorEl.dataset.on = '1'); }
-    else { delete visorEl.dataset.on; }
+    if (deve) {
+      clearTimeout(visorSai);
+      visorEl.hidden = false;
+      requestAnimationFrame(() => visorEl.dataset.on = '1');
+    } else {
+      delete visorEl.dataset.on;
+      /* e sai do layout **depois** da transição: pôr `hidden` junto com a opacidade
+         mataria o desvanecimento, e deixá-lo de fora para sempre é um retângulo
+         invisível no canto que qualquer teste de estado vai ler como aceso */
+      visorSai = setTimeout(() => { visorEl.hidden = true; }, 400);
+    }
   }
   if (!visorLigado) return;
   visorCtx.drawImage(screenBuffer, 0, 0);
@@ -6667,25 +6677,31 @@ if (location.search.includes('sala')) {
  * FREECAM: o motivo de voar a câmera é quase sempre **achar** um ângulo, e um ângulo
  * que não se lê é um ângulo que se procura de novo na sessão seguinte.
  *
- * Os botões chamam `trilho.irPara` direto e **não** `pressPad`. Ir a uma estação e
- * abrir um Módulo são duas coisas diferentes numa bancada: passar pelo pad reacenderia
- * o LED da ECLIPSE e soltaria o flash no visor a cada clique, que é ruído enquanto se
- * confere enquadramento. O preço é que a Tela pode ficar mostrando outro Módulo que
- * não o da estação, e num endereço de bancada isso é informação, não defeito.
+ * **Os botões de estação vão por `pressPad`.** A primeira versão chamava `irPara`
+ * direto, com o argumento de que numa bancada ir a um lugar e abrir um Módulo são
+ * coisas diferentes. Estava errado, e o defeito era visível: clicar `5 LAREIRA` levava
+ * a câmera até a lareira e deixava o display mostrando QUEM. **Cada cena é um Módulo**
+ * — é a tese inteira do quarto navegável — e um controle que quebra essa equivalência
+ * a ensina errado, mesmo numa bancada. O ruído que eu queria evitar (o LED da ECLIPSE,
+ * o flash) é o comportamento correto: a câmera chegou lá de verdade.
+ *
+ * `ALTAR` e `QUARTO` continuam indo por `irPara`, e podem: nenhum dos dois é Módulo.
+ * São a mesma posição a duas distâncias — a vista de trabalho de cima da Unidade, onde
+ * a Tela se lê, e o recuo de onde o quarto existe.
  */
 const estRow = document.getElementById('est-row');
 const estOut = document.getElementById('estv');
 function mostrarEstacoes() {
   if (!estOut) return;
-  const n = trilho.estacao;
-  const a = trilho.alvo;
+  const n = trilho.panoramico ? -1 : trilho.estacao;
+  const a = trilho.panoramico ? null : trilho.alvo;
   const p = camera.position;
   const fmt = v => v.toFixed(2);
   estOut.textContent = trilho.pronto
     ? (a
       /* no formato do JSON, para voltar para ele por cópia */
       ? `${n} ${a.id} · camera [${fmt(p.x)}, ${fmt(p.y)}, ${fmt(p.z)}] · olhar [${a.olhar.map(v => v.toFixed(2)).join(', ')}]`
-      : `0 altar · camera [${fmt(p.x)}, ${fmt(p.y)}, ${fmt(p.z)}]`)
+      : `${n === -1 ? '— quarto' : '0 altar'} · camera [${fmt(p.x)}, ${fmt(p.y)}, ${fmt(p.z)}]`)
     : 'sem trilho';
   estRow?.querySelectorAll('[data-est]').forEach(b => {
     if (+b.dataset.est === n) b.setAttribute('aria-current', 'true');
@@ -6697,7 +6713,10 @@ estRow?.querySelectorAll('[data-est]').forEach(b => {
     if (!trilho.pronto) { flashLcd('TRILHO NÃO CARREGADO · use ?trilho', 1600); return; }
     const n = +b.dataset.est;
     if (n > trilho.quantas) return;
-    trilho.irPara(n);
+    if (n <= 0) { trilho.irPara(n); mostrarEstacoes(); return; }
+    /* pelo pad, para o display nunca discordar do lugar */
+    const i = MODULES.findIndex(x => x.id === trilho.moduloDe(n));
+    if (i >= 0) pressPad(i); else trilho.irPara(n);
     mostrarEstacoes();
   });
 });
@@ -6756,7 +6775,20 @@ if (location.search.includes('trilho')) {
    * deixa de ser o lugar de ler o objeto e passa a ser o que a spec diz que ele é:
    * **de onde se comanda.**
    */
-  window.__unit.setCam({ tilt: 72, yaw: 0, dist: 11 });
+  /**
+   * A vista de trabalho da CDJ, de cima, como sempre foi — e ela **recua no botão
+   * `QUARTO`** em vez de ser substituída por ele.
+   *
+   * `dist 3.2` e não 4.2, e o motivo é o limiar do visor. A 4.2 a Tela mede 243 px,
+   * abaixo dos 260 em que o canto assume — o visor acendia em cima do Altar e punha a
+   * mesma Tela duas vezes no mesmo quadro. A 3.2 ela mede 322, o mesmo ângulo de 26°,
+   * e o canto fica calado onde o objeto se basta. Para comparar: o repouso do visitante
+   * em `/` dá 502 px, e uma estação dá 65.
+   *
+   * O `panorama` do JSON é a outra distância, e ela também é medida: `tilt 72 · dist 11`
+   * põe três estações no quadro contra zero daqui.
+   */
+  window.__unit.setCam({ tilt: 26, yaw: 0, dist: 3.2 });
   /* o JSON baixa junto com o quarto, e nunca antes dele — `ROOM_K` começa em 0 e a
      regra do `room-mobilia.js` vale para qualquer asset novo do quarto */
   trilho.carregar(import.meta.env.BASE_URL + 'quarto/trilho.json').then(d => {

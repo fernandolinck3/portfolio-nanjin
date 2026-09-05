@@ -12,48 +12,109 @@
       "modulo": "identity",
       "nome": "O retrato",
       "feita_de": "Lyra emoldurada com a placa de nome, a luz de quadro, o armario gotico ao lado. O busto NAO fica aqui: room-baroque.js o poe na parede direita, perto da oficina, e so no layout cheio.",
-      "olhar": [-5.4, 0.9, -10.0],
-      "camera": [-2.16, 1.9, -4.0]
+      "olhar": [
+        -5.4,
+        0.9,
+        -10.0
+      ],
+      "camera": [
+        -2.16,
+        1.9,
+        -4.0
+      ]
     },
     {
       "id": "acervo",
       "modulo": "projects",
       "nome": "O acervo",
       "feita_de": "A baia de 40 discos na parede esquerda, o plinto da invocacao ao lado",
-      "olhar": [-9.1, -0.3, -5.4],
-      "camera": [-3.64, 1.9, -2.16]
+      "olhar": [
+        -9.1,
+        -0.3,
+        -5.4
+      ],
+      "camera": [
+        -3.64,
+        1.9,
+        -2.16
+      ]
     },
     {
       "id": "porta",
       "modulo": "contact",
       "nome": "A porta",
       "feita_de": "A porta almofadada, o console da entrada, o armario gotico ao fundo",
-      "olhar": [-10.4, 0.2, 5.8],
-      "camera": [-4.16, 1.9, 2.32]
+      "olhar": [
+        -10.4,
+        0.2,
+        5.8
+      ],
+      "camera": [
+        -4.16,
+        1.9,
+        2.32
+      ]
     },
     {
       "id": "leitura",
       "modulo": "path",
       "nome": "A leitura",
       "feita_de": "A estante com os livros, a cadeira virada para dentro do quarto",
-      "olhar": [9.8, 0.0, 4.8],
-      "camera": [3.92, 1.9, 1.92]
+      "olhar": [
+        9.8,
+        0.0,
+        4.8
+      ],
+      "camera": [
+        3.92,
+        1.9,
+        1.92
+      ]
     },
     {
       "id": "lareira",
       "modulo": "criteria",
       "nome": "A lareira",
       "feita_de": "A lareira, o sofa e a poltrona sobre o segundo tapete",
-      "olhar": [8.8, -0.6, -1.9],
-      "camera": [3.52, 1.9, -0.76]
+      "olhar": [
+        8.8,
+        -0.6,
+        -1.9
+      ],
+      "camera": [
+        3.52,
+        1.9,
+        -0.76
+      ]
     },
     {
       "id": "oficina",
       "modulo": "skills",
       "nome": "A oficina",
       "feita_de": "A baia de pedais, os cabos, os dois monitores, e o busto no pedestal quando o layout e cheio",
-      "olhar": [10.0, -0.2, -4.4],
-      "camera": [4.0, 1.9, -1.76]
+      "olhar": [
+        10.0,
+        -0.2,
+        -4.4
+      ],
+      "camera": [
+        4.0,
+        1.9,
+        -1.76
+      ]
     }
-  ]
+  ],
+  "panorama": {
+    "sobre": "O quarto inteiro, visto de dentro. Nao e estacao e nao e Modulo: e a mesma posicao do Altar, vista de longe. Daqui tres estacoes caem na tela e o quarto fica clicavel; de perto, nenhuma cai, e foi por isso que a vista de trabalho da CDJ nao pode ser a unica.",
+    "olhar": [
+      0,
+      2.44,
+      0
+    ],
+    "camera": [
+      0,
+      3.4,
+      10.46
+    ]
+  }
 }

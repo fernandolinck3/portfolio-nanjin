@@ -59,12 +59,15 @@ const suave = k => (k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2)
 
 export function createTrilho({ camera, base }) {
   let dados = null
+  let panorama = null
   let curva = null
   /** Onde cada estação cai no parâmetro da curva, para a viagem saber para onde ir. */
   let ts = []
   let pedido = null
 
   let estacao = 0
+  /* o Altar recuado — mesma estação, outra distância */
+  let longe = false
   /* a viagem em curso: de onde, para onde, e quanto já andou */
   let de = null, para = null, t = 0, andando = false
   /* o repouso do Altar, para saber para onde voltar */
@@ -88,6 +91,7 @@ export function createTrilho({ camera, base }) {
     pedido = fetch(url)
       .then(r => r.json())
       .then(j => {
+        panorama = j.panorama || null
         dados = j.estacoes
         const pts = dados.map(e => new THREE.Vector3(...e.camera))
         curva = new THREE.CatmullRomCurve3(pts, true, 'centripetal', .5)
@@ -156,11 +160,27 @@ export function createTrilho({ camera, base }) {
    * a razão de a curva ser fechada: com ela, a distância entre duas estações é a menor
    * das duas voltas e nada mais precisa saber disso.
    */
+  /**
+   * `n = -1` é o panorama: **a mesma posição do Altar, vista de longe.**
+   *
+   * Não é estação e não é Módulo — é uma distância. O Altar de trabalho é a vista
+   * de cima da Unidade, que é onde o objeto se usa e onde a Tela se lê; dela não se
+   * vê nenhuma das seis estações, medido. O panorama é de onde o quarto existe: três
+   * estações no quadro e o chão clicável.
+   *
+   * As duas guardam `estacao = 0` de propósito. O Altar não é Módulo, então recuar
+   * não muda o que o display mostra — e é justamente essa a regra que o resto deste
+   * arquivo existe para manter.
+   */
   function irPara(n, { imediato = false } = {}) {
-    if (!curva || n === estacao) return false
-    de = alvoDe(estacao)
+    /* `onde` e não `estacao`: o Altar e o panorama guardam os dois `estacao = 0`, e
+       comparar só a estação faria recuar e voltar a aproximar virarem no-ops. */
+    const onde = longe ? -1 : estacao
+    if (!curva || n === onde) return false
+    de = alvoDe(onde)
     para = alvoDe(n)
-    estacao = n
+    longe = n === -1
+    estacao = Math.max(0, n)
     t = imediato ? 1 : 0
     andando = true
     if (imediato) passo(0)
@@ -182,7 +202,13 @@ export function createTrilho({ camera, base }) {
    * aqui seria uma delas discordando das outras.
    */
   function alvoDe(n) {
-    if (n === 0) {
+    if (n === -1 && panorama) {
+      return {
+        olhar: new THREE.Vector3(...panorama.olhar),
+        pos: new THREE.Vector3(...panorama.camera),
+      }
+    }
+    if (n <= 0) {
       if (!altar) altar = { pos: camera.position.clone(), olhar: base.clone() }
       return altar
     }
@@ -246,7 +272,7 @@ export function createTrilho({ camera, base }) {
      * botão ausente. Aqui o trilho sai da frente **e diz que saiu** — o estado volta a
      * 0 em vez de ficar apontando para uma estação onde a câmera já não está.
      */
-    soltar() { estacao = 0; andando = false },
+    soltar() { estacao = 0; longe = false; andando = false },
     /** A estação corrente como dado — para a bancada dizer onde a câmera está. */
     get alvo() { return (dados && estacao >= 1) ? dados[estacao - 1] : null },
     /** Quantas estações o JSON trouxe, para a bancada não inventar botões. */
@@ -255,7 +281,10 @@ export function createTrilho({ camera, base }) {
     /** O nome de exibição de uma estação, para quem precisa dizer onde o ponteiro está. */
     nomeDe(n) { return (dados && n >= 1 && n <= dados.length) ? dados[n - 1].nome : null },
     /** O rig não pode disputar a câmera com o trilho — mesma regra do `focus`. */
-    get dirigindo() { return !!curva && estacao !== 0 },
+    get dirigindo() { return !!curva && (estacao !== 0 || longe) },
+    /** O Altar está recuado? A bancada precisa saber qual dos dois botões acender. */
+    get panoramico() { return longe },
+    get temPanorama() { return !!panorama },
     get pronto() { return !!curva },
     /** Devolve `true` no quadro em que a viagem termina, para quem quiser saber. */
     update(dt) { return passo(dt) },
