@@ -2883,8 +2883,88 @@ const stoneMat = new THREE.MeshStandardMaterial({
   map: stoneTexture(false), bumpMap: stoneTexture(true), bumpScale: .5,
   color: 0x6E6862, roughness: .95, metalness: 0,
 });
+/**
+ * A parede, e o erro de escala que ela carregava.
+ *
+ * **Um `repeat` para dois tipos de UV.** `panelTexture` fechava com
+ * `repeat.set(3, 1.1)`, que é a conta certa para as paredes laterais: elas são
+ * `BoxGeometry`, emitem UV de 0 a 1 por face, e uma face de 21 por 7,4 unidades com
+ * esse `repeat` dá um ladrilho a cada 7 unidades em x e 6,7 em y. Quadrado o bastante,
+ * e o sol dourado do desenho sai com uns dois metros — um emblema pintado na parede.
+ *
+ * A parede do fundo é `ExtrudeGeometry`, e o gerador de UV dela emite **coordenada de
+ * mundo** (o comentário lá em cima já dizia isso, sobre outra peça). Medido: u vai de
+ * −11,6 a 11,6 e v de −2,95 a 4,45 — os números da sala, não 0 a 1. Com o mesmo
+ * `repeat`, o mesmo desenho saía **a cada 0,33 unidade**: um sol de dez centímetros
+ * repetido setenta vezes, esticado 2,7 para 1. Isso não lê como parede decorada, lê
+ * como ruído — e é a parede que fica atrás do retrato, a única em quadro nas duas
+ * poses da estação.
+ *
+ * Vinte e um vezes de diferença entre duas paredes do mesmo quarto, no mesmo quadro.
+ *
+ * A correção não é um número novo: é **a escala virar unidade de mundo** e cada
+ * geometria receber o `repeat` que a leva lá. `LADRILHO` é o tamanho do desenho, e
+ * `GRAO` o do reboco fotografado, que quer ser bem menor — grão de reboco a sete
+ * unidades vira mancha.
+ */
+const LADRILHO = 7;      // uma volta do desenho a cada 7 unidades (2,2 m)
+const GRAO = 2.4;        // e uma do reboco a cada 2,4 (75 cm)
+
+/**
+ * O reboco medido por cima do desenhado, chegando depois do boot.
+ *
+ * Mesma regra do piso e a mesma de `VELVET`: **a fotografia é muito boa em como um
+ * material se comporta e não tem opinião que valha sobre que cor este objeto tem
+ * nesta sala.** Fica o relevo e a rugosidade dela; a cor e o desenho continuam sendo
+ * nossos, porque o sol, a lua e as estrelas da parede são a mesma carta celeste da
+ * Plate — conteúdo, não material.
+ *
+ * **O `bumpMap` desenhado sai e não é perda.** Ele levantava também o dourado, e
+ * folha de ouro sobre reboco é aplicada, não entalhada: o relevo que ele dava ali
+ * nunca deveria ter existido. O que entra no lugar é o grão do reboco de verdade.
+ */
+function reboco(mat, repU, repV) {
+  if (location.search.includes('tex=0')) return;
+  const load = new THREE.TextureLoader();
+  const base = import.meta.env.BASE_URL + 'textures/';
+  const põe = (arq, alvo) => new Promise((ok, erro) => load.load(base + arq, t => {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(repU, repV);
+    t.anisotropy = 8;
+    mat[alvo] = t; ok(t);
+  }, undefined, erro));
+  Promise.all([põe('reboco-nor.jpg', 'normalMap'), põe('reboco-arm.jpg', 'roughnessMap')])
+    .then(() => {
+      mat.bumpMap?.dispose();
+      mat.bumpMap = null;
+      mat.normalScale.set(.6, .6);
+      mat.needsUpdate = true;
+    })
+    .catch(e => console.warn('sem reboco; fica o desenhado', e));
+}
+
+/**
+ * O desenho da parede numa escala dada, sobre **um** canvas.
+ *
+ * As duas paredes querem o mesmo desenho em escalas diferentes, e escala é do
+ * `Texture` e não da imagem. Chamar `panelTexture` duas vezes desenharia o mesmo
+ * 1024 por 1024 — 2600 retângulos, um sol, uma lua e dezesseis estrelas — mais uma
+ * vez no boot, e o boot é o único orçamento que o visitante paga antes de ver nada.
+ */
+let canvasParede = null;
+function paredeTex(porUnidade) {
+  if (!canvasParede) canvasParede = panelTexture(false).image;
+  const t = new THREE.CanvasTexture(canvasParede);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  t.repeat.set(porUnidade, porUnidade);
+  return t;
+}
+
+/* As laterais: `BoxGeometry`, UV de 0 a 1 na face de 21 por 7,4. */
 const panelMat = new THREE.MeshStandardMaterial({
-  map: panelTexture(false), bumpMap: panelTexture(true), bumpScale: .5,
+  map: paredeTex(1), bumpMap: panelTexture(true), bumpScale: .5,
   roughnessMap: wearMap(4402, 200, .26, 4),
   /* The tint is neutral because the colour lives in the map — tinting paint brown was
      what made the old wall read as timber. But near-white was a *value* decision made
@@ -2894,6 +2974,17 @@ const panelMat = new THREE.MeshStandardMaterial({
      the same grey, four stops down. */
   color: 0x4E4B47, roughness: .93, metalness: 0,
 });
+panelMat.map.repeat.set(DEPTH / LADRILHO, WALL_H / LADRILHO);
+reboco(panelMat, DEPTH / GRAO, WALL_H / GRAO);
+
+/* O fundo: `ExtrudeGeometry`, UV em unidade de mundo — o `repeat` é o inverso do
+   ladrilho, e não o número de ladrilhos. */
+const fundoMat = new THREE.MeshStandardMaterial({
+  map: paredeTex(1 / LADRILHO),
+  roughnessMap: wearMap(4402, 200, .26, 4),
+  color: 0x4E4B47, roughness: .93, metalness: 0,
+});
+reboco(fundoMat, 1 / GRAO, 1 / GRAO);
 
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(SIDE_X * 2, DEPTH),
   new THREE.MeshStandardMaterial({
@@ -2993,7 +3084,7 @@ hole.quadraticCurveTo(WIN.x, WIN.y1, WIN.x, WIN.spring);
 hole.lineTo(WIN.x, WIN.y0);
 hole.closePath();
 wallShape.holes.push(hole);
-const wall = new THREE.Mesh(new THREE.ExtrudeGeometry(wallShape, { depth: .7, bevelEnabled: false }), panelMat);
+const wall = new THREE.Mesh(new THREE.ExtrudeGeometry(wallShape, { depth: .7, bevelEnabled: false }), fundoMat);
 wall.position.z = WALL_Z; room.add(wall);
 
 /**

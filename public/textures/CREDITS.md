@@ -33,3 +33,19 @@ Um onyx preto (`Onyx013`, ambientCG) chegou a ser baixado antes desta decisão, 
 `CONTEXT.md` descrevia o Altar como mármore preto com veios. O código já dizia nogueira
 escura desde muito antes; o glossário estava velho e foi corrigido. O arquivo foi apagado
 no mesmo dia.
+
+| `reboco-nor.jpg` · `reboco-arm.jpg` | paredes do quarto — relevo e rugosidade. 512px, 156 KB somados | [Poly Haven — Plaster Grey 04](https://polyhaven.com/a/plaster_grey_04) | CC0 |
+
+**Só relevo e rugosidade; a cor e o desenho continuam nossos.** É a mesma regra do
+`VELVET` em `room-baroque.js`: uma fotografia é muito boa em *como um material se
+comporta* e não tem opinião que valha sobre *que cor este objeto tem nesta sala*. Aqui
+ela vale duas vezes, porque o sol, a lua e as estrelas da parede são a mesma carta
+celeste da Plate — conteúdo, e não material.
+
+**O relevo desenhado saiu, e isso não é perda.** Ele levantava também o dourado, e folha
+de ouro sobre reboco é aplicada, não entalhada: aquele relevo nunca deveria ter existido.
+
+**"Even" foi o critério da escolha.** O Poly Haven tem setenta e tantos rebocos e quase
+todos são de rua — rachados, com musgo, manchados. Uma mancha grande repetida numa parede
+que também carrega marcas douradas autoradas lê como sujeira de repetição. `plaster_grey_04`
+está catalogado como `clean` e `indoor`, e as etiquetas dele são *rough, even, plastered*.
