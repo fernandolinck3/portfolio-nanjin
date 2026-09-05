@@ -13,6 +13,7 @@ import { padMaps, faderSlot, faderCap } from './control-faces.js';
 import { deckMaps, deckGlow } from './deck-faces.js'
 import { createRoomDecor } from './room-decor.js'
 import { createBaroque } from './room-baroque.js'
+import { medir } from './superficie.js'
 import { createMobilia } from './room-mobilia.js'
 import { marquetryTexture } from './marquetry.js'
 import { createAltarProps } from './altar-props.js'
@@ -2923,25 +2924,8 @@ const GRAO = 2.4;        // e uma do reboco a cada 2,4 (75 cm)
  * folha de ouro sobre reboco é aplicada, não entalhada: o relevo que ele dava ali
  * nunca deveria ter existido. O que entra no lugar é o grão do reboco de verdade.
  */
-function reboco(mat, repU, repV) {
-  if (location.search.includes('tex=0')) return;
-  const load = new THREE.TextureLoader();
-  const base = import.meta.env.BASE_URL + 'textures/';
-  const põe = (arq, alvo) => new Promise((ok, erro) => load.load(base + arq, t => {
-    t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.repeat.set(repU, repV);
-    t.anisotropy = 8;
-    mat[alvo] = t; ok(t);
-  }, undefined, erro));
-  Promise.all([põe('reboco-nor.jpg', 'normalMap'), põe('reboco-arm.jpg', 'roughnessMap')])
-    .then(() => {
-      mat.bumpMap?.dispose();
-      mat.bumpMap = null;
-      mat.normalScale.set(.6, .6);
-      mat.needsUpdate = true;
-    })
-    .catch(e => console.warn('sem reboco; fica o desenhado', e));
-}
+const reboco = (mat, repU, repV) =>
+  medir(mat, { nor: 'reboco-nor.jpg', arm: 'reboco-arm.jpg' }, { repU, repV, forca: .6 });
 
 /**
  * O desenho da parede numa escala dada, sobre **um** canvas.

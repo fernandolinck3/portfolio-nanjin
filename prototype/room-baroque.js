@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { medir } from './superficie.js'
 
 /**
  * The baroque fittings of the room — cornice, ceiling rose, chandelier, sconces,
@@ -79,6 +80,8 @@ function flame(mat, scale = 1) {
   return g
 }
 
+/* O relevo medido, e a regra dele, moram em `superficie.js` — a parede do fundo usa o
+   mesmo módulo. Ver o cabeçalho de lá antes de acrescentar uma superfície nova. */
 export function createBaroque(room, {
   floorY, ceilY, sideX, wallZ, depth,
   gilt, wood,
@@ -112,9 +115,26 @@ export function createBaroque(room, {
   const BRONZE = new THREE.MeshStandardMaterial({
     color: 0x4A3B28, metalness: .85, roughness: .52,
   })
+  /**
+   * A madeira, e ela agora tem veio.
+   *
+   * Cor chapada num vão de porta de 3,4 por 6,6 unidades é a maior superfície lisa da
+   * estação CONTATO, e ao lado do console entalhado — que é modelo de verdade — ela
+   * lia como um retângulo colorido. O `nogueira-*` já está no repositório desde o
+   * tampo do Altar, com procedência escrita: aqui o veio **é** o material, que é a
+   * exceção que `CREDITS.md` já registra para a moldura do retrato.
+   *
+   * O ladrilho é mais alto que largo de propósito. Numa porta as peças correm no
+   * sentido do prumo — montantes verticais, travessas horizontais — e um veio deitado
+   * numa folha de porta é o tipo de erro que ninguém nomeia e todo mundo vê.
+   */
   const WOOD = wood || new THREE.MeshStandardMaterial({
     color: 0x4A3A2E, roughness: .5, metalness: 0,
   })
+  if (!wood) {
+    medir(WOOD, { nor: 'nogueira-nor.jpg', arm: 'nogueira-arm.jpg', cor: 'nogueira-cor.jpg' },
+      { repU: 1, repV: 2.4, forca: .5 })
+  }
   const WAX = new THREE.MeshStandardMaterial({
     color: 0xEFE6D2, roughness: .62, metalness: 0,
   })
@@ -583,9 +603,27 @@ export function createBaroque(room, {
     fp.rotation.y = -Math.PI / 2
     group.add(fp)
 
+    /**
+     * A cornija, e o valor dela era o defeito — não a forma.
+     *
+     * Ela é feita como uma de verdade: dois montantes torneados sob uma verga e uma
+     * prateleira, três malhas. O que a fazia ler como papelão era `0x6E6258` com
+     * rugosidade 0,38 e mapa nenhum — **a coisa mais clara do quadro inteiro da
+     * estação**, num quarto cuja regra escrita, duas linhas acima no `PLASTER`, é que
+     * a superfície grande vem para baixo. O `PLASTER` levou essa correção duas vezes;
+     * a cornija nunca levou, e é o objeto maior dos dois.
+     *
+     * **Escaiola e não mármore, e isso não é atalho.** O Poly Haven não tem laje de
+     * mármore veiado — os dezessete que ele chama de mármore são piso em bloco, com
+     * rejunte, e rejunte numa cornija lê como parede de banheiro (conferido, baixado e
+     * apagado). Escaiola é gesso polido imitando pedra, e é do que a maior parte das
+     * cornijas de sala é feita: a mesma superfície da parede, mais lisa e mais escura.
+     * O material que o quarto já tem passa a ser a resposta certa em vez do que sobrou.
+     */
     const MARBLE = new THREE.MeshStandardMaterial({
-      color: 0x6E6258, roughness: .38, metalness: 0,
+      color: 0x51473E, roughness: .30, metalness: 0,
     })
+    medir(MARBLE, { nor: 'reboco-nor.jpg', arm: 'reboco-arm.jpg' }, { repU: 2, repV: 2, forca: .35 })
     /* jambs */
     for (const side of [-1, 1]) {
       const jamb = new THREE.Mesh(lathe([
@@ -603,9 +641,20 @@ export function createBaroque(room, {
     shelf.position.set(0, 4.0, .34)
     fp.add(shelf)
 
-    /* the opening: a dark recess, so the fire has somewhere to be */
+    /**
+     * O vão, e ele estava **fechado** — por isso o fogo nunca apareceu.
+     *
+     * Uma `BoxGeometry` é uma caixa sólida vista por fora, e a face da frente dela
+     * ficava em z = 0,30 enquanto as brasas estão em z = 0,18. O vão era literalmente
+     * uma tampa preta na frente do fogo, e o resultado na tela era um retângulo escuro
+     * onde a spec inteira desta estação diz que deve haver a única fonte quente **baixa
+     * e de lado** que a cena tem — a direção de onde este quarto nunca foi iluminado.
+     *
+     * `BackSide` desenha só as faces de trás, que é o interior da caixa: é o que um vão
+     * é. Nenhuma geometria nova, nenhuma luz nova; a mesma caixa, vista de dentro.
+     */
     const recess = new THREE.Mesh(new THREE.BoxGeometry(3.0, 3.3, .7),
-      new THREE.MeshStandardMaterial({ color: 0x14100C, roughness: 1 }))
+      new THREE.MeshStandardMaterial({ color: 0x14100C, roughness: 1, side: THREE.BackSide }))
     recess.position.set(0, 1.65, -.05)
     fp.add(recess)
 
@@ -651,13 +700,32 @@ export function createBaroque(room, {
     leaf.position.set(0, 3.3, 0)
     door.add(leaf)
 
+    /**
+     * Os seis caixotes, e o ouro sai de dentro deles.
+     *
+     * Eram almofadas **inteiras** em `GILT_DARK`: seis retângulos dourados numa folha
+     * de madeira, que não é como uma porta é feita em lugar nenhum. Uma almofada é da
+     * mesma madeira da folha — é a mesma tábua, rebaixada — e o dourado, quando existe,
+     * é o **filete** que corre em volta dela. Trocar os dois de lugar é a diferença
+     * entre marcenaria e um adesivo.
+     *
+     * O filete é uma almofada um pouco maior por baixo, meio centímetro atrás: o
+     * dourado aparece só na borda que sobra, que é exatamente o que um filete é.
+     */
     for (let r = 0; r < 3; r++) {
       for (const c of [-1, 1]) {
+        const y = 1.15 + r * 2.05
+        const filete = new THREE.Mesh(
+          new THREE.ExtrudeGeometry(roundedShape(1.42, 1.82, .10),
+            { depth: .05, bevelEnabled: true, bevelThickness: .03, bevelSize: .03, bevelSegments: 2 }),
+          GILT_DARK)
+        filete.position.set(c * .78, y, .10)
+        door.add(filete)
         const panel = new THREE.Mesh(
           new THREE.ExtrudeGeometry(roundedShape(1.3, 1.7, .10),
             { depth: .06, bevelEnabled: true, bevelThickness: .04, bevelSize: .04, bevelSegments: 2 }),
-          GILT_DARK)
-        panel.position.set(c * .78, 1.15 + r * 2.05, .11)
+          WOOD)
+        panel.position.set(c * .78, y, .11)
         door.add(panel)
       }
     }
@@ -668,13 +736,26 @@ export function createBaroque(room, {
     knob.position.set(1.35, 3.1, .16)
     door.add(knob)
 
-    /* the architrave, the same profile family as the cornice */
-    const arch = moulding(
-      [[0, 0], [.26, 0], [.26, .12], [.14, .18], [.16, .30], [0, .34]], 7.0, PLASTER)
-    arch.rotation.z = -Math.PI / 2
-    arch.rotation.y = Math.PI / 2
-    arch.position.set(-2.0, 0, .10)
-    door.add(arch)
+    /**
+     * A guarnição, e ela agora dá a volta.
+     *
+     * Havia **uma** corrida, no batente esquerdo. Uma porta com moldura de um lado só
+     * não lê como porta mal-acabada, lê como uma tábua encostada na parede — e era
+     * metade do motivo de a estação CONTATO parecer um cenário. Dois batentes e a
+     * verga fecham o vão, que é o que uma guarnição é: o quadro em volta do buraco.
+     */
+    const PERFIL = [[0, 0], [.26, 0], [.26, .12], [.14, .18], [.16, .30], [0, .34]]
+    for (const c of [-1, 1]) {
+      const jamba = moulding(PERFIL, 7.0, PLASTER)
+      jamba.rotation.z = -Math.PI / 2
+      jamba.rotation.y = c > 0 ? -Math.PI / 2 : Math.PI / 2
+      jamba.position.set(c * 2.0, 0, .10)
+      door.add(jamba)
+    }
+    const verga = moulding(PERFIL, 4.4, PLASTER)
+    verga.rotation.y = Math.PI / 2
+    verga.position.set(-2.2, 6.85, .10)
+    door.add(verga)
   }
 
   /* ---------- books, because a room needs something that was used ---------- */
