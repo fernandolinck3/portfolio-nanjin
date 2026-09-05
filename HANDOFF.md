@@ -11,12 +11,21 @@ Reply in whichever he used last (last was mixed, leaning PT-BR).
 `docs/tickets/README.md` is the board. `docs/realism-budget.md` is the plan for adding to the room
 without spending the frame. This file does not repeat them.
 
-> **Estado em 2026-09-04:** o parágrafo abaixo **não vale mais**. `lyra` está onze commits à
-> frente de `origin/lyra` e a árvore está suja — o quarto barroco, a mobília modelada
-> (`prototype/room-mobilia.js`, ADR-0029) e os 2,3 MB de `public/mobilia/` ainda não foram
-> commitados nem empurrados. `npm run build:site`, `npm run verify:site` e `npx vitest run`
-> (140 testes) passam com tudo isso no lugar. Um push para `lyra` constrói e publica em
-> `nanj.in` em cerca de um minuto, e é decisão do Fernando, não consequência de uma sessão.
+> **Estado em 2026-09-05:** o parágrafo abaixo **não vale mais**. `lyra` está dezoito commits à
+> frente de `origin/lyra`, com a árvore limpa. Além do quarto barroco e da mobília modelada
+> (`prototype/room-mobilia.js`, ADR-0029, 2,3 MB em `public/mobilia/`), a cadeia do quarto
+> navegável andou: o instrumento encolheu para `K = 0,46` (T-32), a mobília formou quatro grupos
+> (T-33) e o pad passou a levar a câmera por um anel de seis estações (T-34, metade).
+>
+> **O quarto navegável vive em `?trilho`, que é bancada e não o caminho do visitante.** A razão é
+> medida: a Tela tem 496 px no repouso e cai para perto de 170 px a seis unidades de distância,
+> onde fica uma estação. Quem responde a isso é a Plate plana do T-05, promovida de plano B a
+> caminho principal — item 4 do T-34, atrás do T-30. Enquanto isso não existir, ligar a viagem em
+> `/` entrega um quarto bonito onde não se lê nada.
+>
+> `npm run check`, `npm run build:site`, `npm run verify:site` e `npx vitest run` (140 testes)
+> passam. Um push para `lyra` constrói e publica em `nanj.in` em cerca de um minuto, e é decisão
+> do Fernando, não consequência de uma sessão.
 
 **Everything is committed and deployed.** Sixteen commits on 2026-08-28, working tree clean, and
 `origin/lyra` is level with local. Nothing is waiting on a ruling.

@@ -72,10 +72,15 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-29 | [O Preview do GTM não conecta](T-29-o-preview-do-gtm-nao-conecta.md) | A | — | precisa do sintoma exato |
 | T-30 | [Nine controls and no legend](T-30-the-object-has-no-legend.md) | B | — | ready — 11 dos 15 pontos perdidos na crítica |
 | T-31 | [O portfólio em inglês](T-31-o-portfolio-em-ingles.md) | A | — | **done 2026-09-02** — `/` e `/en/`, indexáveis |
-| T-32 | [O instrumento encolhe](T-32-the-instrument-shrinks.md) | B | — | ready — destrava T-33 e T-34 |
-| T-33 | [A mobília se reagrupa](T-33-the-furniture-regroups.md) | B | T-32 | blocked |
-| T-34 | [O quarto vira a navegação](T-34-the-room-becomes-the-navigation.md) | B | T-32, T-30 | blocked — o maior da track |
+| T-32 | [O instrumento encolhe](T-32-the-instrument-shrinks.md) | B | — | **done** — `K = .46`; a Tela segue em 496 px |
+| T-33 | [A mobília se reagrupa](T-33-the-furniture-regroups.md) | B | T-32 | **done** — quatro grupos, coordenadas medidas |
+| T-34 | [O quarto vira a navegação](T-34-the-room-becomes-the-navigation.md) | B | T-30 | **meio feito** — 1, 2, 3 e 6 em `?trilho`; 4 e 5 atrás do T-30 |
 | T-35 | [O objeto faz som](T-35-the-object-makes-a-sound.md) | B | T-34 | blocked |
+
+O que sobra do **T-34** é a metade que o T-30 segura: a leitura na Plate plana (item 4) e a roda
+do sol como trilho contínuo (item 5). O estado, o anel, o pad que leva e a ECLIPSE ao chegar já
+estão em `?trilho` — endereço de bancada, porque a Tela de 496 px cai para perto de 170 px a seis
+unidades de distância e é a Plate plana que responde a isso.
 
 ## Where T-21 to T-25 came from
 
