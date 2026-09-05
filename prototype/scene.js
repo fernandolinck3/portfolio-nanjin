@@ -3330,7 +3330,7 @@ const baroque = createBaroque(room, {
  * *ornamento* — quantos quadros, quantos castiçais, tem busto ou não. Um quarto sem
  * onde sentar não é um arranjo mais sóbrio, é um quarto sem móveis.
  */
-const mobilia = createMobilia(room, { floorY: FLOOR_Y });
+const mobilia = createMobilia(room, { floorY: FLOOR_Y, layout: LAYOUT });
 
 /* canvas type is drawn once at load, before the webfonts land */
 document.fonts?.ready?.then(() => summoning.refresh());
@@ -6176,6 +6176,18 @@ mobilia.pronto.then(() => {
     o.visible = roomShown;
   });
 });
+/* A moldura do retrato chega pelo mesmo caminho e tem o mesmo problema: a varredura
+   de `roomScenery` acima já rodou quando ela pousa, e uma moldura que não apaga com o
+   quarto fica acesa sozinha na parede quando `setRoom(false)` esvazia a sala. */
+portrait.pronto.then(raiz => {
+  if (!raiz) return;
+  poolMaterials(raiz);
+  raiz.traverse(o => {
+    if (!o.isMesh) return;
+    roomScenery.push(o);
+    o.visible = roomShown;
+  });
+});
 /**
  * Lights that lit only the room go out with it.
  *
@@ -6211,7 +6223,7 @@ function setRoomAmount(k) {
   setRoom(k > 0);
   /* a mobília modelada é a única coisa da cena que vem da rede depois da abertura, e
      ela só existe se houver quarto para pousar nele — ver `room-mobilia.js` */
-  if (k > 0) mobilia.carregar();
+  if (k > 0) { mobilia.carregar(); portrait.carregar(); }
   /**
    * **This function does not touch a single light**, and that is the fix rather than an
    * omission.

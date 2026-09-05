@@ -20,6 +20,7 @@
  */
 
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 const GILT = 0xB08D4A
 
@@ -245,6 +246,7 @@ function plaqueTexture(name, line) {
  */
 export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line, camera }) {
   const group = new THREE.Group(); scene.add(group)
+  const barras = new THREE.Group(); group.add(barras)
   const tex = paintTexture()
   const w = height * (700 / 940)
 
@@ -304,7 +306,7 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
   for (const [bw, bh, bx, by] of bars) {
     const bar = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, D), giltMat)
     bar.position.set(bx, by, wallFace + D / 2)
-    group.add(bar)
+    barras.add(bar)
   }
 
   /* the plaque, on the wall below the frame */
@@ -330,6 +332,110 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
   canvas.material.needsUpdate = true
   /* only the intensity moves per frame — reassigning the map would recompile the
      shader on every tick */
+  /**
+   * A moldura modelada, e por que ela chega tarde.
+   *
+   * As quatro barras acima sao quatro caixas com um chanfro — leem como moldura de
+   * longe e como quatro caixas de perto, que e exatamente o diagnostico do ADR-0029
+   * sobre construir mobilia a mao. `fancy_picture_frame_01` da Poly Haven resolve
+   * isso, e resolve com uma sorte que vale registrar: o modelo traz a **tela como
+   * malha separada**, com material proprio, e a abertura dela mede 0,539 x 0,400 m
+   * — proporcao 0,742 contra os 0,745 da pintura da Lyra. Diferenca de 0,4%.
+   *
+   * Chega tarde porque `ROOM_K` comeca em 0. O retrato e cenario de quarto — entra
+   * em `roomScenery` — e o quarto esta desligado para quem chega em `nanj.in`.
+   * Construir isto no topo do modulo faria todo visitante baixar 328 KB de moldura
+   * que ele nunca ve. Quem chama e `setRoomAmount`, junto da mobilia.
+   *
+   * Se o download falhar, as barras ficam. Um retrato com moldura de caixa ainda e
+   * um retrato; um retrato sem moldura nenhuma e um erro na parede.
+   */
+  let pedida = false
+  let molduraPronta = null
+  const pronto = new Promise(res => { molduraPronta = res })
+  function carregar() {
+    if (pedida) return pronto
+    pedida = true
+    const url = (import.meta.env?.BASE_URL || '/') + 'mobilia/fancy_picture_frame_01/fancy_picture_frame_01_1k.gltf'
+    new GLTFLoader().load(url, gltf => {
+      const raiz = gltf.scene
+
+      /* O modelo e paisagem — 0,603 de largura por 0,464 de altura — e a Lyra e
+         retrato. Um quarto de volta no proprio plano resolve, e resolve **antes** de
+         qualquer medida: girar depois de escalar mede a caixa errada. */
+      raiz.rotation.z = Math.PI / 2
+      raiz.updateMatrixWorld(true)
+
+      /* A abertura e a regua, nao a caixa externa. Escalar pela caixa externa poria a
+         moldura no tamanho certo e a pintura no tamanho errado, que e o unico dos dois
+         que alguem olha. */
+      let tela = null
+      raiz.traverse(o => { if (o.isMesh && /canvas/i.test(o.material?.name || '')) tela = o })
+      if (!tela) { console.warn('[retrato] a moldura veio sem tela; ficam as barras'); molduraPronta(null); return }
+      const ab = new THREE.Box3().setFromObject(tela)
+      const k = height / ab.getSize(new THREE.Vector3()).y
+      raiz.scale.setScalar(k)
+      raiz.updateMatrixWorld(true)
+
+      /* Recentrar pela abertura, de novo — a escala move o centro dela. */
+      const ab2 = new THREE.Box3().setFromObject(tela)
+      const c = ab2.getCenter(new THREE.Vector3())
+      raiz.position.set(x - c.x, y - c.y, wallFace + 0.06 - c.z)
+
+      raiz.traverse(o => {
+        if (!o.isMesh) return
+        if (o === tela) return
+        /**
+         * **O mapa de normais fica, e esta e a excecao.**
+         *
+         * `public/mobilia/CREDITS.md` diz que de cada peca ficou a malha e o mapa de
+         * cor, e o resto do PBR ficou no servidor — porque um PBR completo de
+         * biblioteca faz um movel parecer render de catalogo. A regra esta certa para
+         * um sofa, cuja forma o sustenta.
+         *
+         * Nao esta certa para esta peca. A malha da moldura tem 629 vertices: e um
+         * perfil extrudado, liso. Todo o entalhe — o que faz dela uma moldura de
+         * quadro e nao uma tira chanfrada — esta no mapa de normais. Sem ele o modelo
+         * nao e melhor que as quatro barras que ele veio substituir, e foi exatamente
+         * assim que a primeira montagem apareceu na tela.
+         *
+         * Quando a geometria carrega a peca, o mapa de normais e enfeite. Quando o
+         * relevo *e* a peca, ele e a geometria — 211 KB dela.
+         *
+         * A excecao nao e nova: `VELVET`, em `room-baroque.js`, ja pega emprestados
+         * normal e roughness de uma foto e mantem a cor autorada, com a razao escrita
+         * ao lado — uma fotografia e muito boa em *como um material se comporta* e
+         * nao tem opiniao que valha sobre *que cor este objeto tem nesta sala*. E a
+         * mesma regra; o que muda e que aqui a cor tambem serve.
+         */
+        const antigo = o.material
+        o.material = new THREE.MeshStandardMaterial({
+          map: antigo?.map || null,
+          normalMap: antigo?.normalMap || null,
+          roughnessMap: antigo?.roughnessMap || null,
+          color: GILT, roughness: .42, metalness: .55,
+        })
+        antigo?.dispose?.()
+        o.receiveShadow = true
+        o.castShadow = false
+      })
+
+      /* A tela do modelo sai **do grafo**, e nao apenas da vista.
+         Escondida com `visible = false` ela voltaria: a varredura de `roomScenery`
+         em `scene.js` percorre esta raiz depois e escreve `visible` em toda malha
+         que encontra, o que a reacenderia disputando o mesmo plano da Lyra. Ela ja
+         cumpriu o papel dela, que era ser a regua da escala. */
+      tela.removeFromParent()
+
+      group.add(raiz)
+      barras.visible = false
+      molduraPronta(raiz)
+    }, undefined, err => {
+      console.warn('[retrato] moldura nao baixou; ficam as barras', err?.message || err)
+      molduraPronta(null)
+    })
+  }
+
   function update(vigil, dt = 0) {
     const em = 0.05 + vigil * 0.30
     canvas.material.emissiveIntensity = em
@@ -347,5 +453,5 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
   }
   update(0)
 
-  return { update, group }
+  return { update, group, carregar, pronto }
 }

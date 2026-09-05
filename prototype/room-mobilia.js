@@ -309,9 +309,29 @@ const MOBILIA = [
      que a sala existe — e um canto vazio numa cena com quatro paredes é o lugar onde
      o olho descobre que aquilo é um cenário. */
   { arq: 'GothicCabinet_01/GothicCabinet_01_1k.gltf', m: 1.95, pos: [-9.5, -10.1], ry: .12, cor: 0xA88A66 },
+
+  /* O busto, e ele **nao esta no chao**.
+     O pedestal continua escrito em `room-baroque.js` — um torneado de gesso e coisa
+     que este repositorio faz bem. O busto que estava em cima dele nao era: o
+     comentario dele mesmo dizia que a forma era abstrata de proposito, porque *"um
+     rosto reconhecivel modelado por aritmetica e estranho"*. Isso e o diagnostico do
+     ADR-0029 escrito no lugar onde ele doi, e a resposta e a mesma — modelar em vez
+     de escrever.
+     `y` e o topo do pedestal, `floorY + 2,44`. E por isso que ele nao ganha mancha no
+     chao: a base dele nao encosta no chao, e uma sombra de contato a dois metros e
+     meio do objeto que a projeta e pior do que sombra nenhuma. */
+  {
+    arq: 'marble_bust_01/marble_bust_01_1k.gltf', m: .52, pos: [10.1, -6.88],
+    /* O tint desce para 0x8E8478 e nao e correcao de cor, e de composicao. O mapa da
+       peca ja e marmore claro; com o tint em 0xC6BEAE o busto virava a coisa mais
+       clara do quadro na estacao da oficina e puxava o olho para longe da baia de
+       pedais, que e o assunto de HABILIDADES. Marmore num quarto a luz de vela pega
+       luz, mas nao ganha do que o modulo esta contando. */
+    y: -.51, ry: -Math.PI / 2, cor: 0x8E8478, layout: 'cheio',
+  },
 ]
 
-export function createMobilia(room, { floorY }) {
+export function createMobilia(room, { floorY, layout = 'cheio' }) {
   /* um grupo só, como `createRoomDecor` — `__unit.perf()` precisa poder apagar a
      mobília inteira em um quadro para saber quanto ela custa */
   const group = new THREE.Group()
@@ -342,9 +362,14 @@ export function createMobilia(room, { floorY }) {
   function carregar() {
     if (pedido) return pronto
     pedido = true
-    let pendentes = MOBILIA.length
+    /* Quase toda peça ignora o `layout`: os três arranjos de `createBaroque` são três
+       respostas sobre *ornamento*, e um quarto sem onde sentar não é um arranjo mais
+       sóbrio. O busto é a exceção porque ele **é** ornamento — estava sob
+       `layout === 'cheio'` em `room-baroque.js` e continua onde estava. */
+    const lista = MOBILIA.filter(i => !i.layout || i.layout === layout)
+    let pendentes = lista.length
     const conta = () => { if (--pendentes === 0) solta(pecas) }
-    for (const item of MOBILIA) {
+    for (const item of lista) {
       loader.load(ASSET(item.arq), gltf => { montar(gltf.scene, item); conta() },
         undefined,
         /* uma peça que não baixa não pode derrubar a sala: o quarto sem um armário
@@ -359,11 +384,14 @@ export function createMobilia(room, { floorY }) {
     const cx = new THREE.Box3().setFromObject(raiz)
     raiz.scale.setScalar((item.m * POR_METRO) / cx.getSize(new THREE.Vector3()).y)
 
-    /* recentra em x/z e apoia a base no chão — depois da escala, porque a caixa muda */
+    /* recentra em x/z e apoia a base no chão — depois da escala, porque a caixa muda.
+       `item.y` troca o chão por outro plano de apoio: um busto pousa no topo de um
+       pedestal, não no piso. */
     raiz.updateMatrixWorld(true)
     const cx2 = new THREE.Box3().setFromObject(raiz)
     const ctr = cx2.getCenter(new THREE.Vector3())
-    raiz.position.set(item.pos[0] - ctr.x, floorY - cx2.min.y, item.pos[1] - ctr.z)
+    const base = item.y ?? floorY
+    raiz.position.set(item.pos[0] - ctr.x, base - cx2.min.y, item.pos[1] - ctr.z)
     raiz.rotation.y = item.ry
 
     raiz.traverse(o => {
@@ -393,7 +421,8 @@ export function createMobilia(room, { floorY }) {
       if (l) { l.name = raiz.name + '_livros'; group.add(l) }
     }
 
-    /* a mancha no chão, do tamanho da pegada da peça */
+    /* a mancha no chão, do tamanho da pegada da peça — só para quem está nele */
+    if (item.y != null) return
     raiz.updateMatrixWorld(true)
     const cx3 = new THREE.Box3().setFromObject(raiz)
     const t = cx3.getSize(new THREE.Vector3())

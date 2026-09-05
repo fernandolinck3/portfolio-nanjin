@@ -544,15 +544,17 @@ export function createBaroque(room, {
     ped.position.set(sideX - 1.5, floorY, wallZ + depth * .22)
     group.add(ped)
 
-    /* the bust is abstract on purpose: a recognisable face modelled by arithmetic is
-       uncanny, and a shrouded shoulder-and-head shape is what the eye needs at this
-       distance to read *bust* */
-    const bust = new THREE.Mesh(lathe([
-      [0, 0], [.62, .04], [.58, .30], [.40, .52], [.22, .62], [.26, .78],
-      [.32, 1.02], [.24, 1.18], [.10, 1.28], [0, 1.30],
-    ], 28), BRONZE)
-    bust.position.set(sideX - 1.5, floorY + 2.44, wallZ + depth * .22)
-    group.add(bust)
+    /* O busto saiu daqui.
+
+       Ele era um torneado, e o comentario que o acompanhava dizia por que: uma cara
+       reconhecivel modelada por aritmetica fica estranha, entao a forma era abstrata
+       de proposito e o que se lia era "um vulto de ombro e cabeca". Isso e uma
+       descricao honesta de uma peca que nao chegou aonde queria — o mesmo diagnostico
+       do ADR-0029 sobre o sofa, no lugar onde ele doi.
+
+       Agora e `marble_bust_01` da Poly Haven, montado por `room-mobilia.js` com o
+       topo deste pedestal (`floorY + 2,44`) como plano de apoio. O pedestal fica: um
+       torneado de gesso e exatamente o tipo de coisa que se escreve bem. */
   }
 
   /* ---------- the fireplace ---------- */
