@@ -11,6 +11,13 @@ Reply in whichever he used last (last was mixed, leaning PT-BR).
 `docs/tickets/README.md` is the board. `docs/realism-budget.md` is the plan for adding to the room
 without spending the frame. This file does not repeat them.
 
+> **Estado em 2026-09-04:** o parágrafo abaixo **não vale mais**. `lyra` está onze commits à
+> frente de `origin/lyra` e a árvore está suja — o quarto barroco, a mobília modelada
+> (`prototype/room-mobilia.js`, ADR-0029) e os 2,3 MB de `public/mobilia/` ainda não foram
+> commitados nem empurrados. `npm run build:site`, `npm run verify:site` e `npx vitest run`
+> (140 testes) passam com tudo isso no lugar. Um push para `lyra` constrói e publica em
+> `nanj.in` em cerca de um minuto, e é decisão do Fernando, não consequência de uma sessão.
+
 **Everything is committed and deployed.** Sixteen commits on 2026-08-28, working tree clean, and
 `origin/lyra` is level with local. Nothing is waiting on a ruling.
 
