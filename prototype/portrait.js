@@ -31,11 +31,14 @@ const GILT = 0xB08D4A
  * O tamanho do painel dela, em pixels.
  *
  * A abertura da moldura tem proporcao 0,742 e este numero e orcamento, nao desenho —
- * `lyra-display.js` escreve a anatomia inteira em fracoes da largura justamente para
- * que trocar isto nao redesenhe nada. 240 x 324 da 0,741, e a esse tamanho o pixel do
- * painel aparece a dois metros e meio, que e o ponto: e para ser visto como tela.
+ * `lyra-display.js` resolve o enquadramento em fracoes da altura justamente para que
+ * trocar isto nao redesenhe nada. 120 x 162 da 0,741, e `display.js` leva a 3x — 360
+ * por 486, contra os 960 por 540 da Tela da Unidade. O pixel aparece de proposito.
+ *
+ * E pequeno tambem por custo: a figura e desenhada `fillRect` a `fillRect`, e o preco
+ * cresce com o quadrado da escala. Ver o cabecalho de `lyra-display.js`.
  */
-const PAINEL = { w: 240, h: 324 }
+const PAINEL = { w: 120, h: 162 }
 
 /** The engraved plaque under it. Brass, and it says who she is. */
 function plaqueTexture(name, line) {
@@ -87,10 +90,16 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
    * O tratamento vem mais seco que o da Unidade, e a razao e o **tamanho da area
    * clara**. O mostrador do instrumento e quase todo preto com letra fina em cima:
    * `bloom` em 0,17 espalha traco de uma letra, que e o que faz fosforo. Aqui a area
-   * clara e um rosto inteiro, e o mesmo numero espalha uma nuvem — a cara vira mancha
-   * e o painel vira neblina. Menos sangramento, mais queda na borda.
+   * clara e a figura inteira, e o mesmo numero espalha uma nuvem.
+   *
+   * `sheen` cai de 0,045 para 0,010 pelo mesmo motivo em outro eixo. O brilho do
+   * quarto no vidro e um degrade claro pintado sobre a tela toda, e no mostrador da
+   * Unidade ele se ve como vidro porque o resto e preto e o texto e fino. Aqui, com a
+   * emissao alta o bastante para ela ser a ultima coisa acesa do quarto, aquele
+   * degrade virava um campo cinza uniforme atras dela: o painel lia como **papel**
+   * dentro da moldura, e nao como tela. Menos brilho de vidro, mais queda na borda.
    */
-  const painel = createDisplay(lyra.canvas, { bloom: .07, vignette: .30, sheen: .032 })
+  const painel = createDisplay(lyra.canvas, { bloom: .06, vignette: .42, sheen: .010 })
   const tex = new THREE.CanvasTexture(painel.canvas)
   tex.colorSpace = THREE.SRGBColorSpace
   tex.anisotropy = 8
@@ -287,25 +296,27 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
   }
 
   /**
-   * O relogio do painel — 15 Hz, e nao 60.
+   * O relogio do painel — 10 Hz, e nao 60.
    *
    * `display.paint()` da Unidade roda dentro do bloco de 24 Hz da Tela, e a razao esta
    * escrita la: copiar um buffer que so muda a 24 na cadencia de 60 e dois tercos de
    * blit jogados fora. Aqui a conta e mais dura ainda. Este painel desenha um rosto
    * que respira um pixel, pisca duas vezes por minuto e tem uma varredura que leva
    * onze segundos para atravessar — nada disso pede 60 quadros por segundo, e cada um
-   * custa a repintura da fonte **mais** o tratamento de vidraca por cima dela.
+   * custa a repintura da fonte **mais** o tratamento de vidraca por cima dela. Dez
+   * tambem e honesto com o que ela e: arte em pixel anima a oito ou doze quadros, e a
+   * cadencia baixa le como o meio, nao como engasgo.
    *
    * E nao pinta nada com o quarto apagado. `ROOM_K` comeca em 0 e a malha esta
    * escondida; um retrato invisivel repintando quinze vezes por segundo e a mesma
    * classe de desperdicio que o bloom parado no `EffectComposer`, que ADR-0021 achou
    * tarde justamente porque nao aparecia na tela.
    */
-  const PASSO = 1 / 15
+  const PASSO = 1 / 10
   let relogio = 0, desde = 0, tempo = 0
 
   function update(vigil, dt = 0) {
-    const em = 0.52 + vigil * 0.40
+    const em = 0.44 + vigil * 0.42
     canvas.material.emissiveIntensity = em
 
     /* o alvo do olhar, normalizado — quem conduz depende da distancia */
@@ -328,7 +339,7 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
     tempo += dt; relogio += dt; desde += dt
     if (relogio < PASSO) return
     relogio = 0
-    lyra.pintar(tempo, { vigil, olhar: [gx, gy], dt: desde })
+    lyra.pintar(tempo, { vigil, olhar: [gx, gy] })
     desde = 0
     painel.paint()
     tex.needsUpdate = true

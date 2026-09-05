@@ -67,7 +67,18 @@ export function castHand(fig) {
  * @param pose  key of POSES
  * @param cast  0..1 — how far into a spell she is; overrides the pose
  */
-export function drawWizard(g, fig, pose, t, ink, dim, bg, cast = 0) {
+/**
+ * `gaze` is optional and defaults to dead ahead, which is every existing caller.
+ *
+ * It exists because the portrait in the room draws **this** Wizard rather than a
+ * second one: one character, one drawing. The room's panel is large enough that her
+ * eyes have pixels to move within, and the eyes following the visitor is the whole
+ * interaction there. On the Unit's Screen she is 74px tall and the offset rounds to
+ * zero, so passing it changes nothing — which is the point of a default.
+ *
+ * Two numbers, -1..1, screen-normalised, y up.
+ */
+export function drawWizard(g, fig, pose, t, ink, dim, bg, cast = 0, gaze = null) {
   const H = fig.h, s = H / 74, cx = Math.round(fig.x), feet = Math.round(fig.y)
   const sway = Math.sin(t * .8) * 1.2 * s
   const bob = Math.sin(t * 1.6) * .8 * s        /* she breathes */
@@ -117,11 +128,15 @@ export function drawWizard(g, fig, pose, t, ink, dim, bg, cast = 0) {
   g.fillStyle = ink
   const blink = Math.floor(t * .8) % 9 === 0 && (t * .8) % 1 < .18
   const ex = Math.round(4 * s) || 3, ey = headY + Math.round(2 * s)
+  /* Quanto o olho pode andar dentro do campo do rosto sem encostar na borda dele.
+     Em 74px isto arredonda para zero e ela olha para frente, como sempre olhou. */
+  const gx = gaze ? Math.round(Math.max(-1, Math.min(1, gaze[0])) * 1.7 * s) : 0
+  const gy = gaze ? Math.round(Math.max(-1, Math.min(1, gaze[1])) * 1.0 * s) : 0
   if (blink) {
     g.fillRect(cx - ex - 1, ey, 3, 1); g.fillRect(cx + ex - 1, ey, 3, 1)
   } else {
-    disc(g, cx - ex, ey, Math.max(1, Math.round(1.8 * s)))
-    disc(g, cx + ex, ey, Math.max(1, Math.round(1.8 * s)))
+    disc(g, cx - ex + gx, ey - gy, Math.max(1, Math.round(1.8 * s)))
+    disc(g, cx + ex + gx, ey - gy, Math.max(1, Math.round(1.8 * s)))
   }
   /* a small smile, and cheeks */
   g.fillRect(cx - 1, ey + Math.round(4 * s), 3, 1)
