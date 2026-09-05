@@ -270,6 +270,42 @@
   /* fora do caminho da faixa de bancada, que ocupa a base inteira */
   body[data-debug] #visor{bottom:64px}
 
+  /* 0 — A TELA, e é o padrão.
+
+     As três formas abaixo erraram juntas, e o erro foi o mesmo: **eram objetos novos.**
+     Uma moldura que precisa de explicação não é cenário, é ornamento — e ornamento no
+     canto da tela é exatamente o chrome que a crítica proíbe, só que dourado. A
+     pergunta "que objeto é esse" tinha uma resposta óbvia que eu não vi: **o objeto já
+     tem uma moldura.**
+
+     Então esta não inventa nada. É a anatomia da Tela da Unidade, de dentro para fora,
+     como `scene.js` a constrói: o vidro quase preto (`screenMat`, 0x05070A), o fio de
+     ouro embutido no lábio da abertura (`inlay`, `giltMat` 0xB08D4A), o aro de metal
+     escuro (`bezel`, `rimMat` 0x16181A) e a fieira de contas na borda de fora. A
+     largura do aro é a de lá: RIM 1,96 contra OPENING 1,84 dá 3,3% da abertura, que em
+     452 px de Tela são 15.
+
+     **E ela não precisa de nome.** Não é um objeto a mais disputando vaga no
+     `CONTEXT.md` ao lado do `espelho` e do espelho da parede — é a Tela, palavra que o
+     glossário já tem. A escolha de três nomes era a pergunta errada.
+
+     O que carrega o caráter são as marcas que o buffer já desenha — os colchetes nos
+     quatro cantos, o `MOD 01/06`, a régua pontilhada. Elas leem como instrumento
+     sozinhas, e é por isso que o aro pode ser calado. */
+  #visor[data-forma=tela]{width:452px;max-width:42vw;padding:15px;border-radius:7px;
+    background:linear-gradient(#2E3235,#0D0F11 34%,#191C1E);
+    box-shadow:
+      0 0 0 1px #000 inset,        /* o corte externo */
+      0 1px 0 #4E5358 inset,       /* a luz na aresta de cima, que é o que metal faz */
+      0 0 0 1px #2A2E31,           /* a fieira de contas, reduzida a um fio */
+      0 26px 62px #000C,           /* apoiado no canto, não colado na tela */
+      0 3px 12px #0009}
+  /* o fio de ouro, colado no vidro como o `inlay` está colado na abertura */
+  #visor[data-forma=tela]::before{content:"";position:absolute;inset:12px;border-radius:4px;
+    border:2px solid #B08D4A;pointer-events:none;box-shadow:0 0 0 1px #00000088}
+  #visor[data-forma=tela] canvas{border-radius:2px;
+    box-shadow:0 0 0 1px #000, 0 0 26px #7ED6B026 inset}
+
   /* 1 — O ÓCULO. Arco pleno com fecho de pedra, dourado sobre gesso escuro. O quarto
      já é barroco e já tem uma janela em ogiva: esta é a mesma família. */
   #visor[data-forma=oculo]{width:452px;max-width:42vw;padding:74px 26px 26px;

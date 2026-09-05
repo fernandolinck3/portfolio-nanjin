@@ -5791,19 +5791,28 @@ if (visorCv) { visorCv.width = SCREEN_W; visorCv.height = SCREEN_H; }
 /**
  * Qual das três formas — `?visor=oculo|relogio|vigia`.
  *
- * Três e não uma porque **o nome e o desenho são a mesma decisão**. Um óculo promete
- * que há mais quarto do outro lado; um relógio promete tempo, que é o que o conteúdo
- * não entrega; uma vigia promete um casco entre quem olha e o que se vê, e é a única
- * das três que assume que há uma máquina neste quarto em vez de a disfarçar. Escolher
- * o nome antes de ver as três é escolher no escuro, e este repositório resolve isso
- * do mesmo jeito desde sempre: mostrando, não descrevendo.
+ * Quatro, e a primeira é o padrão porque as outras três erraram juntas.
  *
- * O padrão é o óculo porque é o que não colide com nada — nem com o `espelho` do
- * ADR-0002, nem com o espelho modelado sobre a baia de discos.
+ * `oculo`, `relogio` e `vigia` foram desenhadas na tese de que o nome e o desenho são
+ * a mesma decisão — um óculo promete que há mais quarto do outro lado, um relógio
+ * promete tempo, uma vigia promete um casco entre quem olha e o que se vê. A tese
+ * continua certa. O que estava errado era a pergunta: **as três eram objetos novos**, e
+ * um objeto novo no canto da tela tem que se explicar. Posto na frente delas, o
+ * Fernando não soube dizer o que era a moldura — e uma moldura que precisa de legenda
+ * é ornamento, que é o chrome que a crítica proíbe, só que dourado.
+ *
+ * `tela` não inventa objeto nenhum: é a anatomia da Tela da Unidade, com as cores e as
+ * proporções que `scene.js` usa vinte linhas acima. Por isso ela também não precisa de
+ * nome — não disputa vaga no `CONTEXT.md` ao lado do `espelho` do ADR-0002 e do
+ * espelho modelado sobre a baia de discos. É a Tela, palavra que o glossário já tem.
+ *
+ * As outras três ficam. Uma delas ainda pode ser a resposta se a decisão for que o
+ * canto deve carregar um objeto do quarto, e apagar trabalho que já foi visto para dar
+ * lugar ao que eu prefiro agora não é uma escolha, é uma opinião com privilégio.
  */
 if (visorEl) {
   const q = new URLSearchParams(location.search).get('visor');
-  visorEl.dataset.forma = ['oculo', 'relogio', 'vigia'].includes(q) ? q : 'oculo';
+  visorEl.dataset.forma = ['tela', 'oculo', 'relogio', 'vigia'].includes(q) ? q : 'tela';
 }
 let visorLigado = false;
 function visorDeveAparecer() {
