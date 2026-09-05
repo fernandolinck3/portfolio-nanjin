@@ -4874,6 +4874,20 @@ freecamBtn?.addEventListener('click', () => {
     /* the opening drives the camera itself, and two things steering one transform
        is not a camera, it is a fight */
     intro.skip();
+    /* e o trilho, pela mesma razão. Ele solta a câmera **e** volta o estado para o
+       Altar: deixar `estacao` apontando para um lugar onde a câmera já não está é
+       exatamente a divergência de duas listas que este projeto já pagou uma vez. O
+       rig orbita a origem, então a vista volta para cima do instrumento — que é o que
+       FREECAM sempre fez, e agora faz também aqui. */
+    trilho.soltar();
+    /* **reafirmar a pose antes de mostrar**, nas duas ordens que importam. Sem
+       `placeCamera` o rig passa a mandar sem nunca ter movido nada: o mostrador diria
+       `tilt 26 · dist 4.20` com a câmera parada na estação e o primeiro arrasto
+       saltaria o quarto inteiro de uma vez. E lendo o mostrador antes dela, ele
+       imprimiria a coordenada da estação de onde a câmera acabou de sair. Onde o
+       trilho não estava dirigindo, `placeCamera` é um no-op — reescreve o que já vale. */
+    placeCamera();
+    mostrarEstacoes();
     freecamWas = { ...CAM, pan: { ...(CAM.pan || { x: 0, y: 0, z: 0 }) } };
     CAM.pan = CAM.pan || { x: 0, y: 0, z: 0 };
   } else if (freecamWas) {

@@ -208,6 +208,16 @@ export function createTrilho({ camera, base }) {
     moduloDe,
     irPara,
     get estacao() { return estacao },
+    /**
+     * Larga a câmera onde ela está e volta a ser o Altar.
+     *
+     * Existe porque o FREECAM precisa de alguém de quem tomar a câmera. `placeCamera`
+     * cede o transform enquanto a estação não é o Altar, então clicar FREECAM numa
+     * estação movia o rig e não movia nada na tela: um botão mudo, que é pior que um
+     * botão ausente. Aqui o trilho sai da frente **e diz que saiu** — o estado volta a
+     * 0 em vez de ficar apontando para uma estação onde a câmera já não está.
+     */
+    soltar() { estacao = 0; andando = false },
     /** A estação corrente como dado — para a bancada dizer onde a câmera está. */
     get alvo() { return (dados && estacao >= 1) ? dados[estacao - 1] : null },
     /** Quantas estações o JSON trouxe, para a bancada não inventar botões. */
