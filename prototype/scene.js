@@ -5993,6 +5993,16 @@ function visorDeveAparecer() {
      dirige a câmera ele mesmo, e uma cópia dela no canto ao lado dela grande é
      conteúdo duplicado no mesmo quadro */
   if (focus.active) return false;
+  /**
+   * A pose fechada do retrato também fica de fora, e pela mesma razão em outro lugar.
+   *
+   * Lá a Lyra é um mostrador que ocupa a tela inteira. O visor é um segundo retângulo
+   * aceso no canto do mesmo quadro, mostrando o mesmo Módulo que ela — dois painéis
+   * disputando o olho numa composição que existe para ter um. A regra do visor é uma
+   * distância, e esta é a primeira exceção a ela: não é que a Tela esteja legível
+   * daqui, é que aqui ela não é o assunto.
+   */
+  if (trilho.perto && trilho.alvo?.id === 'retrato') return false;
   return larguraDaTela() < LIMIAR_VISOR;
 }
 function pintarVisor() {

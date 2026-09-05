@@ -12,204 +12,30 @@
  * two different things, and the summoning would have read as "the painting
  * changed" instead of "something arrived".
  *
- * PLACEHOLDER ART. ADR-0013 says the character is drawn by hand and the real one
- * should be Fernando's. What follows is a tenebrist stand-in built from the same
- * procedural-canvas vocabulary as the room's other textures — one warm source
- * from the left, everything else swallowed — so the frame, the plaque, the
- * lighting and the placement can be judged before the real painting exists.
+ * **Ela nao e mais uma pintura: e um mostrador.** A versao anterior era um oleo
+ * procedural marcado como arte provisoria pelo ADR-0013, esperando uma pintura a mao.
+ * Uma tela dentro da moldura resolve isso e resolve mais: o `CONTEXT.md` chama a Lyra
+ * de a Maga que habita a Tela, e um painel na moldura torna a frase literal em vez de
+ * metafora. O desenho e a animacao dela moram em `lyra-display.js`; este arquivo
+ * pendura o objeto, carrega a moldura modelada e decide quando o painel repinta.
  */
 
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { createDisplay } from './display.js'
+import { criarLyra } from './lyra-display.js'
 
 const GILT = 0xB08D4A
 
 /**
- * O tamanho da tela pintada e onde a cabeca cai dentro dela.
+ * O tamanho do painel dela, em pixels.
  *
- * Isto era aritmetica local dentro de `paintTexture`. Virou constante de modulo
- * quando os olhos sairam da pintura: a pintura desenha as orbitas e a camada das
- * irises desenha as irises, e as duas tem que concordar sobre o mesmo ponto ate o
- * pixel. Duas copias de `W * 0.145` sao duas copias que divergem na primeira vez
- * que alguem mexer no rosto.
+ * A abertura da moldura tem proporcao 0,742 e este numero e orcamento, nao desenho —
+ * `lyra-display.js` escreve a anatomia inteira em fracoes da largura justamente para
+ * que trocar isto nao redesenhe nada. 240 x 324 da 0,741, e a esse tamanho o pixel do
+ * painel aparece a dois metros e meio, que e o ponto: e para ser visto como tela.
  */
-const PW = 700, PH = 940
-const HEAD = { cx: PW * 0.52, y: PH * 0.36, r: PW * 0.145 }
-
-/* Onde a iris mora dentro da orbita, em fracoes do raio da cabeca. A orbita e uma
-   elipse de 0.17 x 0.10 e a iris tem raio 0.062, entao a folga real e 0.108 na
-   horizontal e 0.038 na vertical. Ficamos um fio abaixo disso: uma iris encostando
-   na borda da orbita nao le como olhar, le como defeito. */
-const EYE = { dx: 0.34, dy: 0.06, iris: 0.062, socketX: 0.17, socketY: 0.10, roamX: 0.100, roamY: 0.034 }
-
-/** Deterministic noise, so the canvas craquelure is the same every load. */
-function rng(seed) {
-  let s = seed >>> 0
-  return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296)
-}
-
-/**
- * The painted surface.
- *
- * Chiaroscuro by construction: the ground is near-black, one raking light comes
- * from the upper left, and the figure is built out of what that light finds —
- * brim, cheek, collar. Nothing is outlined. The room is lit this way too, so the
- * painting and the chapel agree about where the light is.
- */
-function paintTexture() {
-  const c = document.createElement('canvas')
-  c.width = PW; c.height = PH
-  const g = c.getContext('2d')
-  const rnd = rng(3141)
-  const W = c.width, H = c.height
-
-  g.fillStyle = '#0B0908'; g.fillRect(0, 0, W, H)
-
-  /* the raking light, falling in from upper left */
-  const wash = g.createRadialGradient(W * 0.24, H * 0.20, 10, W * 0.24, H * 0.20, H * 0.86)
-  wash.addColorStop(0, 'rgba(150,116,72,.55)')
-  wash.addColorStop(0.45, 'rgba(84,62,40,.20)')
-  wash.addColorStop(1, 'rgba(0,0,0,0)')
-  g.fillStyle = wash; g.fillRect(0, 0, W, H)
-
-  const cx = HEAD.cx, headY = HEAD.y, headR = HEAD.r
-
-  /* the robe — a dark mass that only exists where the light grazes it */
-  g.fillStyle = '#161010'
-  g.beginPath()
-  g.moveTo(cx - W * 0.34, H)
-  g.quadraticCurveTo(cx - W * 0.20, H * 0.62, cx - W * 0.11, H * 0.55)
-  g.lineTo(cx + W * 0.11, H * 0.55)
-  g.quadraticCurveTo(cx + W * 0.20, H * 0.62, cx + W * 0.34, H)
-  g.closePath(); g.fill()
-
-  const lit = g.createLinearGradient(cx - W * 0.3, H * 0.6, cx + W * 0.1, H)
-  lit.addColorStop(0, 'rgba(146,112,68,.34)')
-  lit.addColorStop(1, 'rgba(0,0,0,0)')
-  g.fillStyle = lit
-  g.beginPath()
-  g.moveTo(cx - W * 0.34, H)
-  g.quadraticCurveTo(cx - W * 0.20, H * 0.62, cx - W * 0.11, H * 0.55)
-  g.lineTo(cx + W * 0.02, H * 0.55)
-  g.lineTo(cx - W * 0.06, H)
-  g.closePath(); g.fill()
-
-  /* the high collar */
-  g.fillStyle = '#241A16'
-  g.beginPath()
-  g.moveTo(cx - W * 0.13, H * 0.575)
-  g.quadraticCurveTo(cx, H * 0.50, cx + W * 0.13, H * 0.575)
-  g.quadraticCurveTo(cx, H * 0.545, cx - W * 0.13, H * 0.575)
-  g.closePath(); g.fill()
-
-  /* the face: a long oval, lit hard down one side and lost on the other */
-  const face = g.createLinearGradient(cx - headR, headY, cx + headR * 0.7, headY)
-  face.addColorStop(0, '#C9A882')
-  face.addColorStop(0.42, '#8E6E52')
-  face.addColorStop(0.8, '#2A1F1A')
-  face.addColorStop(1, '#140F0D')
-  g.fillStyle = face
-  g.beginPath()
-  g.ellipse(cx, headY + headR * 0.18, headR * 0.82, headR * 1.12, 0, 0, 6.2832)
-  g.fill()
-
-  /* hair, falling well past the jaw in continuous locks */
-  g.fillStyle = '#0E0A09'
-  g.beginPath()
-  g.moveTo(cx - headR * 1.02, headY - headR * 0.2)
-  g.quadraticCurveTo(cx - headR * 1.3, headY + headR * 1.9, cx - headR * 0.72, H * 0.58)
-  g.lineTo(cx - headR * 0.34, H * 0.55)
-  g.quadraticCurveTo(cx - headR * 0.86, headY + headR * 0.9, cx - headR * 0.80, headY)
-  g.closePath(); g.fill()
-  g.beginPath()
-  g.moveTo(cx + headR * 1.02, headY - headR * 0.2)
-  g.quadraticCurveTo(cx + headR * 1.34, headY + headR * 2.0, cx + headR * 0.78, H * 0.58)
-  g.lineTo(cx + headR * 0.30, H * 0.55)
-  g.quadraticCurveTo(cx + headR * 0.90, headY + headR * 0.9, cx + headR * 0.82, headY)
-  g.closePath(); g.fill()
-
-  /* as orbitas, e so as orbitas — as irises saem em `irisTexture()`, num plano
-     proprio que anda. Elas continuam sendo as unicas notas frias da tela inteira,
-     que e o motivo de a pintura se sustentar; agora elas tambem olham. */
-  for (const s of [-1, 1]) {
-    const ex = cx + s * headR * EYE.dx, ey = headY + headR * EYE.dy
-    g.fillStyle = 'rgba(20,14,12,.9)'
-    g.beginPath(); g.ellipse(ex, ey, headR * EYE.socketX, headR * EYE.socketY, 0, 0, 6.2832); g.fill()
-  }
-
-  /* the hat: a wide brim, the widest dark shape in the picture */
-  g.fillStyle = '#0A0707'
-  g.beginPath()
-  g.ellipse(cx - headR * 0.06, headY - headR * 0.86, headR * 1.72, headR * 0.34, -0.06, 0, 6.2832)
-  g.fill()
-  g.beginPath()
-  g.moveTo(cx - headR * 0.62, headY - headR * 0.92)
-  g.quadraticCurveTo(cx - headR * 0.30, headY - headR * 2.5, cx + headR * 0.44, headY - headR * 1.9)
-  g.quadraticCurveTo(cx + headR * 0.66, headY - headR * 1.2, cx + headR * 0.62, headY - headR * 0.88)
-  g.closePath(); g.fill()
-  /* the one gilt note on the hat band, so the frame has an echo inside the picture */
-  g.strokeStyle = 'rgba(176,141,74,.5)'; g.lineWidth = 4
-  g.beginPath()
-  g.moveTo(cx - headR * 0.58, headY - headR * 0.98)
-  g.quadraticCurveTo(cx, headY - headR * 1.22, cx + headR * 0.60, headY - headR * 0.96)
-  g.stroke()
-
-  /* varnish, craquelure, and a century of grime in the corners */
-  for (let i = 0; i < 900; i++) {
-    g.strokeStyle = `rgba(${180 + rnd() * 40},${150 + rnd() * 40},${110 + rnd() * 40},${rnd() * 0.05})`
-    g.lineWidth = 0.6
-    const x = rnd() * W, y = rnd() * H
-    g.beginPath(); g.moveTo(x, y)
-    g.lineTo(x + (rnd() - 0.5) * 26, y + (rnd() - 0.5) * 26)
-    g.stroke()
-  }
-  const vig = g.createRadialGradient(W / 2, H * 0.42, H * 0.18, W / 2, H * 0.42, H * 0.78)
-  vig.addColorStop(0, 'rgba(0,0,0,0)')
-  vig.addColorStop(1, 'rgba(0,0,0,.72)')
-  g.fillStyle = vig; g.fillRect(0, 0, W, H)
-
-  const t = new THREE.CanvasTexture(c)
-  t.colorSpace = THREE.SRGBColorSpace
-  t.anisotropy = 8
-  return t
-}
-
-/* A faixa que a camada das irises ocupa, em pixels da pintura. Larga o bastante
-   para as irises passearem sem que a borda do plano apareca, e nada alem disso:
-   e um draw call a mais e uma textura a mais por quadro de vida da cena. */
-const BAND = {
-  w: Math.ceil(HEAD.r * (EYE.dx + EYE.socketX + 0.10) * 2),
-  h: Math.ceil(HEAD.r * (EYE.socketY + 0.10) * 2),
-  cx: HEAD.cx,
-  cy: HEAD.y + HEAD.r * EYE.dy,
-}
-
-/**
- * As irises, sozinhas, sobre transparencia.
- *
- * Elas saem da pintura porque um olho que segue precisa se mover **dentro** da
- * orbita, e uma orbita pintada nao se move. O verniz e a craquelure passam por cima
- * delas na pintura original e sao perdidos aqui — sao tracos aleatorios a 5% de
- * alfa sobre dois discos de nove pixels, e a vinheta ainda esta no nucleo
- * transparente do gradiente nessa altura. Medido antes de aceitar a perda.
- */
-function irisTexture() {
-  const c = document.createElement('canvas')
-  c.width = BAND.w; c.height = BAND.h
-  const g = c.getContext('2d')
-  const r = HEAD.r
-  for (const side of [-1, 1]) {
-    const ex = BAND.w / 2 + side * r * EYE.dx, ey = BAND.h / 2
-    g.fillStyle = side < 0 ? '#7FA898' : '#3E5A52'
-    g.beginPath(); g.arc(ex, ey, r * EYE.iris, 0, 6.2832); g.fill()
-    g.fillStyle = 'rgba(240,236,220,.85)'
-    g.beginPath(); g.arc(ex - r * 0.022, ey - r * 0.024, r * 0.019, 0, 6.2832); g.fill()
-  }
-  const t = new THREE.CanvasTexture(c)
-  t.colorSpace = THREE.SRGBColorSpace
-  t.anisotropy = 8
-  return t
-}
+const PAINEL = { w: 240, h: 324 }
 
 /** The engraved plaque under it. Brass, and it says who she is. */
 function plaqueTexture(name, line) {
@@ -247,69 +73,73 @@ function plaqueTexture(name, line) {
 export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line, camera }) {
   const group = new THREE.Group(); scene.add(group)
   const barras = new THREE.Group(); group.add(barras)
-  const tex = paintTexture()
-  const w = height * (700 / 940)
+
+  /**
+   * O painel dela, atras da mesma vidraca da Tela.
+   *
+   * `display.js` nao sabe nada sobre a Unidade — recebe uma tela de origem e devolve
+   * outra com grade de pixel, sangramento de fosforo, queda nas bordas e o brilho do
+   * quarto no vidro. Passar a Lyra por ele e o que faz o retrato ser o **mesmo tipo de
+   * objeto** que o mostrador do instrumento, e nao uma imagem que por acaso brilha.
+   */
+  const lyra = criarLyra(PAINEL)
+  /**
+   * O tratamento vem mais seco que o da Unidade, e a razao e o **tamanho da area
+   * clara**. O mostrador do instrumento e quase todo preto com letra fina em cima:
+   * `bloom` em 0,17 espalha traco de uma letra, que e o que faz fosforo. Aqui a area
+   * clara e um rosto inteiro, e o mesmo numero espalha uma nuvem — a cara vira mancha
+   * e o painel vira neblina. Menos sangramento, mais queda na borda.
+   */
+  const painel = createDisplay(lyra.canvas, { bloom: .07, vignette: .30, sheen: .032 })
+  const tex = new THREE.CanvasTexture(painel.canvas)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = 8
+  const w = height * (PAINEL.w / PAINEL.h)
 
   const giltMat = new THREE.MeshStandardMaterial({
     color: GILT, metalness: 0.92, roughness: 0.28,
   })
 
-  /* the canvas, set back inside its frame so the moulding casts onto it */
+  /* O painel, recuado dentro da moldura para que o filete lance sombra sobre ele.
+     O material e o mesmo raciocinio do `screenMat` da Unidade: chao quase preto,
+     rugosidade alta o bastante para a luz do quadro virar brilho espalhado em vez de
+     um ponto quente por cima da cara dela, e a emissao carregando o sinal. */
   const canvas = new THREE.Mesh(
     new THREE.PlaneGeometry(w, height),
-    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.86, metalness: 0 }),
+    new THREE.MeshStandardMaterial({ color: 0x05070A, roughness: 0.42, metalness: 0 }),
   )
   canvas.position.set(x, y, wallFace + 0.06)
   group.add(canvas)
 
-  /* ---------- o olhar ----------
-     O quadro esta na parede do fundo e olha para +z sem rotacao nenhuma, entao o
-     plano local dela e o plano xy do mundo e a conta cabe em tres linhas. Se ele um
-     dia girar, isto vira uma projecao no plano do grupo — e ai vale escrever. */
-  const S = height / PH                       /* pixel da pintura -> unidade de mundo */
-  const irisTex = irisTexture()
-  const irises = new THREE.Mesh(
-    new THREE.PlaneGeometry(BAND.w * S, BAND.h * S),
-    new THREE.MeshStandardMaterial({
-      map: irisTex, transparent: true, roughness: 0.86, metalness: 0,
-      emissiveMap: irisTex, emissive: new THREE.Color(0xffffff),
-    }),
-  )
-  const irisX = x + (BAND.cx - PW / 2) * S
-  const irisY = y + (PH / 2 - BAND.cy) * S
-  const irisZ = wallFace + 0.062                /* dois milimetros a frente da tela */
-  irises.name = 'lyra-iris'          /* nomeado para poder ser medido no browser */
-  irises.position.set(irisX, irisY, irisZ)
-  group.add(irises)
-
-  /* Quanto a iris pode andar antes de encostar na borda da orbita, em mundo. */
-  const ROAM_X = HEAD.r * EYE.roamX * S
-  const ROAM_Y = HEAD.r * EYE.roamY * S
-  /* O ganho existe porque a folga e minuscula: sem ele, uma estacao a seis unidades
-     de distancia move a iris por um terco do curso e o efeito nao le.
-     O vertical e menor que o horizontal, ao contrario do que a elipse deitada sugere.
-     Medido: a camera do quarto esta sempre acima do olho dela — a estacao do retrato
-     olha de y=1,9 para um olho em y=1,187 — entao com ganho 2,2 o eixo vertical ficava
-     grudado no batente em toda pose util e deixava de responder. Ela olhando um pouco
-     para cima esta certo; ela olhando para cima *sempre* nao e olhar, e uma pose. */
-  const GAIN_X = 1.5, GAIN_Y = 1.2
-  let gx = 0, gy = 0
-
   /**
-   * Para onde ela olha, e por que isso tem dois modos.
+   * Para onde ela olha, e por que isso tem dois condutores.
    *
-   * De longe o olhar segue a **camera**: o visitante anda pelo quarto, ela acompanha,
-   * e a conta e a direcao da camera projetada no plano do quadro. E o comportamento
-   * certo enquanto quem se move e quem olha.
+   * De longe o olhar segue a **camera**: quem se move e quem olha, e a conta e a
+   * direcao da camera projetada no plano do quadro — que aqui e o plano xy do mundo,
+   * porque o quadro esta na parede do fundo sem rotacao nenhuma.
    *
-   * De perto a camera para. Numa pose fixa a dois metros e meio, seguir a camera
-   * significa encarar um ponto fixo para sempre — que nao e um olhar, e uma pose. Ai
-   * quem se move e o **ponteiro**, e e ele que ela segue. E o truque velho do retrato
-   * que acompanha quem passa, e e a metade da interacao que sobrevive a troca da arte.
+   * De perto a camera para. Numa pose fixa a dois metros e meio, seguir uma camera
+   * parada nao e olhar, e pose. Ai quem se move e o **ponteiro**, e e ele que ela
+   * segue.
+   *
+   * O ganho existe porque a folga dentro da orbita e minuscula. O vertical e menor que
+   * o horizontal, ao contrario do que a elipse deitada sugere: medido, a camera do
+   * quarto esta sempre acima do olho dela, e com ganho alto o eixo vertical ficava
+   * grudado no batente em toda pose util. Ela olhando um pouco para cima esta certo;
+   * sempre para cima nao e olhar, e pose de novo.
    *
    * `mirar(null)` volta para a camera; `mirar([nx, ny])` recebe o ponteiro em
    * coordenadas normalizadas de tela, -1 a 1, com y para cima.
+   *
+   * **O passeio da iris nao esta mais aqui.** Era um plano proprio, dois milimetros a
+   * frente da pintura, porque uma orbita pintada nao se move. Num mostrador o olho e
+   * desenhado a cada quadro: `lyra-display.js` recebe o alvo ja normalizado e resolve
+   * o resto. Uma malha, uma textura e um clamp em unidades de mundo a menos.
    */
+  const GAIN_X = 1.5, GAIN_Y = 1.2
+  const OLHO = { x, y: y + height * 0.11, z: wallFace + 0.06 }
+  let gx = 0, gy = 0
+
   let alvoManual = null
   function mirar(alvo) { alvoManual = alvo }
 
@@ -338,12 +168,14 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
   group.add(plaque)
 
   /**
-   * She does not go out when the room does.
+   * Ela nao se apaga quando o quarto se apaga.
    *
-   * At full Vigil every Candle is dead and the painting would be a black
-   * rectangle. A trace of self-illumination keeps her just legible, so the last
-   * thing still in the room besides the Screen is her — which is the whole reason
-   * a portrait is worth hanging.
+   * Na Vigilia cheia toda Vela esta morta e uma pintura seria um retangulo preto. Um
+   * painel nao tem esse problema — ele **e** a fonte — e por isso a emissao dela sobe
+   * com a Vigilia em vez de descer: quando o quarto apaga, as duas ultimas coisas
+   * acesas sao a Tela da Unidade e ela, que e a razao inteira de haver um retrato
+   * pendurado. O piso e 0,62 e nao 0,05 porque um mostrador desligado de dia nao e
+   * discricao, e um mostrador desligado.
    */
   canvas.material.emissiveMap = tex
   canvas.material.emissive = new THREE.Color(0xffffff)
@@ -454,26 +286,52 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
     })
   }
 
+  /**
+   * O relogio do painel — 15 Hz, e nao 60.
+   *
+   * `display.paint()` da Unidade roda dentro do bloco de 24 Hz da Tela, e a razao esta
+   * escrita la: copiar um buffer que so muda a 24 na cadencia de 60 e dois tercos de
+   * blit jogados fora. Aqui a conta e mais dura ainda. Este painel desenha um rosto
+   * que respira um pixel, pisca duas vezes por minuto e tem uma varredura que leva
+   * onze segundos para atravessar — nada disso pede 60 quadros por segundo, e cada um
+   * custa a repintura da fonte **mais** o tratamento de vidraca por cima dela.
+   *
+   * E nao pinta nada com o quarto apagado. `ROOM_K` comeca em 0 e a malha esta
+   * escondida; um retrato invisivel repintando quinze vezes por segundo e a mesma
+   * classe de desperdicio que o bloom parado no `EffectComposer`, que ADR-0021 achou
+   * tarde justamente porque nao aparecia na tela.
+   */
+  const PASSO = 1 / 15
+  let relogio = 0, desde = 0, tempo = 0
+
   function update(vigil, dt = 0) {
-    const em = 0.05 + vigil * 0.30
+    const em = 0.52 + vigil * 0.40
     canvas.material.emissiveIntensity = em
-    irises.material.emissiveIntensity = em
-    let ax, ay
+
+    /* o alvo do olhar, normalizado — quem conduz depende da distancia */
+    let ax = 0, ay = 0
     if (alvoManual) {
-      ax = Math.max(-1, Math.min(1, alvoManual[0]))
-      ay = Math.max(-1, Math.min(1, alvoManual[1]))
-    } else {
-      if (!camera) return
-      const dz = Math.max(0.8, camera.position.z - irisZ)
-      ax = Math.max(-1, Math.min(1, (camera.position.x - irisX) / dz * GAIN_X))
-      ay = Math.max(-1, Math.min(1, (camera.position.y - irisY) / dz * GAIN_Y))
+      ax = alvoManual[0]; ay = alvoManual[1]
+    } else if (camera) {
+      const dz = Math.max(0.8, camera.position.z - OLHO.z)
+      ax = (camera.position.x - OLHO.x) / dz * GAIN_X
+      ay = (camera.position.y - OLHO.y) / dz * GAIN_Y
     }
+    ax = Math.max(-1, Math.min(1, ax)); ay = Math.max(-1, Math.min(1, ay))
     /* Ela nao teleporta o olhar. Um oitavo por quadro a 60 chega em ~0,2s, que e o
        tempo de um olho de verdade largar um ponto e pegar outro. */
     const k = dt ? Math.min(1, dt * 8) : 1
-    gx += (ax * ROAM_X - gx) * k
-    gy += (ay * ROAM_Y - gy) * k
-    irises.position.set(irisX + gx, irisY + gy, irisZ)
+    gx += (ax - gx) * k
+    gy += (ay - gy) * k
+
+    if (!canvas.visible) return
+    tempo += dt; relogio += dt; desde += dt
+    if (relogio < PASSO) return
+    relogio = 0
+    lyra.pintar(tempo, { vigil, olhar: [gx, gy], dt: desde })
+    desde = 0
+    painel.paint()
+    tex.needsUpdate = true
   }
   update(0)
 

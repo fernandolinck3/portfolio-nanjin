@@ -507,7 +507,7 @@
 </div>
 </div>
 <script>
-window.addEventListener('error',function(e){var d=document.getElementById('err');d.style.display='block';d.textContent+='ERR: '+(e.message||e)+' @'+(e.lineno||'')+String.fromCharCode(10);});
+window.addEventListener('error',function(e){var d=document.getElementById('err');d.style.display='block';d.textContent+='ERR: '+(e.message||e)+' @'+(e.lineno||'')+String.fromCharCode(10);if(e.error)console.error(e.error);});
 </script>
 <script>
   /* ?debug shows the dials. Read before scene.js so the first paint is already right.
