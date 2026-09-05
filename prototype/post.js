@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
+import { Pass, FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js'
 
 /**
  * The pass that closes the gap with the reference — or tells us it cannot be closed.
@@ -219,6 +220,209 @@ const GradeShader = {
     }`,
 }
 
+/* ---------------------------------------------------------------------------
+ * O bloom, escrito à mão — e por que não é o `UnrealBloomPass` de volta
+ * ------------------------------------------------------------------------- */
+
+/**
+ * `UnrealBloomPass` custava um terço do quadro, medido: com ele o quadro ia a média
+ * 74 e p90 172, sem ele a média 53 e p90 144 (ADR-0021). Ele faz cinco passagens de
+ * *Gauss separável* — duas passagens por nível, horizontal e vertical, com treze
+ * amostras cada — mais um passe de composição com curva. É qualidade de filme e é
+ * caro, e o alvo aqui é 90fps.
+ *
+ * Este é o outro filtro conhecido pelo mesmo resultado: **dual filtering**, o de
+ * Marius Bjørge. A cadeia desce por mips com cinco amostras bilineares por pixel e
+ * sobe com oito, e é a interpolação bilinear da GPU que faz o borrão — não um kernel.
+ * Cada nível tem um quarto da área do anterior, então a cadeia inteira custa cerca de
+ * um terço de um passe em resolução cheia, e o primeiro nível já é a metade.
+ *
+ * **Nenhuma dependência nova.** `Pass` e `FullScreenQuad` vêm de `three/examples/jsm`,
+ * que já está dentro do pacote `three` — o ADR-0003 aceitou o peso do three e este
+ * arquivo inteiro se move dentro dele. Um `mipmapBlur` de biblioteca exigiria o pacote
+ * `postprocessing`, que é uma dependência de runtime e uma decisão de ADR.
+ *
+ * O limiar é 2.6 e não 0.85, e a razão está no ADR-0021: isto roda em **HDR linear
+ * antes do tone mapping**, com exposição bem acima de 1, então quase toda superfície
+ * iluminada já passa de 1.0 e qualquer limiar abaixo de um faz a sala inteira brilhar.
+ * A primeira montagem virou névoa, não luz.
+ */
+const CORTE = /* glsl */`
+  uniform sampler2D tDiffuse;
+  uniform vec2 passo;
+  uniform float limiar;
+  uniform float joelho;
+  varying vec2 vUv;
+  void main() {
+    /* cinco amostras: o centro e as quatro diagonais a meio texel — a bilinear da
+       GPU já lê quatro texels em cada uma, então são vinte texels por quatro fetches */
+    vec3 c = texture2D(tDiffuse, vUv).rgb * 4.0;
+    c += texture2D(tDiffuse, vUv + vec2(-passo.x, -passo.y)).rgb;
+    c += texture2D(tDiffuse, vUv + vec2( passo.x, -passo.y)).rgb;
+    c += texture2D(tDiffuse, vUv + vec2(-passo.x,  passo.y)).rgb;
+    c += texture2D(tDiffuse, vUv + vec2( passo.x,  passo.y)).rgb;
+    c /= 8.0;
+
+    /**
+     * O joelho: um limiar duro pisca.
+     *
+     * Sem ele, um pixel que atravessa 2.6 entra na cadeia inteiro no quadro seguinte
+     * e sai inteiro no outro — a chama de uma Vela cintilando em volta do limiar
+     * ligaria e desligaria o halo dela. A curva quadrática entre "limiar - joelho" e
+     * "limiar + joelho" faz a entrada ser contínua, que é o que a torna luz.
+     */
+    float b = max(c.r, max(c.g, c.b));
+    float macio = clamp(b - limiar + joelho, 0.0, 2.0 * joelho);
+    macio = macio * macio / (4.0 * joelho + 1e-4);
+    float k = max(macio, b - limiar) / max(b, 1e-4);
+    gl_FragColor = vec4(c * k, 1.0);
+  }`
+
+const DESCE = /* glsl */`
+  uniform sampler2D tDiffuse;
+  uniform vec2 passo;
+  varying vec2 vUv;
+  void main() {
+    vec3 c = texture2D(tDiffuse, vUv).rgb * 4.0;
+    c += texture2D(tDiffuse, vUv + vec2(-passo.x, -passo.y)).rgb;
+    c += texture2D(tDiffuse, vUv + vec2( passo.x, -passo.y)).rgb;
+    c += texture2D(tDiffuse, vUv + vec2(-passo.x,  passo.y)).rgb;
+    c += texture2D(tDiffuse, vUv + vec2( passo.x,  passo.y)).rgb;
+    gl_FragColor = vec4(c / 8.0, 1.0);
+  }`
+
+/** A subida, com o filtro de tenda de oito amostras que dá o borrão largo. */
+const SOBE = /* glsl */`
+  uniform sampler2D tDiffuse;
+  uniform vec2 passo;
+  varying vec2 vUv;
+  void main() {
+    vec3 c = texture2D(tDiffuse, vUv + vec2(-passo.x * 2.0, 0.0)).rgb;
+    c += texture2D(tDiffuse, vUv + vec2(-passo.x, passo.y)).rgb * 2.0;
+    c += texture2D(tDiffuse, vUv + vec2(0.0, passo.y * 2.0)).rgb;
+    c += texture2D(tDiffuse, vUv + vec2(passo.x, passo.y)).rgb * 2.0;
+    c += texture2D(tDiffuse, vUv + vec2(passo.x * 2.0, 0.0)).rgb;
+    c += texture2D(tDiffuse, vUv + vec2(passo.x, -passo.y)).rgb * 2.0;
+    c += texture2D(tDiffuse, vUv + vec2(0.0, -passo.y * 2.0)).rgb;
+    c += texture2D(tDiffuse, vUv + vec2(-passo.x, -passo.y)).rgb * 2.0;
+    gl_FragColor = vec4(c / 12.0, 1.0);
+  }`
+
+const SOMA = /* glsl */`
+  uniform sampler2D tDiffuse;
+  uniform sampler2D tBloom;
+  uniform float forca;
+  varying vec2 vUv;
+  void main() {
+    vec4 base = texture2D(tDiffuse, vUv);
+    gl_FragColor = vec4(base.rgb + texture2D(tBloom, vUv).rgb * forca, base.a);
+  }`
+
+const VERT = /* glsl */`
+  varying vec2 vUv;
+  void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`
+
+const mat = (frag, uniforms) => new THREE.ShaderMaterial({
+  uniforms, vertexShader: VERT, fragmentShader: frag,
+  depthTest: false, depthWrite: false,
+})
+
+class BloomPass extends Pass {
+  /**
+   * @param {number} niveis quantas vezes a cadeia desce. Cinco a 1920 leva o menor
+   *   mip a 60 pixels de largura, que é o raio do halo mais largo.
+   */
+  constructor(width, height, { forca = .30, limiar = 2.6, joelho = .8, niveis = 5 } = {}) {
+    super()
+    this.needsSwap = true
+    this.niveis = niveis
+    this.mips = []
+    this.corteMat = mat(CORTE, {
+      tDiffuse: { value: null }, passo: { value: new THREE.Vector2() },
+      limiar: { value: limiar }, joelho: { value: joelho },
+    })
+    this.desceMat = mat(DESCE, { tDiffuse: { value: null }, passo: { value: new THREE.Vector2() } })
+    this.sobeMat = mat(SOBE, { tDiffuse: { value: null }, passo: { value: new THREE.Vector2() } })
+    this.sobeMat.blending = THREE.AdditiveBlending
+    this.somaMat = mat(SOMA, {
+      tDiffuse: { value: null }, tBloom: { value: null }, forca: { value: forca },
+    })
+    this.quad = new FullScreenQuad(this.corteMat)
+    this.setSize(width, height)
+  }
+
+  get forca() { return this.somaMat.uniforms.forca.value }
+  set forca(v) { this.somaMat.uniforms.forca.value = v }
+  get limiar() { return this.corteMat.uniforms.limiar.value }
+  set limiar(v) { this.corteMat.uniforms.limiar.value = v }
+
+  setSize(width, height) {
+    for (const m of this.mips) m.dispose()
+    this.mips = []
+    let w = Math.max(1, Math.round(width / 2)), h = Math.max(1, Math.round(height / 2))
+    for (let i = 0; i < this.niveis; i++) {
+      const rt = new THREE.WebGLRenderTarget(w, h, {
+        type: THREE.HalfFloatType, format: THREE.RGBAFormat,
+        minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
+        wrapS: THREE.ClampToEdgeWrapping, wrapT: THREE.ClampToEdgeWrapping,
+        depthBuffer: false, stencilBuffer: false, generateMipmaps: false,
+      })
+      rt.texture.name = 'bloom' + i
+      this.mips.push(rt)
+      w = Math.max(1, Math.round(w / 2)); h = Math.max(1, Math.round(h / 2))
+    }
+  }
+
+  desenhar(renderer, alvo, material) {
+    this.quad.material = material
+    renderer.setRenderTarget(alvo)
+    /* nunca limpar na subida: ela é aditiva sobre o mip que já está lá, e é essa
+       soma que empilha os raios largos sobre os estreitos */
+    if (material !== this.sobeMat) renderer.clear()
+    this.quad.render(renderer)
+  }
+
+  render(renderer, writeBuffer, readBuffer) {
+    const limparAntes = renderer.autoClear
+    renderer.autoClear = false
+
+    /* corte + primeira descida, numa passagem só */
+    this.corteMat.uniforms.tDiffuse.value = readBuffer.texture
+    this.corteMat.uniforms.passo.value.set(1 / readBuffer.width, 1 / readBuffer.height)
+    this.desenhar(renderer, this.mips[0], this.corteMat)
+
+    for (let i = 1; i < this.mips.length; i++) {
+      const de = this.mips[i - 1]
+      this.desceMat.uniforms.tDiffuse.value = de.texture
+      this.desceMat.uniforms.passo.value.set(1 / de.width, 1 / de.height)
+      this.desenhar(renderer, this.mips[i], this.desceMat)
+    }
+
+    for (let i = this.mips.length - 1; i > 0; i--) {
+      const de = this.mips[i]
+      this.sobeMat.uniforms.tDiffuse.value = de.texture
+      this.sobeMat.uniforms.passo.value.set(1 / de.width, 1 / de.height)
+      this.desenhar(renderer, this.mips[i - 1], this.sobeMat)
+    }
+
+    this.somaMat.uniforms.tDiffuse.value = readBuffer.texture
+    this.somaMat.uniforms.tBloom.value = this.mips[0].texture
+    this.quad.material = this.somaMat
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer)
+    renderer.clear()
+    this.quad.render(renderer)
+
+    renderer.autoClear = limparAntes
+  }
+
+  dispose() {
+    for (const m of this.mips) m.dispose()
+    this.corteMat.dispose(); this.desceMat.dispose()
+    this.sobeMat.dispose(); this.somaMat.dispose()
+    this.quad.dispose()
+  }
+}
+
 /**
  * Build the chain.
  *
@@ -269,9 +473,33 @@ export function createPost(renderer, scene, camera, { width, height, screen }) {
    * Both are one line away if the budget ever allows them again — the imports and
    * the tuned parameters are kept in the git history, and the reasoning for their
    * settings is in ADR-0021.
+   *
+   * ## O bloom voltou como opção, e **entra e sai da cadeia**
+   *
+   * A primeira lição do ADR é literal: *um passe custa o que custa, use-se ou não o
+   * resultado dele*. Deixar o bloom montado com força 0 foi exatamente o desperdício
+   * que ninguém acharia olhando para a tela. Então `ligar` não é um uniforme — é
+   * `insertPass` e `removePass`. Desligado, ele não existe no laço.
+   *
+   * Ele começa **desligado**, e isso não é timidez: a segunda lição do ADR é que o
+   * único número confiável saiu do contador de FPS do laço real, e `rAF` não dispara
+   * em aba automatizada. Ligar por padrão seria eu decidir por uma medição que eu não
+   * posso fazer. O botão BLOOM na bancada existe para que a medição seja feita onde
+   * ela vale — na janela dele, com o contador na tela.
    */
+  let bloom = null
 
-
+  /** Põe o bloom entre o render e o tone mapping, que é onde o HDR linear ainda existe. */
+  function ligarBloom(liga) {
+    if (liga === !!bloom) return !!bloom
+    if (!liga) { composer.removePass(bloom); bloom.dispose(); bloom = null; return false }
+    bloom = new BloomPass(composer._width || width, composer._height || height)
+    /* índice 1: depois do `RenderPass`, antes do `OutputPass`. Depois do tone mapping
+       só existiriam os pixels que já estouraram, e um halo em cima deles é fumaça. */
+    composer.insertPass(bloom, 1)
+    composer.setSize(composer._width || width, composer._height || height)
+    return true
+  }
 
   /* Tone mapping and sRGB happen here, reading `renderer.toneMapping` and
      `renderer.toneMappingExposure` — so `__unit.setLight({ exposure })` still works. */
@@ -317,8 +545,11 @@ export function createPost(renderer, scene, camera, { width, height, screen }) {
     setPixelRatio(r) { composer.setPixelRatio(r) },
     /** `__unit.setPost()` — every one of these needs eyes on it. */
     set({ on, grain, vignette, saturation, lift, lofi, levels, dither,
-          maskOn, lofiScreen, feather }) {
+          maskOn, lofiScreen, feather, bloom: quer, bloomForca, bloomLimiar }) {
       if (on !== undefined) enabled = !!on
+      if (quer !== undefined) ligarBloom(!!quer)
+      if (bloom && bloomForca !== undefined) bloom.forca = bloomForca
+      if (bloom && bloomLimiar !== undefined) bloom.limiar = bloomLimiar
       if (grain !== undefined) grade.uniforms.grain.value = grain
       if (lift !== undefined) grade.uniforms.lift.value.setHex(lift)
       if (vignette !== undefined) grade.uniforms.vignette.value = vignette
@@ -339,6 +570,9 @@ export function createPost(renderer, scene, camera, { width, height, screen }) {
         maskOn: grade.uniforms.maskOn.value > 0.5,
         lofiScreen: grade.uniforms.lofiScreen.value,
         feather: grade.uniforms.feather.value,
+        bloom: !!bloom,
+        bloomForca: bloom ? bloom.forca : null,
+        bloomLimiar: bloom ? bloom.limiar : null,
         screenKnown: !!corners,
       }
     },

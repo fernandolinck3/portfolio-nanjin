@@ -368,6 +368,11 @@ export function criarLyra({ w = 240, h = 324 } = {}) {
      * camada de interface sobre ele, e uma varredura que desviasse do texto diria que
      * o texto esta em outro lugar.
      */
+    /* e ela não desenha com um relógio quebrado: `createLinearGradient` **lança** com
+       um valor não-finito, e uma exceção aqui derruba o quadro inteiro. O painel é a
+       última coisa acesa do quarto na Vigília cheia; ele pode ficar sem varredura, não
+       pode apagar a cena. */
+    if (!Number.isFinite(t)) return
     const varre = ((t / 11) % 1) * (h + 60) - 30
     const faixa = g.createLinearGradient(0, varre - 20, 0, varre + 20)
     faixa.addColorStop(0, 'rgba(255,255,255,0)')

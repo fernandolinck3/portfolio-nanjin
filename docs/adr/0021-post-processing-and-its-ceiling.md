@@ -99,3 +99,44 @@ built to be measurable.**
 
 What was lost: contact shadows, and the glow on the flames. Both are one line from returning if the
 budget ever allows — the tuned parameters are above and in the git history.
+
+## Segunda emenda: o bloom volta como opção, escrito à mão
+
+**O que muda:** existe um `BloomPass` em `post.js`, e um botão BLOOM na bancada que
+cicla `off · 0,18 · 0,30 · 0,45`. Ele **começa desligado**, e a decisão de ligá-lo por
+padrão não é tomada aqui.
+
+**Por que não é o `UnrealBloomPass` de volta.** Ele faz cinco níveis de *Gauss
+separável* — duas passagens por nível, treze amostras cada — mais uma composição com
+curva. É o que custava o terço do quadro medido acima. O que entrou é o outro filtro
+conhecido pelo mesmo resultado: **dual filtering**, de Marius Bjørge. A cadeia desce
+por mips com cinco amostras bilineares por pixel e sobe com oito, e quem faz o borrão
+é a interpolação bilinear da GPU, não um kernel. Cada nível tem um quarto da área do
+anterior e o primeiro já é a metade da tela.
+
+O que ele acrescenta ao quadro, exatamente: **dez quadriláteros de tela cheia** — cinco
+descidas, quatro subidas e uma composição — a 1/4, 1/16, 1/64, 1/256 e 1/1024 da área,
+mais a composição em resolução plena. Nenhuma geometria da cena é redesenhada, que é a
+diferença dele para o `GTAOPass` e a razão de ele não tocar nas 153 chamadas de desenho.
+
+**Nenhuma dependência nova.** `Pass` e `FullScreenQuad` vêm de `three/examples/jsm`,
+que já está dentro do pacote `three` — ADR-0003. Um `mipmapBlur` de biblioteca exigiria
+o pacote `postprocessing`, que é dependência de runtime e seria uma decisão à parte.
+
+**Ligar é `insertPass`, desligar é `removePass`.** A primeira lição desta ADR é que um
+passe custa o que custa use-se ou não o resultado, e foi deixar o bloom montado com
+força 0 que produziu o desperdício que ninguém acharia olhando para a tela. Desligado,
+este não existe no laço.
+
+**Por que ele começa desligado, e quem decide.** A outra lição desta ADR é *medir o
+laço que roda, e não um laço construído para ser medido*: os benchmarks síncronos
+mediram a mesma configuração entre 26 e 110ms, e o número que valeu saiu do contador que
+faz a média do `requestAnimationFrame` real. **`rAF` não dispara em aba automatizada** —
+está no `CLAUDE.md` como armadilha — então esta é uma medição que um agente não pode
+fazer. Ligar por padrão seria decidir por um número que não foi lido. O botão fica ao
+lado do contador de FPS pela mesma razão pela qual o contador foi posto na bancada.
+
+O limiar continua 2.6 e não 0.85, com o joelho suave que a primeira montagem não tinha:
+sem ele, uma chama cintilando em volta do limiar liga e desliga o halo dela entre
+quadros. O alvo continua sendo 90fps / 11,1ms.
+

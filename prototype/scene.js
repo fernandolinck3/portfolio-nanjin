@@ -5114,6 +5114,40 @@ camDial('tilt', 'tilt', v => v + '\u00B0');
 camDial('dist', 'dist', v => v.toFixed(1));
 
 /**
+ * O botão BLOOM, e ele existe para uma medição e não para um gosto.
+ *
+ * O ADR-0021 tirou o bloom da cadeia e deixou duas lições. A primeira: **um passe
+ * custa o que custa, use-se ou não o resultado** — então este botão faz `insertPass` e
+ * `removePass`, e não mexe numa força. Desligado, o passe não existe no laço.
+ *
+ * A segunda é a razão de o botão existir em vez de eu simplesmente ligar: *medir o
+ * laço que roda, e não um laço construído para ser medido*. Todo benchmark síncrono
+ * deste projeto forçou uma sincronia de GPU com um `readPixels` de um pixel, o que
+ * trava a fila e não é como o app roda — configurações idênticas mediram entre 26 e
+ * 110ms, quatro vezes de diferença. O número que valeu saiu do contador que faz a
+ * média do `requestAnimationFrame` de verdade, e `rAF` **não dispara em aba
+ * automatizada**. Então a medição que decide isto não é minha: é ligar o botão com o
+ * contador de FPS ao lado dele, na janela de quem está olhando.
+ *
+ * O alvo é o que o ADR fixou: 90fps, 11,1ms.
+ */
+{
+  /* Um botão que **cicla** e não alterna: a pergunta não é "bloom sim ou não", é
+     "quanto", e três forças mais o desligado dão o A/B/C sem passar pelo console. */
+  const FORCAS = [0, .18, .30, .45];
+  const btn = document.getElementById('bloom');
+  const out = document.getElementById('bloomv');
+  let i = 0;
+  btn?.addEventListener('click', () => {
+    i = (i + 1) % FORCAS.length;
+    const f = FORCAS[i];
+    const p = post.set(f ? { bloom: true, bloomForca: f } : { bloom: false });
+    out.textContent = p.bloom ? p.bloomForca.toFixed(2) : 'off';
+    btn.dataset.on = p.bloom ? '1' : '';
+  });
+}
+
+/**
  * The freecam toggle.
  *
  * The readout is the point as much as the movement is: the reason to fly the camera
@@ -5383,7 +5417,18 @@ window.__unit = {
    * clock is the point: the Candles' guttering is a function of time, and checking
    * that it actually gutters means stepping time forward without waiting for it.
    */
-  step(t) { frame(t); },
+  /**
+   * `t` não-finito para aqui, e o motivo é o parágrafo do `frame`.
+   *
+   * Ele já protege de um relógio que anda para trás — `Math.pow(k, dt)` com `dt`
+   * negativo vira ±1e76 num quadro — e a conclusão escrita ali é que **um gancho de
+   * debug capaz de destruir a cena em silêncio é pior que gancho nenhum**. `undefined`
+   * atravessava as duas travas: `Math.min(.05, NaN)` é `NaN` e `Math.max(0, NaN)`
+   * também, e daí o `NaN` entra em todo acumulador do quadro e não sai mais. Custou o
+   * painel do retrato uma vez, com um erro que apontava para o gradiente da varredura,
+   * a três arquivos de distância da causa.
+   */
+  step(t) { frame(Number.isFinite(t) ? t : t0); },
   /** What the opening is doing right now: the power-on level and the live Module. */
   get boot() { return bootLevel(); },
 
