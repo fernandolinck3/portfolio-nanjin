@@ -1,44 +1,40 @@
 /**
  * A Lyra do retrato — e ela e **a mesma Lyra da Tela**, nao uma segunda.
  *
- * A primeira versao deste arquivo desenhava um rosto proprio, tenebrista, inventado
- * aqui. Passou por ovo branco, nevoa e desenho de arame antes de ficar apenas
- * aceitavel, e o problema nao era a calibragem: e que havia **duas Lyras**. A do
- * mostrador da Unidade e uma maga chibi de 1 bit em `screen/figure.js` — proporcao de
- * cabeca grande, manto em sino, chapeu de aba larga com estrela na ponta, e ela ja
- * respira, ja balanca e ja pisca. Um personagem desenhado duas vezes e a mesma
- * armadilha que `screenHit` deixou no `CLAUDE.md` em outra forma: **duas listas
- * divergem, uma nao pode.**
+ * Este arquivo errou o personagem duas vezes antes de acertar, e as duas valem
+ * registro porque a causa foi a mesma: deduzir do codigo em vez de olhar o desenho.
  *
- * Entao aqui nao ha desenho. Ha um enquadramento: `drawWizard` chamada com uma altura
- * maior que a tela, de modo que os pes caiam fora e o que sobra e busto — chapeu,
- * cabeca, ombros. E a paleta da Tela, cruzada pela Vigilia, para que o painel dela e o
- * painel do instrumento sejam a mesma superficie em dois lugares.
+ * 1. **Um rosto inventado aqui.** Tenebrista, procedural, meu. Passou por ovo branco,
+ *    nevoa e desenho de arame antes de ficar apenas aceitavel — e o problema nunca foi
+ *    calibragem, era que havia duas Lyras. Um personagem desenhado duas vezes e a
+ *    armadilha do `CLAUDE.md` em outra forma: duas listas divergem, uma nao pode.
+ * 2. **`drawWizard`, de `screen/figure.js`.** Achei que fosse a do mostrador porque e
+ *    a unica figura *procedural* la. Nao e: e o ramo de fallback. Alem de errada, ela
+ *    desenha pixel a pixel com custo quadratico na escala e **travou o renderer** ao
+ *    ser pedida grande.
  *
- * ## De onde saem os numeros do enquadramento
+ * O que a Unidade mostra e `BUST`, de `screen/drawn.js` — 28x32 desenhada a mao em
+ * quatro tons, com chapeu de aba, massa de cabelo enquadrando o rosto, e os olhos que
+ * o cabecalho de la diz serem o ponto: *dois quadrados escuros leem como mascara; dois
+ * quadrados escuros com um pixel aceso leem como alguem olhando para voce.*
  *
- * `drawWizard` posiciona tudo a partir de `fig = { x, y: pes, h }` com `s = h / 74`.
- * Daquelas contas saem duas linhas uteis: o alto do chapeu fica em `pes - 1,013 h` e o
- * ombro em `pes - 0,30 h`. Resolvendo para a ponta do chapeu perto do topo e o ombro
- * perto da base, sai `h ~= 1,23 x altura da tela` e `pes ~= 1,30 x altura`. Nao e
- * chute: e o enquadramento resolvido para os dois pontos que importam.
+ * A forma de descobrir isso nao foi ler mais codigo — foi **renderizar os candidatos
+ * em PNG e olhar**. Tres desenhos, tres imagens, um segundo de decisao.
  *
- * ## Por que a tela e pequena
+ * ## O olhar, sem redesenhar a arte
  *
- * **`drawWizard` desenha pixel a pixel.** `disc` e um laco duplo de `fillRect(1,1)`
- * sobre o quadrado que contem o circulo, entao o custo dela cresce com o quadrado da
- * escala: a 74px de altura o raio da cabeca e 11 e sao 441 chamadas; a 400px o raio e
- * 59 e sao onze mil, e somando bracos, manto e chapeu a repintura passa de cem mil
- * `fillRect`. A primeira tentativa desenhou a 400 e **travou o renderer** — nao ficou
- * lenta, congelou.
+ * O sprite e uma grade de caracteres, entao os olhos sao **celulas com endereco**:
+ * colunas 9-11 e 15-17, linhas 15-17. Para ela olhar, o bloco de cada olho e recortado
+ * na carga, o buraco e tapado com o tom do rosto, e o bloco e redesenhado deslocado em
+ * ate uma celula. Uma celula, a esta escala, e uma dezena de pixels de tela.
  *
- * A resposta e a mesma que a Tela da Unidade ja usa: desenhar pequeno e ampliar. Ela
- * e desenhada com 199px de altura numa tela de 120x162, e `display.js` a leva a 3x com
- * `imageSmoothingEnabled = false`. O pixel dela aparece de proposito — e um mostrador
- * — e a conta cai de cem mil chamadas para treze mil.
+ * Recortar em vez de escrever os glifos a mao e o que faz isso sobreviver a arte
+ * mudar: se ela for redesenhada e os olhos continuarem nesses retangulos, nada aqui
+ * precisa ser tocado.
  */
 
-import { drawWizard } from './screen/figure.js'
+import { BUST, drawSprite } from './screen/drawn.js'
+import { drawRobe } from './screen/figure.js'
 
 /* As duas paletas de `screen/render.js`, repetidas de proposito e nao importadas: la
    elas vivem em `let` de modulo que ele reescreve a cada quadro conforme o fader, e
@@ -48,11 +44,27 @@ const DIA   = { ink: '#E9E3D2', mid: '#8A8470', dim: '#5E5A4C', bg: '#0A0B09' }
 const NOITE = { ink: '#DCD6C6', mid: '#9C5A4E', dim: '#6E1810', bg: '#08070A' }
 
 /* Cor mistura em numeros e pinta em texto. A primeira versao guardava `rgb(...)` ja
-   formatado e remisturava sobre ele, e `hex()` lia `parseInt('gb', 16)` no meio da
-   string: a cena inteira morria num `addColorStop` com `rgb(NaN,NaN,2)`. */
+   formatado e remisturava sobre ele: `hex()` lia `parseInt('gb', 16)` no meio da
+   string e a cena morria num `addColorStop` com `rgb(NaN,NaN,2)`. */
 const hex = c => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]
 const mix = (A, B, k) => A.map((v, i) => v + (B[i] - v) * k)
 const cor = T => `rgb(${T[0] | 0},${T[1] | 0},${T[2] | 0})`
+
+/** Onde os olhos moram no sprite. Medido em `BUST`, nao chutado. */
+const OLHOS = [{ c: 9, r: 15 }, { c: 15, r: 15 }]
+const OLHO_W = 3, OLHO_H = 3
+
+/* O rosto sem os olhos, e os dois olhos soltos — recortados uma vez na carga. */
+const ROSTO = BUST.map(r => r.split(''))
+const RECORTES = OLHOS.map(({ c, r }) => {
+  const bloco = []
+  for (let j = 0; j < OLHO_H; j++) {
+    bloco.push(ROSTO[r + j].slice(c, c + OLHO_W).join(''))
+    for (let i = 0; i < OLHO_W; i++) ROSTO[r + j][c + i] = '#'   // o tom do rosto
+  }
+  return bloco
+})
+const SEM_OLHOS = ROSTO.map(r => r.join(''))
 
 export function criarLyra({ w = 120, h = 162 } = {}) {
   const c = document.createElement('canvas')
@@ -60,42 +72,43 @@ export function criarLyra({ w = 120, h = 162 } = {}) {
   const g = c.getContext('2d')
   g.imageSmoothingEnabled = false
 
-  /* resolvido para ponta do chapeu em 15 e ombro em 300 — ver o cabecalho */
-  const fig = { x: Math.round(w / 2), y: Math.round(h * 1.296), h: Math.round(h * 1.235) }
+  /**
+   * O enquadramento, e ele e aritmetica inteira de proposito.
+   *
+   * O sprite tem 28 celulas de largura. `S` e quantos pixels de fonte cada celula
+   * ocupa, e tem de ser **inteiro**: meia celula e uma borda serrilhada num desenho
+   * cuja graca inteira e a celula. Com w = 120, S = 4 da 112 de largura e sobra uma
+   * margem de 4 de cada lado.
+   */
+  const S = Math.max(1, Math.floor(w / (BUST[0].length + 2)))
+  const bx = Math.round((w - BUST[0].length * S) / 2)
+  const by = Math.max(0, Math.round(h * .04))
+  const baixo = by + BUST.length * S
 
   function pintar(t, { vigil = 0, olhar = [0, 0] } = {}) {
     const P = {}
     for (const k of ['ink', 'mid', 'dim', 'bg']) P[k] = mix(hex(DIA[k]), hex(NOITE[k]), vigil)
+    const INK = cor(P.ink), MID = cor(P.mid), DEEP = cor(P.dim), BG = cor(P.bg)
 
-    g.fillStyle = cor(P.bg); g.fillRect(0, 0, w, h)
-
-    /**
-     * O brilho de fosforo atras dela, e ele e **curto**.
-     *
-     * A versao anterior cobria o painel inteiro com um degrade a 90% de alfa. Isso e
-     * um piso de preto levantado, que e a definicao de nevoa, e e o mesmo erro que o
-     * ADR-0021 achou no `lift` do grade: numa imagem feita de escuridao nao existe
-     * assunto claro que justifique erguer as sombras. Fica um nucleo transparente,
-     * so o bastante para o painel nao ser um retangulo morto.
-     */
-    const halo = g.createRadialGradient(w * .42, h * .34, h * .06, w * .5, h * .40, h * .46)
-    halo.addColorStop(0, `rgba(${mix(P.bg, P.dim, .5).map(v => v | 0).join(',')},.34)`)
-    halo.addColorStop(1, `rgba(${P.bg.map(v => v | 0).join(',')},0)`)
-    g.fillStyle = halo; g.fillRect(0, 0, w, h)
+    g.fillStyle = BG; g.fillRect(0, 0, w, h)
 
     /**
-     * **Ela e desenhada em `mid`, e nao em `ink`.**
-     *
-     * Na Tela da Unidade a figura e creme sobre preto e isso esta certo: ela tem 74
-     * pixels de altura e ocupa um canto de um mostrador pequeno. Aqui ela tem 400 e o
-     * chapeu sozinho e a maior area do quadro — em creme, com o material emitindo a
-     * quase 1, o painel vira lampada. Foi literalmente o primeiro erro desta cena, o
-     * ovo branco, na outra ponta.
-     *
-     * `mid` e um degrau abaixo de `ink` na mesma paleta, e sobra `ink` para o que tem
-     * de ganhar: os olhos e a estrela na ponta do chapeu.
+     * O manto continua o busto, e nao e desenhado a mao — `drawn.js` diz por que:
+     * *um rosto e um conjunto de decisoes e tem de ser desenhado; um manto e uma
+     * forma.* E a mesma divisao que a Tela da Unidade usa, com o mesmo `drawRobe`, e e
+     * a parte dela que balanca.
      */
-    drawWizard(g, fig, 'present', t, cor(P.mid), cor(mix(P.bg, P.dim, .5)), cor(P.bg), 0, olhar)
+    if (baixo < h) drawRobe(g, Math.round(w / 2), baixo - S, h + S, S, 'present', t, INK, MID, DEEP, BG)
+
+    drawSprite(g, SEM_OLHOS, bx, by, S, INK, MID, DEEP, BG)
+
+    /* Uma celula de curso em cada eixo. Mais que isso e estrabismo. */
+    const gx = Math.round(Math.max(-1, Math.min(1, olhar[0])))
+    const gy = Math.round(Math.max(-1, Math.min(1, olhar[1])))
+    RECORTES.forEach((bloco, i) => {
+      const o = OLHOS[i]
+      drawSprite(g, bloco, bx + (o.c + gx) * S, by + (o.r - gy) * S, S, INK, MID, DEEP, BG)
+    })
 
     /**
      * A varredura, e ela e o unico sinal de que aquilo e painel e nao pintura acesa.

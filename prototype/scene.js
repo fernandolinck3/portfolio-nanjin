@@ -6735,6 +6735,23 @@ requestAnimationFrame(frame);
  * `50.camera-rail` in `docs/research/basement-laboratory.md` — and it needs a control
  * on the Plate, not a query string.
  */
+/**
+ * **O nome da aba diz qual bancada e.**
+ *
+ * As tres vistas — o site, `?sala` e `?trilho` — compartilhavam o mesmo `<title>`, e o
+ * resultado e que uma janela do Chrome com cinco abas nao tem como ser lida: todas
+ * dizem "Fernando Linck — Growth, CRO e experiencias digitais". Ja custou varias
+ * rodadas de "cade" e uma pilha de janelas abertas por cima uma da outra.
+ *
+ * So em bancada. O titulo publicado e conteudo — ele e o que aparece no Google e no
+ * compartilhamento — e nao se mexe nele por conveniencia de quem esta depurando.
+ */
+{
+  const VISTAS = ['trilho', 'sala', 'film', 'flat', 'explode', 'breakdown'];
+  const vista = VISTAS.find(v => location.search.includes(v));
+  if (vista) document.title = 'Tenebrae · ' + vista.toUpperCase();
+}
+
 if (location.search.includes('sala')) {
   intro.skip();
   FREECAM = true;

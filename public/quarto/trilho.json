@@ -23,16 +23,16 @@
         -4.0
       ],
       "perto": {
-        "sobre": "A consulta. A regra do anel — camera a 40% do caminho, Altar na periferia — existe para que a estacao seja o lugar onde alguem senta e nao a foto de um objeto. No retrato o objeto E o assunto: e um rosto, e um rosto a sete unidades ocupa 22% da altura do quadro. Aqui a camera sai do anel e chega a 2,7 unidades da parede, na altura do olho dela. Medido: e a distancia em que a iris passa de tres para onze pixels, que e a diferenca entre um olhar que existe e um olhar que se ve.",
+        "sobre": "A consulta. A regra do anel — camera a 40% do caminho, Altar na periferia — existe para que a estacao seja o lugar onde alguem senta e nao a foto de um objeto. No retrato o objeto E o assunto. A distancia saiu de duas medidas e nao do olho: a 2,4 unidades a Lyra ocupava a tela inteira e a celula do desenho dela dava 37 pixels — o visitante ficava dentro da cara dela. A 4,24 a moldura inteira cabe no quadro, a celula cai para 21 pixels, e o curso de uma celula do olhar continua sendo 21 pixels de tela, contra os 3 que a pose da estacao dava. O painel acustico da esquerda entra na borda: ele e parede do quarto e estar ao lado dela e contexto — o que era erro era ele estar por cima.",
         "olhar": [
           -5.35,
-          1.2,
+          1.1,
           -10.74
         ],
         "camera": [
           -5.35,
-          1.32,
-          -8.34
+          1.25,
+          -6.5
         ]
       }
     },
