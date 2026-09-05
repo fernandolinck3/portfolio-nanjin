@@ -99,11 +99,13 @@ export function createBaroque(room, {
   const GILT_DARK = new THREE.MeshStandardMaterial({
     color: 0x8A6C2A, metalness: 1, roughness: .46,
   })
-  /* Aged plaster, not fresh. `0xBFB2A0` was the brightest thing in a dark room and
-     pulled the eye off the Unit — which is the one thing the room is not allowed to
-     do. This is the same plaster after a century of candle smoke. */
+  /* Aged plaster, not fresh, and now aged twice. `0xBFB2A0` was the brightest thing in
+     a dark room and pulled the eye off the Unit; `0x8B8175` still was, once the walls
+     and the floor came down to the value the reference interiors actually hold. Cornice
+     and rose run the whole perimeter, so they are a large area pretending to be a
+     detail — a century of candle smoke, and then another. */
   const PLASTER = new THREE.MeshStandardMaterial({
-    color: 0x8B8175, roughness: .95, metalness: 0,
+    color: 0x4F4840, roughness: .95, metalness: 0,
   })
   /* Bronze, for the bust: a pale bust is a chess piece, and this room has enough
      light-coloured mass in it already. */
@@ -169,12 +171,17 @@ export function createBaroque(room, {
 
   /* ---------- the ceiling rose ---------- */
 
-  /* Smaller than the first try by a third, and stepped rather than domed: at 2.55 it
-     read as a white plate hanging in the air, because a lathe that ends on a flat cap
-     is a plate. The steps are what catch light and say *plaster*. */
+  /* Smaller twice now, and the second cut was measured against the wrong thing. The
+     first pass judged it in elevation — at 2.55 across it read as a white plate hanging
+     in the air, so the steps went in and the radius came down a third. But this camera
+     looks *down*, and from up there the rose sits between the lens and the chandelier:
+     at 1.30 it was a lid, and the sixteen candles and eight gilt arms underneath it were
+     a rumour. So the radius is set by the thing it hangs, not by its own proportions —
+     0.72 clears the inner tier's reach of 1.05 with room to spare, which is also what a
+     real medallion does: it is the collar the chain comes out of, never the crown. */
   const rose = new THREE.Mesh(lathe([
-    [0, 0], [.40, 0], [.46, .05], [.72, .08], [.78, .15], [1.06, .18],
-    [1.16, .26], [1.22, .34], [1.28, .38], [1.30, .44], [0, .44],
+    [0, 0], [.22, 0], [.25, .04], [.40, .06], [.43, .10], [.58, .13],
+    [.64, .18], [.67, .24], [.70, .27], [.72, .31], [0, .31],
   ], 48), PLASTER)
   rose.position.set(0, ceilY - .50, wallZ + depth * .52)
   group.add(rose)

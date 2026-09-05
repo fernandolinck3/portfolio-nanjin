@@ -2622,28 +2622,166 @@ function stoneTexture(bump) {
 
 /** A worn medallion rug, muted red, to break up the boards. */
 function rugTexture() {
-  const c = document.createElement('canvas'); c.width = 1024; c.height = 700;
+/**
+ * The rug, drawn as a rug is drawn — not as a red rectangle with a ring on it.
+ *
+ * It covers half the floor and it is the largest single surface the camera sees after
+ * the Altar, so the flat madder field with three ellipses was the most unconvincing
+ * thing in frame. The fix is the one the marquetry already proved on the table top: a
+ * **vocabulary of small marks, mirrored**, is what reads as designed. Ornament is never
+ * one big shape; it is a few shapes repeated under a rule.
+ *
+ * The vocabulary here is a carpet's own, not the table's:
+ *
+ * - **boteh** — the almond with the bent tip, the mark every Persian field is filled
+ *   with. Rows alternate their facing, because a field of identical boteh reads as
+ *   wallpaper and a field that flips every other row reads as woven.
+ * - **rosette** — an eight-petal star, the unit of the main border.
+ * - **ogee** — the pointed oval of the central medallion, quartered into the corners
+ *   as spandrels. A medallion whose corners answer it is the whole grammar of the form.
+ * - **abrash** — the horizontal banding a dye lot leaves when it runs out mid-weave.
+ *   Two per cent of lightness, and it is the difference between wool and vinyl.
+ *
+ * Drawn and not photographed for the reason `marquetry.js` gives: this rug is 19 by 13
+ * under a camera that looks straight down, and a photograph of someone else's carpet
+ * arrives with someone else's proportions and someone else's borders cropped off.
+ */
+  const W = 1024, H = 700;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d');
   const rnd = rng(2468);
-  g.fillStyle = '#5A2321'; g.fillRect(0, 0, 1024, 700);
-  g.strokeStyle = '#8A5A3C'; g.lineWidth = 6;
-  g.strokeRect(34, 34, 956, 632); g.strokeRect(66, 66, 892, 568);
-  g.fillStyle = '#3E1A1A';
-  g.beginPath(); g.ellipse(512, 350, 300, 200, 0, 0, 6.2832); g.fill();
-  g.strokeStyle = '#B98A55'; g.lineWidth = 4;
-  for (const k of [1, .74, .48]) { g.beginPath(); g.ellipse(512, 350, 300 * k, 200 * k, 0, 0, 6.2832); g.stroke(); }
-  for (let i = 0; i < 16; i++) {
-    const a = i / 16 * 6.2832;
+
+  /* the dye lots: madder red, indigo, ivory, saffron */
+  const MADDER = '#7B2E26', INDIGO = '#22314C', IVORY = '#D9C8A4', SAFFRON = '#C2913C';
+
+  /** An almond with a bent tip. Filled, then outlined, so it holds at a distance. */
+  const boteh = (x, y, h, flip) => {
+    g.save(); g.translate(x, y); g.scale(flip ? -1 : 1, 1);
+    const w = h * .58;
     g.beginPath();
-    g.moveTo(512 + Math.cos(a) * 120, 350 + Math.sin(a) * 80);
-    g.lineTo(512 + Math.cos(a) * 292, 350 + Math.sin(a) * 194);
-    g.stroke();
+    g.moveTo(0, h * .5);
+    g.bezierCurveTo(-w, h * .30, -w * .92, -h * .22, -w * .16, -h * .40);
+    g.bezierCurveTo(w * .30, -h * .58, w * .34, -h * .16, w * .06, -h * .06);
+    g.bezierCurveTo(w * .74, -h * .04, w * .86, h * .30, 0, h * .5);
+    g.closePath(); g.fill(); g.stroke();
+    g.restore();
+  };
+
+  /** Eight petals around a dot — the border's repeat and the medallion's centre. */
+  const rosette = (x, y, r) => {
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2;
+      g.beginPath();
+      g.ellipse(x + Math.cos(a) * r * .58, y + Math.sin(a) * r * .58,
+        r * .42, r * .26, a, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.beginPath(); g.arc(x, y, r * .28, 0, Math.PI * 2); g.fill();
+  };
+
+  /** The pointed oval. Used whole for the medallion and quartered for the corners. */
+  const ogee = (x, y, rx, ry) => {
+    g.beginPath();
+    g.moveTo(x, y - ry);
+    g.bezierCurveTo(x + rx * .86, y - ry * .52, x + rx, y - ry * .12, x + rx, y);
+    g.bezierCurveTo(x + rx, y + ry * .12, x + rx * .86, y + ry * .52, x, y + ry);
+    g.bezierCurveTo(x - rx * .86, y + ry * .52, x - rx, y + ry * .12, x - rx, y);
+    g.bezierCurveTo(x - rx, y - ry * .12, x - rx * .86, y - ry * .52, x, y - ry);
+    g.closePath();
+  };
+
+  /* ---- the field ---- */
+  g.fillStyle = MADDER; g.fillRect(0, 0, W, H);
+
+  /* abrash: the weaver ran out of madder eleven times and re-dyed */
+  for (let y = 0; y < H; y += 7) {
+    const k = (rnd() - .5) * .09;
+    g.fillStyle = `rgba(${k > 0 ? '255,235,215' : '0,0,0'},${Math.abs(k)})`;
+    g.fillRect(0, y, W, 7);
   }
-  for (let i = 0; i < 1200; i++) {
-    g.fillStyle = `rgba(0,0,0,${rnd() * .12})`;
-    g.fillRect(rnd() * 1024, rnd() * 700, 3 + rnd() * 9, 2 + rnd() * 5);
+
+  /* the boteh field, mirrored row by row, clipped to the inside of the borders */
+  g.save();
+  g.beginPath(); g.rect(96, 76, W - 192, H - 152); g.clip();
+  g.fillStyle = 'rgba(214,196,158,.40)'; g.strokeStyle = 'rgba(34,49,76,.42)'; g.lineWidth = 1;
+  for (let row = 0, y = 108; y < H - 92; row++, y += 48) {
+    for (let col = 0, x = 124 + (row % 2 ? 25 : 0); x < W - 108; col++, x += 50) {
+      boteh(x, y, 27, (row + col) % 2 === 0);
+    }
   }
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+  g.restore();
+
+  /* ---- the medallion, and the corners that answer it ---- */
+  const cx = W / 2, cy = H / 2;
+
+  g.fillStyle = INDIGO; ogee(cx, cy, 268, 176); g.fill();
+  g.strokeStyle = SAFFRON; g.lineWidth = 5; ogee(cx, cy, 268, 176); g.stroke();
+  g.strokeStyle = IVORY; g.lineWidth = 2.5; ogee(cx, cy, 240, 156); g.stroke();
+
+  /* pendants: a medallion that ends flat at the top and bottom looks cut off */
+  g.fillStyle = INDIGO; g.strokeStyle = SAFFRON; g.lineWidth = 3.5;
+  for (const s of [-1, 1]) {
+    ogee(cx, cy + s * 196, 44, 46); g.fill(); g.stroke();
+  }
+
+  /* the boteh inside the medallion face the other way — the field reversed, which is
+     what tells the eye the medallion is a separate cloth laid over it */
+  g.save();
+  ogee(cx, cy, 236, 152); g.clip();
+  g.fillStyle = 'rgba(194,145,60,.85)'; g.strokeStyle = 'rgba(217,200,164,.5)'; g.lineWidth = 1.2;
+  for (let row = 0, y = cy - 116; y < cy + 148; row++, y += 46) {
+    for (let col = 0, x = cx - 214 + (row % 2 ? 24 : 0); x < cx + 220; col++, x += 48) {
+      boteh(x, y, 25, (row + col) % 2 === 1);
+    }
+  }
+  g.fillStyle = IVORY; rosette(cx, cy, 46);
+  g.restore();
+
+  /* spandrels: the same ogee quartered into each corner, so the corners rhyme */
+  g.fillStyle = INDIGO;
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+    g.save();
+    g.translate(sx < 0 ? 96 : W - 96, sy < 0 ? 76 : H - 76);
+    g.scale(sx, sy);
+    g.beginPath();
+    g.moveTo(0, 0); g.lineTo(196, 0);
+    g.bezierCurveTo(150, 46, 92, 96, 0, 138);
+    g.closePath(); g.fill();
+    g.restore();
+  }
+
+  /* ---- the borders: one wide band between two guards ---- */
+  const guard = (inset, w, col) => {
+    g.strokeStyle = col; g.lineWidth = w;
+    g.strokeRect(inset, inset * .72, W - inset * 2, H - inset * 1.44);
+  };
+  g.fillStyle = INDIGO;
+  g.fillRect(30, 22, W - 60, 54); g.fillRect(30, H - 76, W - 60, 54);
+  g.fillRect(30, 22, 66, H - 44); g.fillRect(W - 96, 22, 66, H - 44);
+
+  guard(24, 5, SAFFRON); guard(96, 4, SAFFRON); guard(106, 2, IVORY);
+
+  /* rosettes marching around the main band, ivory and saffron alternating */
+  let n = 0;
+  const march = (x, y) => { g.fillStyle = (n++ % 2) ? SAFFRON : '#C6B491'; rosette(x, y, 17); };
+  for (let x = 60; x < W - 38; x += 58) { march(x, 49); march(x, H - 49); }
+  for (let y = 112; y < H - 96; y += 58) { march(63, y); march(W - 63, y); }
+
+  /* ---- wear, and the weave ---- */
+  /* the pile is short where people walk: a soft dark blot from the door side */
+  const walk = g.createRadialGradient(cx, H * .82, 40, cx, H * .82, 340);
+  walk.addColorStop(0, 'rgba(0,0,0,.30)'); walk.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = walk; g.fillRect(0, 0, W, H);
+
+  for (let i = 0; i < 1400; i++) {
+    g.fillStyle = `rgba(0,0,0,${rnd() * .11})`;
+    g.fillRect(rnd() * W, rnd() * H, 3 + rnd() * 9, 2 + rnd() * 4);
+  }
+  /* the weft: one pale hairline every four pixels, which is why wool is not paper */
+  g.fillStyle = 'rgba(255,246,230,.045)';
+  for (let y = 0; y < H; y += 4) g.fillRect(0, y, W, 1);
+
 }
 
 const stoneMat = new THREE.MeshStandardMaterial({
@@ -2653,9 +2791,13 @@ const stoneMat = new THREE.MeshStandardMaterial({
 const panelMat = new THREE.MeshStandardMaterial({
   map: panelTexture(false), bumpMap: panelTexture(true), bumpScale: .5,
   roughnessMap: wearMap(4402, 200, .26, 4),
-  /* near-white tint: the colour lives in the map now, and tinting paint brown was
-     what made the old wall read as timber */
-  color: 0xC8C6C2, roughness: .93, metalness: 0,
+  /* The tint is neutral because the colour lives in the map — tinting paint brown was
+     what made the old wall read as timber. But near-white was a *value* decision made
+     without a reference, and the three interiors say the opposite: in all three, sixty
+     to seventy per cent of the frame is near-black and **there is not one light wall**.
+     A room reads expensive by having few lit things, not by being evenly lit. This is
+     the same grey, four stops down. */
+  color: 0x4E4B47, roughness: .93, metalness: 0,
 });
 
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(SIDE_X * 2, DEPTH),
@@ -2705,7 +2847,10 @@ if (!location.search.includes('tex=0')) {
     m.bumpMap = null;              /* the drawn bump ran along planks, not herringbone */
     m.normalMap = nor;
     m.roughnessMap = arm;
-    m.color.setHex(0xFFFFFF);      /* the tint existed to keep drawn wood from going flat */
+    /* Not white. The photograph's own value is a lit room's value, and this room is
+       not lit — it has a window, a fire and sixteen candles. Undimmed, the parquet was
+       the brightest large surface in the frame and the eye went to the floor. */
+    m.color.setHex(0x6E655A);
     m.roughness = .72;
     m.needsUpdate = true;
     console.log('[tenebrae] parquet floor in');
@@ -2713,7 +2858,7 @@ if (!location.search.includes('tex=0')) {
 }
 
 const rug = new THREE.Mesh(new THREE.PlaneGeometry(19, 13),
-  new THREE.MeshStandardMaterial({ map: rugTexture(), roughness: .98, metalness: 0, color: 0x9a8f86 }));
+  new THREE.MeshStandardMaterial({ map: rugTexture(), roughness: .98, metalness: 0, color: 0xBFB6AA }));
 rug.rotation.x = -Math.PI / 2; rug.position.set(0, FLOOR_Y + .01, 1.5); room.add(rug);
 
 /* far wall, extruded around a lancet opening */
