@@ -245,6 +245,30 @@
     background:#141110;border:1px solid #3A2E20;border-radius:3px;letter-spacing:.12em}
   .touch button:active{background:#241D16}
   @media (hover:none){ .touch{display:flex} }
+  /* O visor.
+
+     A moldura é o ponto. Um painel de UI no canto seria exatamente o que a crítica
+     proíbe — ajuda, tooltip, onboarding — e mataria o enigma que é metade do valor do
+     objeto. Um objeto **da cena** encostado no canto do quadro não é chrome: é
+     cenário, e o conteúdo dentro dele é o mesmo que a Tela mostra de perto.
+
+     `image-rendering:pixelated` porque o buffer tem 320x180 e é desenhado para ser
+     lido nesse tamanho: suavizar um pixel-art de 320 de largura o transforma em borrão
+     em vez de o ampliar. */
+  #visor{position:fixed;right:22px;bottom:22px;z-index:4;margin:0;width:448px;max-width:42vw;
+    padding:10px;border-radius:2px;pointer-events:none;
+    background:linear-gradient(160deg,#3A2E1C,#171310 42%,#2A2114);
+    border:1px solid #6A5330;
+    box-shadow:0 0 0 1px #0A0908 inset, 0 18px 46px #000A, 0 0 30px #C9902A22;
+    opacity:0;transform:translateY(10px) scale(.985);
+    transition:opacity .34s ease,transform .34s ease}
+  #visor[data-on]{opacity:1;transform:none}
+  #visor canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;
+    image-rendering:pixelated;background:#050706;
+    box-shadow:0 0 0 1px #0A0908, 0 0 22px #7ED6B033 inset}
+  /* fora do caminho da faixa de bancada, que ocupa a base inteira */
+  body[data-debug] #visor{bottom:64px}
+  @media (max-width:720px){ #visor{width:auto;left:12px;right:12px;max-width:none} }
   /* A linha das estações, e ela toma a faixa inteira.
 
      Os outros mostradores da bancada leem um número e cabem entre dois vizinhos. Este
@@ -271,6 +295,17 @@
      `prototype/mirror.js` and ADR-0002 — rather than a landmark that announces
      itself and then has nothing to say. Nothing focusable lives in here. -->
 <div id="stage" aria-hidden="true"></div>
+<!-- O visor — a Tela onde a câmera não a alcança.
+
+     Nome provisório e de propósito. `espelho` já é o gêmeo em DOM (ADR-0002) e ainda
+     há um espelho modelado sobre a baia de discos: três espelhos num glossário é o
+     tipo de coisa que este projeto paga caro. `CONTEXT.md` recebe o nome definitivo
+     quando ele for escolhido.
+
+     `aria-hidden` pela mesma razão que o palco: isto é um retrato do buffer da Tela, e
+     quem lê a página lê o espelho, que já carrega o mesmo conteúdo como texto. Uma
+     segunda cópia aqui seria conteúdo duplicado para quem usa leitor de tela. -->
+<figure id="visor" hidden aria-hidden="true"><canvas></canvas></figure>
 <!--
   The semantic layer. ADR-0002: the DOM is the truth and the Screen is a render of
   it, so every control the hand can reach has a real focusable element here with a

@@ -5762,6 +5762,54 @@ const trilho = createTrilho({ camera, base: new THREE.Vector3(0, .35 * K, 0) });
 trilhoDirigindo = () => trilho.dirigindo;
 
 /**
+ * O visor — a Tela onde a câmera não a alcança.
+ *
+ * **É a metade que faltava, e não é um painel de ajuda.** Numa estação a Unidade fica
+ * fora do quadro: a origem projeta em `y = −1068` num viewport de 741. Sem uma segunda
+ * superfície, viajar pelo quarto é trocar o conteúdo por cenário, e o T-34 sempre
+ * soube disso — o item 4 dele promove a Plate plana de plano B a caminho principal
+ * por exatamente esta razão.
+ *
+ * O que muda aqui é **o que** a superfície é. Um painel de UI encostado no canto é o
+ * que a crítica proíbe em três linhas separadas: ajuda, tooltip, onboarding, os três
+ * matam o enigma que é metade do valor do objeto. Um objeto **da cena** no canto do
+ * quadro não é chrome, é cenário — e o conteúdo dentro dele é o mesmo que a Tela
+ * mostra de perto, não uma explicação sobre ele.
+ *
+ * Custa um `drawImage`. O buffer da Tela é um canvas de 320×180 que já é pintado uma
+ * vez por quadro a 24 Hz para a textura da Unidade; isto o copia, sem segundo render,
+ * sem segundo conteúdo e sem uma segunda lista que possa divergir da primeira.
+ *
+ * `visor` é nome de trabalho. `espelho` já é o gêmeo em DOM (ADR-0002) e há um espelho
+ * modelado sobre a baia de discos — três espelhos num glossário é caro, e o nome
+ * definitivo é decisão do Fernando antes de entrar no `CONTEXT.md`.
+ */
+const visorEl = document.getElementById('visor');
+const visorCv = visorEl?.querySelector('canvas');
+const visorCtx = visorCv?.getContext('2d');
+if (visorCv) { visorCv.width = SCREEN_W; visorCv.height = SCREEN_H; }
+let visorLigado = false;
+function visorDeveAparecer() {
+  /* longe do Altar e sem uma Work em foco. O `focus` já enquadra a Tela apertado e
+     dirige a câmera ele mesmo — uma cópia da mesma Tela no canto, ao lado dela grande,
+     é conteúdo duplicado no mesmo quadro. */
+  return trilho.estacao !== 0 && !focus.active;
+}
+function pintarVisor() {
+  if (!visorCtx) return;
+  const deve = visorDeveAparecer();
+  if (deve !== visorLigado) {
+    visorLigado = deve;
+    /* `hidden` sai antes de a transição começar, senão ela roda num elemento que não
+       está no layout e o visor aparece pronto em vez de chegar */
+    if (deve) { visorEl.hidden = false; requestAnimationFrame(() => visorEl.dataset.on = '1'); }
+    else { delete visorEl.dataset.on; }
+  }
+  if (!visorLigado) return;
+  visorCtx.drawImage(screenBuffer, 0, 0);
+}
+
+/**
  * The mirror — everything the Screen shows, in the DOM, in step with it.
  *
  * Built here because this is the first line at which every one of its dependencies
@@ -6325,6 +6373,9 @@ function frame(t) {
     renderScreen(t / 1000, screenClock);
     display.paint();
     screenTex.needsUpdate = true;
+    /* no relógio da Tela e não no da cena: o visor mostra o mesmo buffer, e copiá-lo a
+       60 quando ele só muda a 24 é dois terços de blit jogados fora */
+    pintarVisor();
     screenClock = 0;
   }
   /* The mirror follows the Screen's own clock. `drawScreen()` is the deliberate
