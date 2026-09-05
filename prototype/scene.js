@@ -3766,6 +3766,48 @@ function pickQuarto(e) {
   return trilho.estacaoEm(h.x, h.z);
 }
 
+/**
+ * O retrato é clicável **nele mesmo**, e não pelo chão sob ele.
+ *
+ * `pickQuarto` mira `room.children` e devolve uma estação a partir de onde o raio
+ * bate no piso. Isso responde "para que canto do quarto o visitante apontou" e é a
+ * pergunta certa para cinco das seis estações. Não é a pergunta certa aqui: o retrato
+ * está pendurado na parede e não vive em `room` — `createPortrait` o pendura direto na
+ * cena — então o chão sob ele responde pela estação e nunca pelo quadro.
+ *
+ * Um raio separado, contra o grupo do retrato, é o que permite que clicar **nela**
+ * signifique outra coisa que clicar no canto dela.
+ */
+function pickRetrato(e) {
+  if (ROOM_K === 0 || !portrait.group) return false;
+  const r = frameRect(), p = pt(e);
+  ndc.x = ((p.x - r.left) / r.width) * 2 - 1;
+  ndc.y = -((p.y - r.top) / r.height) * 2 + 1;
+  ray.setFromCamera(ndc, camera);
+  return ray.intersectObject(portrait.group, true).length > 0;
+}
+
+/**
+ * Clicar na Lyra: chegar perto, e clicar de novo: sair de perto.
+ *
+ * Um passo por clique, no mesmo objeto, sem controle novo na tela. É o que o T-30
+ * permite: o quadro é a interface dele mesmo. Longe da estação, o clique continua
+ * fazendo o que sempre fez — abrir QUEM e viajar até lá — porque aproximar-se de algo
+ * que não está enquadrado seria pular uma etapa que o visitante não pediu.
+ */
+function tocarRetrato() {
+  const est = trilho.estacaoDe('identity');
+  if (!est) return false;
+  if (trilho.estacao !== est) {
+    const i = MODULES.findIndex(x => x.id === 'identity');
+    if (i >= 0) { pressPad(i); return true; }
+    return false;
+  }
+  if (trilho.perto) { trilho.irPara(est); flashLcd('O RETRATO'); return true; }
+  if (trilho.irPara(est, { perto: true })) { flashLcd('MAIS PERTO'); return true; }
+  return false;
+}
+
 function pick(e) {
   const r = frameRect(), p = pt(e);
   ndc.x = ((p.x - r.left) / r.width) * 2 - 1;
@@ -4604,6 +4646,9 @@ el.addEventListener('pointerdown', e => {
    * faria nada. Onde o freecam está ligado, quem manda continua sendo o arrasto.
    */
   if (!freeLook()) {
+    /* o quadro antes do chão: os dois respondem pela mesma estação, e o mais
+       específico dos dois é quem deve ganhar */
+    if (pickRetrato(e) && tocarRetrato()) return;
     const est = pickQuarto(e);
     if (est) {
       const m = trilho.moduloDe(est);
@@ -4651,7 +4696,23 @@ el.addEventListener('pointermove', e => {
      * Só quando muda: reescrever a mesma linha a cada movimento do rato é um
      * `drawScreen` por quadro para dizer o que já estava dito.
      */
-    const estSob = ctl ? 0 : pickQuarto(e);
+    /**
+     * O olhar dela, e quem o conduz.
+     *
+     * De longe o olhar segue a câmera e isto não faz nada. Na pose fechada a câmera
+     * está parada, e encarar um ponto fixo para sempre não é olhar — é pose. Aí quem
+     * se move é o ponteiro, e é ele que ela segue. Ver `mirar` em `portrait.js`.
+     */
+    if (trilho.perto && trilho.alvo?.id === 'retrato') {
+      const rr = frameRect(), pp = pt(e);
+      portrait.mirar([
+        ((pp.x - rr.left) / rr.width) * 2 - 1,
+        -((pp.y - rr.top) / rr.height) * 2 + 1,
+      ]);
+    } else portrait.mirar(null);
+
+    const sobreRetrato = !ctl && pickRetrato(e);
+    const estSob = ctl || sobreRetrato ? 0 : pickQuarto(e);
     if (estSob !== hoverEstacao) {
       hoverEstacao = estSob;
       setHint(estSob ? trilho.nomeDe(estSob) : '');
@@ -4661,6 +4722,7 @@ el.addEventListener('pointermove', e => {
       : ctl === 'fader' ? 'ew-resize'
       : ctl === 'sun' || ctl === 'moon' ? 'grab'
       : ctl === 'screen' && on ? 'pointer'
+      : sobreRetrato ? 'pointer'
       : estSob ? 'pointer'
       : freeLook() ? 'grab' : 'default';
     return;

@@ -66,6 +66,7 @@ export function createTrilho({ camera, base }) {
   let pedido = null
 
   let estacao = 0
+  let perto = false
   /* o Altar recuado — mesma estação, outra distância */
   let longe = false
   /* a viagem em curso: de onde, para onde, e quanto já andou */
@@ -172,14 +173,29 @@ export function createTrilho({ camera, base }) {
    * não muda o que o display mostra — e é justamente essa a regra que o resto deste
    * arquivo existe para manter.
    */
-  function irPara(n, { imediato = false } = {}) {
-    /* `onde` e não `estacao`: o Altar e o panorama guardam os dois `estacao = 0`, e
-       comparar só a estação faria recuar e voltar a aproximar virarem no-ops. */
-    const onde = longe ? -1 : estacao
-    if (!curva || n === onde) return false
-    de = alvoDe(onde)
-    para = alvoDe(n)
+  /**
+   * **Onde a câmera está, como uma coisa só.**
+   *
+   * Eram dois booleanos e um número — `longe`, `perto`, `estacao` — e três lugares
+   * diferentes guardam `estacao = 0` ou repetem o mesmo `n`: o Altar, o panorama, e
+   * agora a pose fechada de uma estação sobre a própria estação. Comparar campo a
+   * campo já tinha produzido um no-op silencioso uma vez (recuar para o panorama não
+   * fazia nada, porque os dois guardam 0). Uma chave resolve os três casos de uma vez,
+   * e um lugar novo é uma linha nova aqui e nada mais.
+   */
+  const chaveDe = (n, p) => (n === -1 ? 'panorama' : (p ? 'perto' : 'est') + ':' + Math.max(0, n))
+
+  function irPara(n, { imediato = false, perto: quer = false } = {}) {
+    /* Uma estação só tem pose fechada se o JSON trouxe uma. Pedir para aproximar de
+       onde não há aproximação não é erro — é um pedido que não se aplica, e devolver
+       `false` deixa quem chamou decidir o que fazer com isso. */
+    const podePerto = n >= 1 && !!dados?.[n - 1]?.perto
+    const querPerto = quer && podePerto
+    if (!curva || chaveDe(n, querPerto) === chaveDe(longe ? -1 : estacao, perto)) return false
+    de = alvoDe(longe ? -1 : estacao, perto)
+    para = alvoDe(n, querPerto)
     longe = n === -1
+    perto = querPerto
     estacao = Math.max(0, n)
     t = imediato ? 1 : 0
     andando = true
@@ -201,7 +217,7 @@ export function createTrilho({ camera, base }) {
    * `?sala`, o `?trilho` e a abertura param em lugares diferentes, e uma constante
    * aqui seria uma delas discordando das outras.
    */
-  function alvoDe(n) {
+  function alvoDe(n, comPerto = false) {
     if (n === -1 && panorama) {
       return {
         olhar: new THREE.Vector3(...panorama.olhar),
@@ -213,6 +229,16 @@ export function createTrilho({ camera, base }) {
       return altar
     }
     const e = dados[n - 1]
+    /* A pose fechada sai **do anel**. `tRail` fica indefinido de propósito: é o que
+       faz `passo` interpolar em linha reta, do jeito que já faz na ida e na volta do
+       Altar. Aproximar-se de um quadro andando pela curva do trilho seria dar meia
+       volta na sala para chegar a dois metros de onde já se está. */
+    if (comPerto && e.perto) {
+      return {
+        olhar: new THREE.Vector3(...e.perto.olhar),
+        pos: new THREE.Vector3(...e.perto.camera),
+      }
+    }
     return {
       tRail: ts[n - 1],
       olhar: new THREE.Vector3(...e.olhar),
@@ -272,7 +298,11 @@ export function createTrilho({ camera, base }) {
      * botão ausente. Aqui o trilho sai da frente **e diz que saiu** — o estado volta a
      * 0 em vez de ficar apontando para uma estação onde a câmera já não está.
      */
-    soltar() { estacao = 0; longe = false; andando = false },
+    soltar() { estacao = 0; longe = false; perto = false; andando = false },
+    /** A câmera está na pose fechada de uma estação? */
+    get perto() { return perto },
+    /** A estação corrente tem pose fechada para oferecer? */
+    get temPerto() { return !!(dados && estacao >= 1 && dados[estacao - 1]?.perto) },
     /** A estação corrente como dado — para a bancada dizer onde a câmera está. */
     get alvo() { return (dados && estacao >= 1) ? dados[estacao - 1] : null },
     /** Quantas estações o JSON trouxe, para a bancada não inventar botões. */

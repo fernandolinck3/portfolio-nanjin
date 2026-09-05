@@ -318,17 +318,41 @@ export function createRoomDecor(room, { floorY, wallFace, sideX }) {
      loudest thing saying "this was arranged, not lived in". */
   const PANEL = { w: 1.52, h: 4.20, d: .16 }
   const geom = archGeom(PANEL.w, PANEL.h, PANEL.d)
-  const scheme = [[BONE, 'star'], [EMBER, 'moon'], [COLD, 'sun'], [EMBER, 'moon'], [BONE, 'star']]
-  const places = [-8.15, -6.35, 4.35, 6.15, 7.95]
-  places.forEach((x, n) => {
-    const [colour, motif] = scheme[n % scheme.length]
+  /**
+   * Quatro, e não cinco — **o quinto estava por cima do retrato.**
+   *
+   * Havia um painel em `x = -6,35`, EMBER com a lua. Ele ocupa de -7,13 a -5,57 e a
+   * face dele fica em `z = -10,60`; a pintura da Lyra está em -10,74 e vai de -6,43 a
+   * -4,27. Medido: o painel adiantava **14 centímetros** em relação ao quadro e cobria
+   * **40% da largura da pintura**. Não era penumbra nem enquadramento — era um objeto
+   * na frente de outro, e o de trás era o assunto de um Módulo.
+   *
+   * Estava assim desde que os dois existem. A moldura escrita era uma barra chapada e
+   * o corte não se lia; a moldura modelada tem um filete de ouro que some atrás do
+   * vermelho, e aí ficou impossível não ver.
+   *
+   * Tirar o painel é a correção honesta: ninguém pendura um quadro em cima de um
+   * painel acústico, tira o painel. E um mais três continua sendo a assimetria que o
+   * comentário original pede — o que ele proíbe é três espelhando três.
+   *
+   * `alto` viaja no dado em vez de sair de `n % 2` para que remover uma entrada não
+   * mexa na altura das outras quatro: as três da direita ficam exatamente onde
+   * estavam.
+   */
+  const PAINEIS = [
+    { x: -8.15, cor: BONE, motivo: 'star', alto: false, semente: 4000 },
+    { x: 4.35, cor: COLD, motivo: 'sun', alto: false, semente: 4274 },
+    { x: 6.15, cor: EMBER, motivo: 'moon', alto: true, semente: 4411 },
+    { x: 7.95, cor: BONE, motivo: 'star', alto: false, semente: 4548 },
+  ]
+  for (const pn of PAINEIS) {
     const m = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({
-      map: panelFace(colour, motif, 4000 + n * 137), roughness: .94, metalness: 0,
+      map: panelFace(pn.cor, pn.motivo, pn.semente), roughness: .94, metalness: 0,
     }))
     /* heights nudged apart — a row of tops at one level is another giveaway */
-    m.position.set(x, floorY + 3.05 + (n % 2 ? .18 : -.12), wallFace + .02)
+    m.position.set(pn.x, floorY + 3.05 + (pn.alto ? .18 : -.12), wallFace + .02)
     room.add(m)
-  })
+  }
 
   /* ---- monitors, forward of the wall on their stands, flanking the window ----
      Not mirrored: the left one stands closer and reads larger, which is what puts

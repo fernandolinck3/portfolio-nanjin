@@ -295,6 +295,24 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
   const GAIN_X = 1.5, GAIN_Y = 1.2
   let gx = 0, gy = 0
 
+  /**
+   * Para onde ela olha, e por que isso tem dois modos.
+   *
+   * De longe o olhar segue a **camera**: o visitante anda pelo quarto, ela acompanha,
+   * e a conta e a direcao da camera projetada no plano do quadro. E o comportamento
+   * certo enquanto quem se move e quem olha.
+   *
+   * De perto a camera para. Numa pose fixa a dois metros e meio, seguir a camera
+   * significa encarar um ponto fixo para sempre — que nao e um olhar, e uma pose. Ai
+   * quem se move e o **ponteiro**, e e ele que ela segue. E o truque velho do retrato
+   * que acompanha quem passa, e e a metade da interacao que sobrevive a troca da arte.
+   *
+   * `mirar(null)` volta para a camera; `mirar([nx, ny])` recebe o ponteiro em
+   * coordenadas normalizadas de tela, -1 a 1, com y para cima.
+   */
+  let alvoManual = null
+  function mirar(alvo) { alvoManual = alvo }
+
   /* the moulding — four bars, mitred by overlap rather than by geometry */
   const M = 0.26, D = 0.22
   const bars = [
@@ -440,10 +458,16 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
     const em = 0.05 + vigil * 0.30
     canvas.material.emissiveIntensity = em
     irises.material.emissiveIntensity = em
-    if (!camera) return
-    const dz = Math.max(0.8, camera.position.z - irisZ)
-    const ax = Math.max(-1, Math.min(1, (camera.position.x - irisX) / dz * GAIN_X))
-    const ay = Math.max(-1, Math.min(1, (camera.position.y - irisY) / dz * GAIN_Y))
+    let ax, ay
+    if (alvoManual) {
+      ax = Math.max(-1, Math.min(1, alvoManual[0]))
+      ay = Math.max(-1, Math.min(1, alvoManual[1]))
+    } else {
+      if (!camera) return
+      const dz = Math.max(0.8, camera.position.z - irisZ)
+      ax = Math.max(-1, Math.min(1, (camera.position.x - irisX) / dz * GAIN_X))
+      ay = Math.max(-1, Math.min(1, (camera.position.y - irisY) / dz * GAIN_Y))
+    }
     /* Ela nao teleporta o olhar. Um oitavo por quadro a 60 chega em ~0,2s, que e o
        tempo de um olho de verdade largar um ponto e pegar outro. */
     const k = dt ? Math.min(1, dt * 8) : 1
@@ -453,5 +477,5 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
   }
   update(0)
 
-  return { update, group, carregar, pronto }
+  return { update, group, carregar, pronto, mirar }
 }

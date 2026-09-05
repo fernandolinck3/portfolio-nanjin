@@ -21,7 +21,20 @@
         -2.16,
         1.9,
         -4.0
-      ]
+      ],
+      "perto": {
+        "sobre": "A consulta. A regra do anel — camera a 40% do caminho, Altar na periferia — existe para que a estacao seja o lugar onde alguem senta e nao a foto de um objeto. No retrato o objeto E o assunto: e um rosto, e um rosto a sete unidades ocupa 22% da altura do quadro. Aqui a camera sai do anel e chega a 2,7 unidades da parede, na altura do olho dela. Medido: e a distancia em que a iris passa de tres para onze pixels, que e a diferenca entre um olhar que existe e um olhar que se ve.",
+        "olhar": [
+          -5.35,
+          1.2,
+          -10.74
+        ],
+        "camera": [
+          -5.35,
+          1.32,
+          -8.34
+        ]
+      }
     },
     {
       "id": "acervo",
