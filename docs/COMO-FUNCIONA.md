@@ -28,6 +28,66 @@ objeto e ele responde.** Essa é a ideia inteira, e todo o resto é consequênci
 
 ---
 
+## O quarto
+
+Depois que o objeto ficou de pé, ele ganhou um lugar. **O instrumento está numa sala** —
+paredes altas, lustre, lareira, um retrato na parede do fundo. Isso é novo e é a razão de
+metade das palavras abaixo existirem.
+
+A sala não é cenário parado. Ela tem **seis pontos**, e cada ponto é um dos seis módulos
+do mostrador. Clicar na tecla QUEM não troca só a tela: a câmera **anda** até o retrato.
+Clicar em PROJETOS te leva até a parede dos discos. O lugar conta a mesma coisa que a tela
+conta, por outro meio.
+
+---
+
+## Glossário
+
+Se eu usar uma destas palavras e você não lembrar, é aqui. Está na ordem de quem olha para
+o objeto, não em ordem alfabética.
+
+### O objeto
+
+| Palavra | O que é |
+|---|---|
+| **A Unidade** | O CDJ em si. O aparelho preto com as teclas. |
+| **O Altar** | A mesa escura em que ele está pousado. |
+| **A Plate** | A chapa gravada em volta do mostrador, com a carta celeste. |
+| **O mostrador** (ou **a Tela**) | O visor de 320×180 pixels no meio. É onde teu texto aparece. |
+| **As Teclas** | Os seis botões. Cada um abre um módulo. |
+| **Os Módulos** | As seis telas de conteúdo: QUEM, PROJETOS, TRAJETO, CRITÉRIOS, HABILIDADES, CONTATO. |
+| **As Rodas** | Os dois discos giratórios. Rolam a lista do mostrador. |
+| **O Fader** | O deslizante. Controla a Vigília. |
+| **A Vigília** | Quanto o quarto está aceso. Ponta de cá: dia, tudo iluminado. Ponta de lá: noite, só as velas e o mostrador. |
+
+### O lugar
+
+| Palavra | O que é |
+|---|---|
+| **O Quarto** | A sala inteira em volta. Paredes, lustre, móveis. |
+| **As Estações** | Os seis pontos da sala — retrato, acervo, porta, leitura, lareira, oficina. Um para cada módulo. |
+| **O Trilho** | O caminho por onde a câmera anda entre as estações. Um anel fechado que passa por todas. |
+| **O Instrumento** | Unidade + Altar juntos, tratados como uma peça só. Existe porque os dois tiveram que **encolher** para caber na sala em escala de gente. |
+| **O Visor** | Quando a câmera se afasta e o mostrador fica pequeno demais para ler, uma cópia dele aparece no canto da tela. Hoje em forma de relógio. |
+| **Lyra** | A figura do retrato. O desenho de hoje é provisório — o definitivo é para ser feito à mão. |
+
+### Palavras de ofício
+
+Estas aparecem quando eu explico custo ou acabamento. São as que mais atrapalham.
+
+| Palavra | O que quer dizer, em português |
+|---|---|
+| **Procedural** | Construído por código, forma por forma. Uma lareira procedural é uma pilha de caixas que eu escrevi. O oposto é um **modelo**. |
+| **Modelo** (ou **asset**) | Um arquivo 3D pronto, feito por um modelador. Os móveis da sala são modelos. |
+| **CC0** | Licença livre. Modelo que pode ser usado sem pagar e sem creditar. Os oito móveis da sala são CC0 e a procedência está registrada. |
+| **Draw call** | Uma "encomenda" enviada à placa de vídeo. Quanto mais, mais lento. É a unidade em que o custo da cena é contado. |
+| **Chanfro** (bevel) | Quebrar a quina viva de uma caixa. Nada de verdade tem quina de navalha, e é a quina quebrada que pega a luz e faz a coisa parecer sólida. Barato e é o maior ganho isolado que existe. |
+| **AO assado** | Sombrinha de contato pintada direto na textura, em vez de calculada na hora. De graça enquanto roda, e é o que impede um móvel de parecer flutuando. |
+| **Emissivo** | Material que brilha por si. Uma vela emissiva parece acesa **sem** ser uma lâmpada de verdade na cena — e lâmpada de verdade é caro. |
+| **O espelho** | A cópia de todo o conteúdo do mostrador em HTML de verdade, invisível na tela mas lida por leitor de tela, pelo Ctrl+F e pelo Google. Quando eu digo "isso mexe no espelho", quer dizer que o texto tem que existir nos dois lugares. |
+
+---
+
 ## Os controles
 
 | Controle | O que faz |
