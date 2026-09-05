@@ -246,6 +246,9 @@ const camLimits = () => (FREECAM ? FREE_LIMITS : CAM_LIMITS);
  */
 let focusDriving = () => false;
 
+/** Qual estação o ponteiro está sobrevoando, para a dica só ser reescrita quando muda. */
+let hoverEstacao = 0;
+
 /**
  * O trilho dirige a câmera enquanto a estação não é o Altar.
  *
@@ -3739,6 +3742,29 @@ function spendNotches(d0, kind) {
   }
 }
 
+/**
+ * O quarto sob o ponteiro — qual estação, se alguma.
+ *
+ * `pick` acima interroga `unit.children` e nada mais, porque até agora tudo que se
+ * podia apertar era da Unidade. Este é o terceiro escritor da estação que a spec pede,
+ * ao lado dos pads e do endereço: **o lugar também comanda.** Apontar para a lareira e
+ * clicar leva até lá e abre CRITÉRIOS — o mesmo destino do pad, pelo mesmo caminho.
+ *
+ * Interroga `room` e não `scene` de propósito: a Unidade e o Altar já têm dono, e
+ * incluí-los faria um clique no tampo virar viagem.
+ */
+function pickQuarto(e) {
+  if (!trilho.pronto || ROOM_K === 0) return 0;
+  const r = frameRect(), p = pt(e);
+  ndc.x = ((p.x - r.left) / r.width) * 2 - 1;
+  ndc.y = -((p.y - r.top) / r.height) * 2 + 1;
+  ray.setFromCamera(ndc, camera);
+  const hits = ray.intersectObjects(room.children, true);
+  if (!hits.length) return 0;
+  const h = hits[0].point;
+  return trilho.estacaoEm(h.x, h.z);
+}
+
 function pick(e) {
   const r = frameRect(), p = pt(e);
   ndc.x = ((p.x - r.left) / r.width) * 2 - 1;
@@ -4372,6 +4398,22 @@ function forceEclipse() {
  */
 function pressPad(i) {
   if (i === curPage) {
+    /**
+     * O Módulo já é este, e aí o que o gesto quer depende de onde a câmera está.
+     *
+     * São três casos e a ordem importa. **Longe do lugar dele:** o gesto quer ir —
+     * e é o caso que apareceu clicando no quarto, porque o retrato é o lugar do
+     * Módulo que já está aberto quando a página carrega, e sem isto clicar nele
+     * reiniciava a vista em vez de viajar. **No lugar dele:** o gesto quer sair, e
+     * voltar ao Altar é o par natural de ir. **Sem trilho:** o que sempre foi,
+     * reiniciar a vista do Módulo.
+     */
+    const alvo = trilho.pronto ? trilho.estacaoDe(MODULES[i].id) : 0;
+    if (alvo && trilho.estacao !== alvo) {
+      trilho.irPara(alvo);
+      flashLcd(trilho.nomeDe(alvo).toUpperCase());
+      return;
+    }
     if (trilho.pronto && trilho.estacao !== 0) {
       trilho.irPara(0);
       flashLcd('O ALTAR');
@@ -4548,6 +4590,26 @@ el.addEventListener('pointerdown', e => {
       el.setPointerCapture(e.pointerId); return;
     }
   }
+  /**
+   * Nada na Unidade — mas talvez um lugar do quarto.
+   *
+   * Vai por `pressPad` e não por `trilho.irPara`, e essa é a linha inteira do
+   * argumento: apontar para a lareira e apertar o pad de CRITÉRIOS têm que **acabar no
+   * mesmo estado**, senão são duas navegações que se parecem. Um caminho de escrita, e
+   * qualquer controle novo entra por ele ou por nenhum.
+   *
+   * Antes do desvio de câmera abaixo porque em `?trilho` o freecam está desligado e
+   * `freeLook()` é falso: sem isto, um clique no quarto cairia no `intro.skip()` e não
+   * faria nada. Onde o freecam está ligado, quem manda continua sendo o arrasto.
+   */
+  if (!freeLook()) {
+    const est = pickQuarto(e);
+    if (est) {
+      const m = trilho.moduloDe(est);
+      const i = MODULES.findIndex(x => x.id === m);
+      if (i >= 0) { pressPad(i); return; }
+    }
+  }
   /* nothing on the Unit: the drag moves the view instead */
   if (!freeLook()) { intro.skip(); return; }
   active = 'cam'; el.setPointerCapture(e.pointerId); el.style.cursor = 'grabbing';
@@ -4577,10 +4639,28 @@ el.addEventListener('pointermove', e => {
     if (row !== hoverWork) { hoverWork = row; setHoverWork(row); drawScreen(); }
     /* `on` and not `row`: the claim, the back and the eclipse mark are clicks too,
        and saying so is the whole point of one hit test. */
+    /**
+     * O lugar sob o ponteiro, e o nome dele.
+     *
+     * Um quarto clicável que não diz o que é clicável é um quarto onde se clica por
+     * acaso. O nome vai para o rodapé da Tela, que é onde os pads já explicam a si
+     * mesmos — e a Tela é justamente o que o visor está mostrando no canto quando a
+     * câmera está longe, então a dica chega onde os olhos já estão.
+     *
+     * Só quando muda: reescrever a mesma linha a cada movimento do rato é um
+     * `drawScreen` por quadro para dizer o que já estava dito.
+     */
+    const estSob = ctl ? 0 : pickQuarto(e);
+    if (estSob !== hoverEstacao) {
+      hoverEstacao = estSob;
+      setHint(estSob ? trilho.nomeDe(estSob) : '');
+      drawScreen();
+    }
     el.style.cursor = ctl === 'pad' ? 'pointer'
       : ctl === 'fader' ? 'ew-resize'
       : ctl === 'sun' || ctl === 'moon' ? 'grab'
       : ctl === 'screen' && on ? 'pointer'
+      : estSob ? 'pointer'
       : freeLook() ? 'grab' : 'default';
     return;
   }
@@ -5812,14 +5892,44 @@ if (visorCv) { visorCv.width = SCREEN_W; visorCv.height = SCREEN_H; }
  */
 if (visorEl) {
   const q = new URLSearchParams(location.search).get('visor');
-  visorEl.dataset.forma = ['tela', 'oculo', 'relogio', 'vigia'].includes(q) ? q : 'tela';
+  visorEl.dataset.forma = ['tela', 'oculo', 'relogio', 'vigia'].includes(q) ? q : 'relogio';
 }
 let visorLigado = false;
+
+/**
+ * A largura da Tela na tela, em pixels — e é ela que decide, não a estação.
+ *
+ * A primeira regra era "longe do Altar". Estava errada, e uma medição mostrou por quê:
+ * do Altar não se vê **nenhuma** das seis estações com a Tela legível, e com as seis
+ * visíveis a Tela cai para 65 px. Não é uma questão de onde a câmera está, é uma
+ * questão de **quanto ainda dá para ler** — e isso é um número, não um lugar.
+ *
+ * O limiar é 260 px, pouco acima da metade dos 494 que o T-22 comprou com uma sessão
+ * inteira. Acima disso a Tela do objeto se basta e uma cópia no canto seria a mesma
+ * coisa duas vezes no quadro; abaixo, ela deixou de ser legível e o canto assume.
+ *
+ * A borda da frente e não a média das duas: é a que está mais perto e a que se lê
+ * primeiro, e usar a média faria o visor entrar meio grau antes num lado da mesa e
+ * meio grau depois no outro.
+ */
+const LIMIAR_VISOR = 260;
+const _telaE = new THREE.Vector3(), _telaD = new THREE.Vector3();
+function larguraDaTela() {
+  /* `ow`/`od` e não `W`/`D`: `W()` é a largura do renderer, e um `const W` local aqui
+     a esconderia — o cálculo devolveria `NaN` e o visor nunca mais apareceria. */
+  const ow = OPENING.w, od = OPENING.d;
+  _telaE.set(-ow / 2, FACE_Y, SCREEN_Z + od / 2);
+  _telaD.set(ow / 2, FACE_Y, SCREEN_Z + od / 2);
+  instrumento.localToWorld(_telaE); instrumento.localToWorld(_telaD);
+  _telaE.project(camera); _telaD.project(camera);
+  return Math.abs(_telaD.x - _telaE.x) * .5 * W();
+}
 function visorDeveAparecer() {
-  /* longe do Altar e sem uma Work em foco. O `focus` já enquadra a Tela apertado e
-     dirige a câmera ele mesmo — uma cópia da mesma Tela no canto, ao lado dela grande,
-     é conteúdo duplicado no mesmo quadro. */
-  return trilho.estacao !== 0 && !focus.active;
+  /* o `focus` fica de fora seja qual for o número: ele já enquadra a Tela apertado e
+     dirige a câmera ele mesmo, e uma cópia dela no canto ao lado dela grande é
+     conteúdo duplicado no mesmo quadro */
+  if (focus.active) return false;
+  return larguraDaTela() < LIMIAR_VISOR;
 }
 function pintarVisor() {
   if (!visorCtx) return;
@@ -6629,9 +6739,24 @@ if (location.search.includes('trilho')) {
   document.querySelector('.hud')?.removeAttribute('aria-hidden');
   setRoomAmount(1);
   if (POOL.amount.value === 0) setPool({ amount: .85, near: 5, far: 26 });
-  /* o repouso do Altar, um pouco mais atrás e mais alto que o do visitante: daqui a
-     câmera sai para o quarto, e sair de cima do objeto é sair de dentro dele */
-  window.__unit.setCam({ tilt: 26, yaw: 0, dist: 4.2 });
+  /**
+   * O repouso do Altar, e ele olha para o quarto.
+   *
+   * Era `tilt 26 · dist 4.2` — a pose de quem está debruçado sobre o objeto. Medido
+   * dali, **nenhuma das seis estações cai dentro da tela**, o que fazia do quarto
+   * clicável um controle que nunca podia ser usado de casa.
+   *
+   * A varredura de poses diz que não dá para ter os dois: `tilt 78 · dist 14` põe
+   * quatro estações no quadro e derruba a Tela para 65 px; `tilt 26 · dist 4.2` tem a
+   * Tela em 250 px e zero estações. `tilt 72 · dist 11` é onde as duas curvas se
+   * cruzam de forma útil — três estações no quadro, a Plate ainda com uns 180 px, e a
+   * câmera em `y = 3.4`, dentro do pé-direito de 4,45.
+   *
+   * A Tela ali fica em 84 px, ilegível — e é para isso que o visor existe. O Altar
+   * deixa de ser o lugar de ler o objeto e passa a ser o que a spec diz que ele é:
+   * **de onde se comanda.**
+   */
+  window.__unit.setCam({ tilt: 72, yaw: 0, dist: 11 });
   /* o JSON baixa junto com o quarto, e nunca antes dele — `ROOM_K` começa em 0 e a
      regra do `room-mobilia.js` vale para qualquer asset novo do quarto */
   trilho.carregar(import.meta.env.BASE_URL + 'quarto/trilho.json').then(d => {

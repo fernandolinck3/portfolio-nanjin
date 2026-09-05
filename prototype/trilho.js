@@ -107,6 +107,35 @@ export function createTrilho({ camera, base }) {
     return pedido
   }
 
+  /**
+   * Qual estação está sob um ponto do quarto — 0 se nenhuma.
+   *
+   * A pergunta que o *raycast* faz não é "que malha foi atingida", é **"onde no chão
+   * isso caiu"**. Uma estação não é um objeto: é a baia de discos mais o plinto ao
+   * lado, a lareira mais o sofá mais a poltrona. Nomear as peças uma a uma seria uma
+   * segunda lista para divergir da primeira, e a primeira já está no JSON.
+   *
+   * Então: distância no plano do chão até o que cada estação olha, e vence a mais
+   * perto dentro do raio dela. `y` fica de fora de propósito — o que importa é o
+   * lugar, e um quadro na parede a dois metros do chão pertence à mesma estação que
+   * o móvel embaixo dele.
+   *
+   * As seis estão a 4,6 unidades uma da outra no pior caso, que é a lareira contra a
+   * oficina na mesma parede; um raio de 4 não deixa buraco entre elas nem faz o meio
+   * do quarto pertencer a alguém.
+   */
+  function estacaoEm(x, z) {
+    if (!dados) return 0
+    let melhor = 0, menor = Infinity
+    for (let i = 0; i < dados.length; i++) {
+      const o = dados[i].olhar
+      const d = Math.hypot(x - o[0], z - o[2])
+      const raio = dados[i].raio || 4
+      if (d < raio && d < menor) { menor = d; melhor = i + 1 }
+    }
+    return melhor
+  }
+
   /** O índice de estação (1..6) do Módulo `m`, ou 0 se ele não tem endereço. */
   function estacaoDe(idModulo) {
     if (!dados) return 0
@@ -222,6 +251,9 @@ export function createTrilho({ camera, base }) {
     get alvo() { return (dados && estacao >= 1) ? dados[estacao - 1] : null },
     /** Quantas estações o JSON trouxe, para a bancada não inventar botões. */
     get quantas() { return dados ? dados.length : 0 },
+    estacaoEm,
+    /** O nome de exibição de uma estação, para quem precisa dizer onde o ponteiro está. */
+    nomeDe(n) { return (dados && n >= 1 && n <= dados.length) ? dados[n - 1].nome : null },
     /** O rig não pode disputar a câmera com o trilho — mesma regra do `focus`. */
     get dirigindo() { return !!curva && estacao !== 0 },
     get pronto() { return !!curva },
