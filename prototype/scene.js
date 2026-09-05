@@ -3267,6 +3267,7 @@ const summoning = createSummoning(scene, WORKS, { floorY: FLOOR_Y });
 const portrait = createPortrait(scene, {
   x: -5.35, y: FLOOR_Y + 3.75, wallFace: WALL_Z + 0.7,
   height: 2.9, name: 'Lyra', line: 'KEEPER OF THE VIGIL',
+  camera,
 });
 
 /**
@@ -6531,7 +6532,7 @@ function frame(t) {
      prevent. It is a string compare when nothing has moved. */
   syncMirror();
   summoning.update(smooth(rite.k), t / 1000);
-  portrait.update(vigil);
+  portrait.update(vigil, dt);
   tickFps(dt);
   /**
    * **Not during the opening.**

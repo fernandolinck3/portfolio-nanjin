@@ -23,6 +23,24 @@ import * as THREE from 'three'
 
 const GILT = 0xB08D4A
 
+/**
+ * O tamanho da tela pintada e onde a cabeca cai dentro dela.
+ *
+ * Isto era aritmetica local dentro de `paintTexture`. Virou constante de modulo
+ * quando os olhos sairam da pintura: a pintura desenha as orbitas e a camada das
+ * irises desenha as irises, e as duas tem que concordar sobre o mesmo ponto ate o
+ * pixel. Duas copias de `W * 0.145` sao duas copias que divergem na primeira vez
+ * que alguem mexer no rosto.
+ */
+const PW = 700, PH = 940
+const HEAD = { cx: PW * 0.52, y: PH * 0.36, r: PW * 0.145 }
+
+/* Onde a iris mora dentro da orbita, em fracoes do raio da cabeca. A orbita e uma
+   elipse de 0.17 x 0.10 e a iris tem raio 0.062, entao a folga real e 0.108 na
+   horizontal e 0.038 na vertical. Ficamos um fio abaixo disso: uma iris encostando
+   na borda da orbita nao le como olhar, le como defeito. */
+const EYE = { dx: 0.34, dy: 0.06, iris: 0.062, socketX: 0.17, socketY: 0.10, roamX: 0.100, roamY: 0.034 }
+
 /** Deterministic noise, so the canvas craquelure is the same every load. */
 function rng(seed) {
   let s = seed >>> 0
@@ -39,7 +57,7 @@ function rng(seed) {
  */
 function paintTexture() {
   const c = document.createElement('canvas')
-  c.width = 700; c.height = 940
+  c.width = PW; c.height = PH
   const g = c.getContext('2d')
   const rnd = rng(3141)
   const W = c.width, H = c.height
@@ -53,7 +71,7 @@ function paintTexture() {
   wash.addColorStop(1, 'rgba(0,0,0,0)')
   g.fillStyle = wash; g.fillRect(0, 0, W, H)
 
-  const cx = W * 0.52, headY = H * 0.36, headR = W * 0.145
+  const cx = HEAD.cx, headY = HEAD.y, headR = HEAD.r
 
   /* the robe — a dark mass that only exists where the light grazes it */
   g.fillStyle = '#161010'
@@ -109,15 +127,13 @@ function paintTexture() {
   g.quadraticCurveTo(cx + headR * 0.90, headY + headR * 0.9, cx + headR * 0.82, headY)
   g.closePath(); g.fill()
 
-  /* the eyes — the only cool notes on the whole canvas, which is why they hold */
+  /* as orbitas, e so as orbitas — as irises saem em `irisTexture()`, num plano
+     proprio que anda. Elas continuam sendo as unicas notas frias da tela inteira,
+     que e o motivo de a pintura se sustentar; agora elas tambem olham. */
   for (const s of [-1, 1]) {
-    const ex = cx + s * headR * 0.34, ey = headY + headR * 0.06
+    const ex = cx + s * headR * EYE.dx, ey = headY + headR * EYE.dy
     g.fillStyle = 'rgba(20,14,12,.9)'
-    g.beginPath(); g.ellipse(ex, ey, headR * 0.17, headR * 0.10, 0, 0, 6.2832); g.fill()
-    g.fillStyle = s < 0 ? '#7FA898' : '#3E5A52'
-    g.beginPath(); g.arc(ex, ey, headR * 0.062, 0, 6.2832); g.fill()
-    g.fillStyle = 'rgba(240,236,220,.85)'
-    g.beginPath(); g.arc(ex - headR * 0.022, ey - headR * 0.024, headR * 0.019, 0, 6.2832); g.fill()
+    g.beginPath(); g.ellipse(ex, ey, headR * EYE.socketX, headR * EYE.socketY, 0, 0, 6.2832); g.fill()
   }
 
   /* the hat: a wide brim, the widest dark shape in the picture */
@@ -157,6 +173,43 @@ function paintTexture() {
   return t
 }
 
+/* A faixa que a camada das irises ocupa, em pixels da pintura. Larga o bastante
+   para as irises passearem sem que a borda do plano apareca, e nada alem disso:
+   e um draw call a mais e uma textura a mais por quadro de vida da cena. */
+const BAND = {
+  w: Math.ceil(HEAD.r * (EYE.dx + EYE.socketX + 0.10) * 2),
+  h: Math.ceil(HEAD.r * (EYE.socketY + 0.10) * 2),
+  cx: HEAD.cx,
+  cy: HEAD.y + HEAD.r * EYE.dy,
+}
+
+/**
+ * As irises, sozinhas, sobre transparencia.
+ *
+ * Elas saem da pintura porque um olho que segue precisa se mover **dentro** da
+ * orbita, e uma orbita pintada nao se move. O verniz e a craquelure passam por cima
+ * delas na pintura original e sao perdidos aqui — sao tracos aleatorios a 5% de
+ * alfa sobre dois discos de nove pixels, e a vinheta ainda esta no nucleo
+ * transparente do gradiente nessa altura. Medido antes de aceitar a perda.
+ */
+function irisTexture() {
+  const c = document.createElement('canvas')
+  c.width = BAND.w; c.height = BAND.h
+  const g = c.getContext('2d')
+  const r = HEAD.r
+  for (const side of [-1, 1]) {
+    const ex = BAND.w / 2 + side * r * EYE.dx, ey = BAND.h / 2
+    g.fillStyle = side < 0 ? '#7FA898' : '#3E5A52'
+    g.beginPath(); g.arc(ex, ey, r * EYE.iris, 0, 6.2832); g.fill()
+    g.fillStyle = 'rgba(240,236,220,.85)'
+    g.beginPath(); g.arc(ex - r * 0.022, ey - r * 0.024, r * 0.019, 0, 6.2832); g.fill()
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.anisotropy = 8
+  return t
+}
+
 /** The engraved plaque under it. Brass, and it says who she is. */
 function plaqueTexture(name, line) {
   const c = document.createElement('canvas')
@@ -190,7 +243,7 @@ function plaqueTexture(name, line) {
  * `wallFace` is the z of the wall's visible surface — the wall is an extrusion,
  * so its face is not at its position.
  */
-export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line }) {
+export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line, camera }) {
   const group = new THREE.Group(); scene.add(group)
   const tex = paintTexture()
   const w = height * (700 / 940)
@@ -206,6 +259,39 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
   )
   canvas.position.set(x, y, wallFace + 0.06)
   group.add(canvas)
+
+  /* ---------- o olhar ----------
+     O quadro esta na parede do fundo e olha para +z sem rotacao nenhuma, entao o
+     plano local dela e o plano xy do mundo e a conta cabe em tres linhas. Se ele um
+     dia girar, isto vira uma projecao no plano do grupo — e ai vale escrever. */
+  const S = height / PH                       /* pixel da pintura -> unidade de mundo */
+  const irisTex = irisTexture()
+  const irises = new THREE.Mesh(
+    new THREE.PlaneGeometry(BAND.w * S, BAND.h * S),
+    new THREE.MeshStandardMaterial({
+      map: irisTex, transparent: true, roughness: 0.86, metalness: 0,
+      emissiveMap: irisTex, emissive: new THREE.Color(0xffffff),
+    }),
+  )
+  const irisX = x + (BAND.cx - PW / 2) * S
+  const irisY = y + (PH / 2 - BAND.cy) * S
+  const irisZ = wallFace + 0.062                /* dois milimetros a frente da tela */
+  irises.name = 'lyra-iris'          /* nomeado para poder ser medido no browser */
+  irises.position.set(irisX, irisY, irisZ)
+  group.add(irises)
+
+  /* Quanto a iris pode andar antes de encostar na borda da orbita, em mundo. */
+  const ROAM_X = HEAD.r * EYE.roamX * S
+  const ROAM_Y = HEAD.r * EYE.roamY * S
+  /* O ganho existe porque a folga e minuscula: sem ele, uma estacao a seis unidades
+     de distancia move a iris por um terco do curso e o efeito nao le.
+     O vertical e menor que o horizontal, ao contrario do que a elipse deitada sugere.
+     Medido: a camera do quarto esta sempre acima do olho dela — a estacao do retrato
+     olha de y=1,9 para um olho em y=1,187 — entao com ganho 2,2 o eixo vertical ficava
+     grudado no batente em toda pose util e deixava de responder. Ela olhando um pouco
+     para cima esta certo; ela olhando para cima *sempre* nao e olhar, e uma pose. */
+  const GAIN_X = 1.5, GAIN_Y = 1.2
+  let gx = 0, gy = 0
 
   /* the moulding — four bars, mitred by overlap rather than by geometry */
   const M = 0.26, D = 0.22
@@ -244,8 +330,20 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
   canvas.material.needsUpdate = true
   /* only the intensity moves per frame — reassigning the map would recompile the
      shader on every tick */
-  function update(vigil) {
-    canvas.material.emissiveIntensity = 0.05 + vigil * 0.30
+  function update(vigil, dt = 0) {
+    const em = 0.05 + vigil * 0.30
+    canvas.material.emissiveIntensity = em
+    irises.material.emissiveIntensity = em
+    if (!camera) return
+    const dz = Math.max(0.8, camera.position.z - irisZ)
+    const ax = Math.max(-1, Math.min(1, (camera.position.x - irisX) / dz * GAIN_X))
+    const ay = Math.max(-1, Math.min(1, (camera.position.y - irisY) / dz * GAIN_Y))
+    /* Ela nao teleporta o olhar. Um oitavo por quadro a 60 chega em ~0,2s, que e o
+       tempo de um olho de verdade largar um ponto e pegar outro. */
+    const k = dt ? Math.min(1, dt * 8) : 1
+    gx += (ax * ROAM_X - gx) * k
+    gy += (ay * ROAM_Y - gy) * k
+    irises.position.set(irisX + gx, irisY + gy, irisZ)
   }
   update(0)
 
