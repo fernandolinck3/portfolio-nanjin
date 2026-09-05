@@ -21,6 +21,7 @@ import { createFocus } from './focus.js'
 import { createContact } from './contact.js'
 import { createIntro, REST } from './intro.js'
 import { createTrilho } from './trilho.js'
+import { createSom } from './som.js'
 import { createMirror } from './mirror.js'
 import {
   buffer as screenBuffer, render as renderScreen, SCREEN_W, SCREEN_H, setBoot,
@@ -248,6 +249,20 @@ let focusDriving = () => false;
 
 /** Qual estação o ponteiro está sobrevoando, para a dica só ser reescrita quando muda. */
 let hoverEstacao = 0;
+
+/**
+ * O sequenciador vive no endereço de bancada, e essa é uma decisão e não um esqueci.
+ *
+ * Dar voz aos pads muda o que o visitante encontra em `nanj.in` — som, mesmo pedido
+ * por um toque, é uma mudança de natureza do objeto e não uma opção que uma sessão
+ * liga sozinha. Aqui ele mora onde o resto desta corrente mora, e sai de lá quando
+ * ele disser.
+ */
+let SOM_ON = false;
+/* qual pad está sendo segurado, e desde quando: um toque toca, um segurar grava */
+let padSegurado = -1, padTimer = 0;
+/** 320 ms — acima do toque mais lento e abaixo do segurar mais impaciente. */
+const SEGURAR = 320;
 
 /**
  * O trilho dirige a câmera enquanto a estação não é o Altar.
@@ -4541,7 +4556,29 @@ el.addEventListener('pointerdown', e => {
   if (hit) {
     const c = hit.userData.ctl;
     /* the whole Pad is the target, not its lamp — `userData.ctl` is on the mesh */
-    if (c === 'pad') { padPress[hit.userData.i] = 1; pressPad(hit.userData.i); return; }
+    if (c === 'pad') {
+      const i = hit.userData.i;
+      padPress[i] = 1;
+      pressPad(i);
+      /**
+       * E o pad soa.
+       *
+       * Depois de `pressPad` e não antes: navegar é o trabalho do pad e tocar é o que
+       * ele ganhou, nessa ordem. Um toque soa a voz; **segurar** grava a voz nos
+       * passos que passarem enquanto o dedo estiver embaixo. Segurar não é um gesto
+       * novo em cima dos três que o pad já faz — é o mesmo aperto, medido.
+       */
+      if (SOM_ON) {
+        som.tocar(i);
+        padSegurado = i;
+        clearTimeout(padTimer);
+        padTimer = setTimeout(() => {
+          som.gravar(i);
+          flashLcd('GRAVANDO · ' + MODULES[i].title.replace(' / ', '/'), 1400);
+        }, SEGURAR);
+      }
+      return;
+    }
     if (c === 'screen') {
       if (focus.active) { focus.exit(); return; }
       const on = screenHit(e);
@@ -4757,6 +4794,13 @@ el.addEventListener('pointerup', () => {
   active = null; el.style.cursor = 'default';
   /* every Pad comes back up — release anywhere, not only over the one pressed */
   padPress.fill(0);
+  /* soltar em qualquer lugar para a gravação, pela mesma razão: o dedo que sai de
+     cima do pad soltou o pad, esteja o ponteiro onde estiver */
+  if (padSegurado >= 0) {
+    clearTimeout(padTimer);
+    som.soltar(padSegurado);
+    padSegurado = -1;
+  }
 });
 
 /* keyboard + screen-reader layer */
@@ -4802,12 +4846,26 @@ function setLightTo(v) {
  * because choosing a Module and going back are the two moves that must work from
  * anywhere; they are the keyboard's Pads and its Moon-centre.
  */
+/* soltar a tecla para a gravação — sem isto, uma tecla segurada e solta continuaria
+   escrevendo no laço até o fim da visita */
+addEventListener('keyup', e => {
+  if (SOM_ON && e.key >= '1' && e.key <= '6') som.soltar(+e.key - 1);
+});
+
 addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
-  if (e.key >= '1' && e.key <= '6') { pressPad(+e.key - 1); e.preventDefault(); return; }
+  if (e.key >= '1' && e.key <= '6') {
+    const i = +e.key - 1;
+    pressPad(i);
+    /* o teclado também toca, e **segurar a tecla também grava**: `keydown` repete
+       enquanto a tecla está embaixo, e `e.repeat` é o que separa o toque do segurar
+       sem um segundo cronômetro */
+    if (SOM_ON) { if (e.repeat) som.gravar(i); else som.tocar(i); }
+    e.preventDefault(); return;
+  }
   if (e.key === 'Escape') { moonBack(); e.preventDefault(); return; }
 
   const on = document.activeElement?.dataset || {};
@@ -5224,6 +5282,8 @@ window.__unit = {
   pads: () => padMeshes,
   /** The scene graph and the Unit inside it, for passes that restyle rather than pose. */
   roots: () => ({ scene, instrumento, unit, room, altar, decor: decor.group, mobilia: mobilia.group }),
+  /** O laço, para a bancada: `__unit.som.avancar(8)` roda uma volta sem áudio. */
+  som: () => som,
   /**
    * The controls, as functions.
    *
@@ -5840,6 +5900,27 @@ focusDriving = () => focus.active;
  */
 const trilho = createTrilho({ camera, base: new THREE.Vector3(0, .35 * K, 0) });
 trilhoDirigindo = () => trilho.dirigindo;
+
+/**
+ * O som, e **o padrão se vê nos pads**.
+ *
+ * O laço precisava de um mostrador e não ganhou um: `padPress[i]` já existe, já anima
+ * o pad afundando, e já é desenhado uma vez por quadro. Cada passo do sequenciador
+ * acende os pads da batida, então o objeto toca a si mesmo à vista — sem uma linha de
+ * geometria nova, sem tocar na arte da Plate e, o que mais importa, **sem escrever
+ * nada na Tela**. O espelho não fala em som, e um mostrador de passos ali seria a
+ * primeira coisa a quebrar essa regra.
+ *
+ * `aoPasso` recebe a antecedência com que o passo foi agendado — o relógio do áudio
+ * corre à frente do relógio da tela — e o pulso é adiado por ela, senão o pad acende
+ * até 120 ms antes de a nota sair.
+ */
+const som = createSom({
+  aoPasso(_passo, hits, adiantado) {
+    const acender = () => { for (const v of hits) padPress[v] = 1; };
+    if (adiantado > 0) setTimeout(acender, adiantado * 1000); else acender();
+  },
+});
 
 /**
  * O visor — a Tela onde a câmera não a alcança.
@@ -6723,6 +6804,39 @@ estRow?.querySelectorAll('[data-est]').forEach(b => {
 mostrarEstacoes();
 
 /**
+ * A faixa do laço, e o padrão escrito por extenso.
+ *
+ * Seis pistas de oito passos em `■` e `·`, numa fonte de largura fixa para as colunas
+ * se alinharem — um padrão que não se lê como padrão não é um mostrador, é uma linha
+ * de log. O botão do som guarda o mudo entre visitas, que é o pedido do T-35: som que
+ * chega sem ser pedido é o jeito mais rápido de perder alguém, e quem já disse não uma
+ * vez não devia ter que dizer de novo.
+ *
+ * A gravação da Plate que o T-35 pede para o mudo é do T-30 e não deste commit. Aqui
+ * ele é um botão de bancada, e o `?trilho` diz isso em voz alta ao carregar.
+ */
+const mudoBtn = document.getElementById('mudo');
+const limparBtn = document.getElementById('limpar');
+const somOut = document.getElementById('somv');
+function mostrarSom() {
+  if (!somOut) return;
+  somOut.textContent = som.tocando ? som.linhas().join('  ') : 'toque um pad';
+  mudoBtn?.setAttribute('aria-pressed', String(!som.mudo));
+  if (mudoBtn) mudoBtn.textContent = som.mudo ? 'MUDO' : 'SOM';
+}
+mudoBtn?.addEventListener('click', () => {
+  if (!SOM_ON) { flashLcd('LAÇO SÓ EM ?trilho', 1400); return; }
+  som.setMudo(!som.mudo);
+  flashLcd(som.mudo ? 'MUDO' : 'SOM', 900);
+  mostrarSom();
+});
+limparBtn?.addEventListener('click', () => { som.limparTudo(); mostrarSom(); });
+/* o mostrador segue o laço e não o quadro: 24 Hz de `textContent` para oito colunas
+   que mudam quatro vezes por segundo é trabalho para ninguém ver */
+setInterval(() => { if (SOM_ON && som.tocando) mostrarSom(); }, 250);
+mostrarSom();
+
+/**
  * `?trilho` — o quarto como navegação, num endereço só, e **de propósito num endereço**.
  *
  * O que ele liga é o resto do T-34 menos duas coisas: o pad leva a câmera até a
@@ -6756,6 +6870,7 @@ if (location.search.includes('trilho')) {
      ser feito com o mouse. Um endereço que leva a um beco não é um endereço. */
   document.body.dataset.debug = '1';
   document.querySelector('.hud')?.removeAttribute('aria-hidden');
+  SOM_ON = true;
   setRoomAmount(1);
   if (POOL.amount.value === 0) setPool({ amount: .85, near: 5, far: 26 });
   /**
@@ -6793,7 +6908,7 @@ if (location.search.includes('trilho')) {
      regra do `room-mobilia.js` vale para qualquer asset novo do quarto */
   trilho.carregar(import.meta.env.BASE_URL + 'quarto/trilho.json').then(d => {
     mostrarEstacoes();
-    if (d) flashLcd('TRILHO · SEIS ESTAÇÕES', 2200);
+    if (d) flashLcd('TRILHO · SEIS ESTAÇÕES · SEGURE UM PAD PARA GRAVAR', 3000);
   });
 }
 
