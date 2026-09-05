@@ -389,6 +389,22 @@ describe('the mirror', () => {
     }
   })
 
+  /**
+   * The oracle answers off the Vigil, so only one of the three is on the panel at a
+   * time. All three are content, and the mirror carries content — not the object's
+   * current state. A visitor searching the page for a line must find it whether or
+   * not the fader happens to be where that line lives.
+   */
+  it('carries every oracle question and all three of its answers', () => {
+    for (const m of MODULES) {
+      for (const { q, a } of m.oracle ?? []) {
+        expect(text).toContain(q)
+        expect(a).toHaveLength(3)
+        for (const r of a) expect(text).toContain(r)
+      }
+    }
+  })
+
   it('carries every item label, with a control to open it', () => {
     for (const [i, m] of MODULES.entries()) {
       for (const [j, it] of (m.items ?? []).entries()) {

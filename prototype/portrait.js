@@ -32,13 +32,21 @@ const GILT = 0xB08D4A
  *
  * A abertura da moldura tem proporcao 0,742 e este numero e orcamento, nao desenho —
  * `lyra-display.js` resolve o enquadramento em fracoes da altura justamente para que
- * trocar isto nao redesenhe nada. 120 x 162 da 0,741, e `display.js` leva a 3x — 360
- * por 486, contra os 960 por 540 da Tela da Unidade. O pixel aparece de proposito.
+ * trocar isto nao redesenhe nada. 240 x 324 da 0,7407, e `display.js` leva a 3x — 720
+ * por 972, contra os 960 por 540 da Tela da Unidade. O pixel aparece de proposito.
  *
- * E pequeno tambem por custo: a figura e desenhada `fillRect` a `fillRect`, e o preco
- * cresce com o quadrado da escala. Ver o cabecalho de `lyra-display.js`.
+ * **Dobrou por causa do texto, e nao por gosto.** A 120 de largura, `11px VT323` cabia
+ * em vinte e poucos caracteres: dava para o rosto dela e para nada mais. O oraculo pede
+ * quatro perguntas legiveis e uma resposta de ate quarenta caracteres, e isso mede 240.
+ * A altura acompanha porque a proporcao e da abertura da moldura e nao minha.
+ *
+ * O que o dobro custa e area de tratamento: `display.js` tem `SCALE = 3` fixo, entao a
+ * vidraca passou de 360 x 486 para 720 x 972 e o `paint()` dela — um `drawImage` com
+ * `blur`, mais tres composicoes — quadruplicou de area. Continua a 10 Hz e continua
+ * so com o quarto aceso, e o desenho da figura nao mudou de preco: `drawSprite` faz um
+ * `fillRect` por celula, e as celulas sao 28 x 40 em qualquer escala.
  */
-const PAINEL = { w: 120, h: 162 }
+const PAINEL = { w: 240, h: 324 }
 
 /** The engraved plaque under it. Brass, and it says who she is. */
 function plaqueTexture(name, line) {
@@ -118,6 +126,9 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
     new THREE.MeshStandardMaterial({ color: 0x05070A, roughness: 0.42, metalness: 0 }),
   )
   canvas.position.set(x, y, wallFace + 0.06)
+  /* nomeada para o raycast poder distinguir a tela da moldura: um clique na talha
+     dourada nao e um clique numa pergunta */
+  canvas.name = 'retrato:painel'
   group.add(canvas)
 
   /**
@@ -164,6 +175,25 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
     alvoManual = alvo
     if (alvo && lyra.ponteiro) lyra.ponteiro(alvo[0], alvo[1])
   }
+
+  /**
+   * A consulta, e as tres funcoes que a `scene.js` chama.
+   *
+   * As tres recebem o **UV da malha do painel**, que e o que o raycast do three.js ja
+   * devolve de graca, e traduzem aqui para pixel da tela de origem. O `v` vem de baixo
+   * para cima num `PlaneGeometry` e o pixel conta de cima para baixo, e essa inversao
+   * mora nesta linha e em nenhuma outra.
+   *
+   * `apontar` devolve se ha algo clicavel sob o ponteiro, para o cursor da pagina.
+   * `consultar` devolve se o clique foi consumido pela caixa — quando nao foi, quem
+   * chamou trata como clique no retrato e o trilho faz o que fazia. `soltarConsulta`
+   * fecha a resposta aberta, e existe porque sair da pose fechada com uma resposta na
+   * tela deixaria a caixa contando uma consulta que ninguem esta fazendo.
+   */
+  const pxDe = (u, v) => [u * PAINEL.w, (1 - v) * PAINEL.h]
+  const apontar = (u, v) => lyra.apontar(...pxDe(u, v))
+  const consultar = (u, v) => lyra.clicar(...pxDe(u, v))
+  const soltarConsulta = () => lyra.limpar()
 
   /* the moulding — four bars, mitred by overlap rather than by geometry */
   const M = 0.26, D = 0.22
@@ -359,5 +389,5 @@ export function createPortrait(scene, { x, y, wallFace, height = 4.2, name, line
   }
   update(0)
 
-  return { update, group, carregar, pronto, mirar }
+  return { update, group, carregar, pronto, mirar, apontar, consultar, soltarConsulta }
 }

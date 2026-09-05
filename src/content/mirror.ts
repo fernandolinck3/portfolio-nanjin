@@ -28,7 +28,7 @@
  * aparecerem sem que ninguém precise lembrar de nada. É a única camada que de fato
  * previne a deriva; o teste em `modules.test.ts` só pega o que escapar dela.
  */
-import { MODULES, SOURCE, type Item, type Module } from './modules'
+import { MODULES, SOURCE, type Item, type Module, type Oracle } from './modules'
 import { DEFAULT_LOCALE, LOCALE, langFor, other, pathFor, type Locale } from './locale'
 
 /** A raiz do site, com barra. Escrita uma vez porque aparece em cinco lugares aqui. */
@@ -88,6 +88,8 @@ export const HOOK = {
   disc: 'data-mirror-disc',
   /* O `meta` de um item: o número no índice, o tipo numa rota, o papel num nó. */
   meta: 'data-mirror-meta',
+  /* O oráculo do retrato. Só QUEM tem. */
+  oracle: 'data-mirror-oracle',
 } as const
 
 /** `"1.0"` — o endereço de um item, e a única forma dele nos dois arquivos. */
@@ -154,6 +156,21 @@ ${sectionsOf(m, i, item, c.gap)}
     </li>`
 }
 
+/**
+ * O oráculo, como lista de definições.
+ *
+ * `<dt>` a pergunta, um `<dd>` por resposta — que é o que uma lista de definições
+ * faz, e a razão de ela existir com vários `dd` por `dt`. Quem consulta o retrato vê
+ * uma resposta, a que a Vigília escolheu; quem lê o documento vê as três, porque o
+ * espelho não pode depender de o visitante ter posto o fader na posição certa para
+ * uma frase existir. **É o único lugar do espelho onde ele mostra mais do que a Tela
+ * mostra num dado instante**, e isso está certo: as três são conteúdo do portfólio, e
+ * esconder duas para imitar o objeto tiraria oito frases da busca da página.
+ */
+const oracleHTML = (o: readonly Oracle[]) => `    <dl ${HOOK.oracle}>${o
+  .map(({ q, a }) => `<dt>${esc(q)}</dt>${a.map(r => `<dd>${esc(r)}</dd>`).join('')}`)
+  .join('')}</dl>`
+
 /** Um Módulo inteiro. Os seis estão sempre no documento; só um está vivo. */
 const moduleHTML = (mod: Module, m: number, c: Content) => `
   <section ${HOOK.module}="${m}" ${HOOK.layout}="${mod.layout}" aria-labelledby="mirror-m${m}">
@@ -165,6 +182,7 @@ ${mod.lead?.length ? mod.lead.map(l => `    <p ${HOOK.lead}>${esc(l)}</p>`).join
 ${mod.items?.length ? `    <ul>${mod.items.map((it, i) => itemHTML(mod, m, it, i, c)).join('')}
     </ul>` : ''}
 ${mod.dim?.length ? `    <p ${HOOK.low}>${esc(mod.dim.join(' '))}</p>` : ''}
+${mod.oracle?.length ? oracleHTML(mod.oracle) : ''}
   </section>`
 
 /**

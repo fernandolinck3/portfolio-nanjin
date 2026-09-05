@@ -57,6 +57,23 @@ export type Item = {
 export type Lyra = { open: readonly string[]; idle: readonly string[] }
 
 /**
+ * O oráculo do retrato — quatro perguntas e, para cada uma, três respostas.
+ *
+ * **A pergunta é boba e a resposta é verdadeira.** Essa inversão é o desenho inteiro:
+ * uma bola de cristal que sorteia frases é lixo com verniz, e gasta a atenção de quem
+ * clicou. Se a resposta é uma afirmação real sobre como o trabalho é feito, a pergunta
+ * boba é só a porta.
+ *
+ * **As três respostas não são sorteadas — são lidas da Vigília.** `a[0]` é o dia,
+ * `a[1]` o meio, `a[2]` a noite, na mesma direção do fader. Perguntar duas vezes com
+ * o fader parado **deve** dar a mesma resposta; o que dá resposta nova é mexer no
+ * fader. Isso resolve a repetição sem sortear nada e dá ao Crossfader um sentido que
+ * ele não tinha — e o registro astrológico que a ideia pede já estava no objeto, na
+ * carta celeste da Plate e no ciclo dia/noite.
+ */
+export type Oracle = { q: string; a: readonly [string, string, string] }
+
+/**
  * Como o índice de um Módulo é desenhado.
  *
  * Antes havia uma forma só — um `lead` e uma lista debaixo dele — e ela servia mal a
@@ -140,6 +157,15 @@ export type Module = {
   unit?: string
   items?: readonly Item[]
   lyra: Lyra
+  /**
+   * Só em QUEM, e é o único Módulo onde nada se opera.
+   *
+   * O comentário na fala dele abaixo diz o problema: QUEM não tem lista, então nem a
+   * LUA nem o SOL fazem nada ali — é o primeiro Módulo que o visitante vê e o único
+   * mudo. O oráculo é a resposta a isso, e mora no retrato porque é lá que ela tem
+   * corpo e voz.
+   */
+  oracle?: readonly Oracle[]
 }
 
 /**
@@ -737,6 +763,40 @@ const MODULES_PT: readonly Module[] = [
          que faziam, o que ensinava, logo no primeiro módulo, que as rodas mentem. */
       idle: ['As teclas escolhem', 'o módulo.'],
     },
+    oracle: [
+      {
+        q: 'Que cor eu visto hoje?',
+        a: [
+          'Cinza. O número fala mais alto.',
+          'Azul. Frio o bastante para medir.',
+          'Preto. É no escuro que a tela ganha.',
+        ],
+      },
+      {
+        q: 'Vou dar sorte hoje?',
+        a: [
+          'Sorte não. Amostra.',
+          'Duas de cada três vezes.',
+          'Não. Mas dá para testar de novo.',
+        ],
+      },
+      {
+        q: 'Devo mandar a mensagem?',
+        a: [
+          'Manda. E mede a resposta.',
+          'Manda a segunda versão.',
+          'Manda. Amanhã você reescreve.',
+        ],
+      },
+      {
+        q: 'O que dizem dos meus astros?',
+        a: [
+          'Que carregam em dois segundos.',
+          'Que estão bem alinhados no mobile.',
+          'Que ninguém mediu, então não dizem nada.',
+        ],
+      },
+    ],
   },
 
   {
@@ -1106,6 +1166,15 @@ export function moduleAt(index: number): Module {
 }
 
 /** As falas de LYRA para um índice 0-based. */
+/**
+ * O oráculo do retrato, já no idioma da página.
+ *
+ * Um `const` e não uma função porque não há escolha a fazer: só QUEM tem oráculo, e o
+ * retrato na parede **é** QUEM. Vazio se o campo sair, e o painel do retrato trata
+ * vazio como "sem consulta" em vez de quebrar — o retrato ainda é um retrato.
+ */
+export const ORACLE: readonly Oracle[] = MODULES.find(m => m.id === 'identity')?.oracle ?? []
+
 export function lyraAt(index: number): Lyra {
   return moduleAt(index).lyra
 }

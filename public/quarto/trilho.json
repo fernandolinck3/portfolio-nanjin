@@ -23,16 +23,16 @@
         -4.0
       ],
       "perto": {
-        "sobre": "A consulta. A regra do anel — camera a 40% do caminho, Altar na periferia — existe para que a estacao seja o lugar onde alguem senta e nao a foto de um objeto. No retrato o objeto E o assunto. A distancia saiu de duas medidas e nao do olho: a 2,4 unidades a Lyra ocupava a tela inteira e a celula do desenho dela dava 37 pixels — o visitante ficava dentro da cara dela. A 4,24 a moldura inteira cabe no quadro, a celula cai para 21 pixels, e o curso de uma celula do olhar continua sendo 21 pixels de tela, contra os 3 que a pose da estacao dava. O painel acustico da esquerda entra na borda: ele e parede do quarto e estar ao lado dela e contexto — o que era erro era ele estar por cima.",
+        "sobre": "A consulta, e a distancia saiu de tres medidas e nao do olho. A regra do anel — camera a 40% do caminho, Altar na periferia — existe para que a estacao seja o lugar onde alguem senta e nao a foto de um objeto. No retrato o objeto E o assunto, e desde que o painel dele passou a fazer perguntas ele tambem e o unico controle da estacao. A 2,4 unidades a Lyra ocupava a tela inteira: o visitante ficava dentro da cara dela. A 4,24 a moldura cabia na largura mas nao na altura — medido no quadro de 2016 por 1260, a borda de baixo da abertura caia 113 pixels ABAIXO da tela, e junto com ela a caixa de dialogo inteira, que ocupa o quinto de baixo do painel. A 5,15 a moldura modelada inteira entra com folga de uns 37 pixels em cima e embaixo, a celula do desenho dela cai de 21 para 19 pixels de tela, e uma linha da caixa mede 44 pixels de altura — alvo de clique de verdade, e nao um alvo de sorte. O olhar desceu de 1,10 para 0,80 pelo mesmo motivo: 0,80 e o centro do painel, e mirar acima do centro gastava altura de tela em parede. O painel acustico da esquerda entra na borda: ele e parede do quarto e estar ao lado dela e contexto — o que era erro era ele estar por cima.",
         "olhar": [
           -5.35,
-          1.1,
+          0.8,
           -10.74
         ],
         "camera": [
           -5.35,
-          1.25,
-          -6.5
+          1.0,
+          -5.59
         ]
       }
     },

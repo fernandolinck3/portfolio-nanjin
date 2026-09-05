@@ -102,6 +102,32 @@ export const EN: Readonly<Record<string, string>> = {
   'As teclas escolhem': 'The keys choose',
   'o módulo.': 'the module.',
 
+  /**
+   * O oráculo do retrato.
+   *
+   * A pergunta é boba e a resposta é verdadeira, e a tradução tem de preservar as
+   * duas metades — uma pergunta traduzida com seriedade mata a piada, e uma resposta
+   * traduzida com graça mata a afirmação. Cada linha foi requebrada dentro do mesmo
+   * orçamento do painel do retrato (o desenho dela ocupa dois terços e sobra pouco),
+   * não traduzida ao pé da letra.
+   */
+  'Que cor eu visto hoje?': 'What color should I wear today?',
+  'Cinza. O número fala mais alto.': 'Gray. The number talks louder.',
+  'Azul. Frio o bastante para medir.': 'Blue. Cold enough to measure.',
+  'Preto. É no escuro que a tela ganha.': 'Black. The screen wins in the dark.',
+  'Vou dar sorte hoje?': 'Will I get lucky today?',
+  'Sorte não. Amostra.': 'Not luck. Sample size.',
+  'Duas de cada três vezes.': 'Two out of three times.',
+  'Não. Mas dá para testar de novo.': 'No. But you can test again.',
+  'Devo mandar a mensagem?': 'Should I send the message?',
+  'Manda. E mede a resposta.': 'Send it. And measure the reply.',
+  'Manda a segunda versão.': 'Send the second version.',
+  'Manda. Amanhã você reescreve.': 'Send it. Tomorrow you rewrite it.',
+  'O que dizem dos meus astros?': 'What do my stars say?',
+  'Que carregam em dois segundos.': 'That they load in two seconds.',
+  'Que estão bem alinhados no mobile.': 'That they align well on mobile.',
+  'Que ninguém mediu, então não dizem nada.': 'That nobody measured them, so nothing.',
+
   /* ---- PROJETOS ------------------------------------------------------- */
   'PROJETOS': 'PROJECTS',
   'PROJETOS — Sites, landing pages e o raciocínio por trás': 'PROJECTS — Sites, landing pages, and the thinking behind them',

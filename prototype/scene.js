@@ -3777,15 +3777,26 @@ function pickQuarto(e) {
  *
  * Um raio separado, contra o grupo do retrato, é o que permite que clicar **nela**
  * signifique outra coisa que clicar no canto dela.
+ *
+ * **Devolve a interseção e não um sim ou não**, porque o oráculo precisa do `uv`: uma
+ * pergunta é uma faixa de catorze pixels na tela de origem, e a única forma de saber em
+ * qual delas o visitante clicou é onde na malha do painel o raio bateu. Todo chamador
+ * antigo lia o retorno como verdade ou falsidade e continua lendo — `null` é falso.
  */
+/** O flanco de `trilho.perto`, lido no laço. Ver o guarda no fim do quadro. */
+let consultando = false;
+
 function pickRetrato(e) {
-  if (ROOM_K === 0 || !portrait.group) return false;
+  if (ROOM_K === 0 || !portrait.group) return null;
   const r = frameRect(), p = pt(e);
   ndc.x = ((p.x - r.left) / r.width) * 2 - 1;
   ndc.y = -((p.y - r.top) / r.height) * 2 + 1;
   ray.setFromCamera(ndc, camera);
-  return ray.intersectObject(portrait.group, true).length > 0;
+  return ray.intersectObject(portrait.group, true)[0] || null;
 }
+
+/** A tela dentro da moldura, e só ela — a talha dourada não responde perguntas. */
+const noPainel = hit => !!hit && hit.object.name === 'retrato:painel' && !!hit.uv;
 
 /**
  * Clicar na Lyra: chegar perto, e clicar de novo: sair de perto.
@@ -3795,7 +3806,7 @@ function pickRetrato(e) {
  * fazendo o que sempre fez — abrir QUEM e viajar até lá — porque aproximar-se de algo
  * que não está enquadrado seria pular uma etapa que o visitante não pediu.
  */
-function tocarRetrato() {
+function tocarRetrato(hit) {
   const est = trilho.estacaoDe('identity');
   if (!est) return false;
   if (trilho.estacao !== est) {
@@ -3803,7 +3814,19 @@ function tocarRetrato() {
     if (i >= 0) { pressPad(i); return true; }
     return false;
   }
-  if (trilho.perto) { trilho.irPara(est); flashLcd('O RETRATO'); return true; }
+  /**
+   * Na pose fechada a caixa de diálogo fica na frente do próprio quadro.
+   *
+   * A caixa ganha o clique **antes** do trilho, e é isso que faz o terceiro estado
+   * existir: longe se aproxima, perto se afasta, e perto **numa pergunta** consulta. Se
+   * a ordem fosse a outra, escolher uma pergunta jogaria a câmera para trás no mesmo
+   * quadro em que a resposta apareceu, e o visitante leria a resposta de longe.
+   *
+   * `consultar` devolve falso quando o clique caiu no rosto dela e não numa linha, e aí
+   * o afastar-se acontece como antes — clicar nela ainda é clicar nela.
+   */
+  if (trilho.perto && noPainel(hit) && portrait.consultar(hit.uv.x, hit.uv.y)) return true;
+  if (trilho.perto) { portrait.soltarConsulta(); trilho.irPara(est); flashLcd('O RETRATO'); return true; }
   if (trilho.irPara(est, { perto: true })) { flashLcd('MAIS PERTO'); return true; }
   return false;
 }
@@ -4648,7 +4671,8 @@ el.addEventListener('pointerdown', e => {
   if (!freeLook()) {
     /* o quadro antes do chão: os dois respondem pela mesma estação, e o mais
        específico dos dois é quem deve ganhar */
-    if (pickRetrato(e) && tocarRetrato()) return;
+    const noRetrato = pickRetrato(e);
+    if (noRetrato && tocarRetrato(noRetrato)) return;
     const est = pickQuarto(e);
     if (est) {
       const m = trilho.moduloDe(est);
@@ -4703,7 +4727,8 @@ el.addEventListener('pointermove', e => {
      * está parada, e encarar um ponto fixo para sempre não é olhar — é pose. Aí quem
      * se move é o ponteiro, e é ele que ela segue. Ver `mirar` em `portrait.js`.
      */
-    if (trilho.perto && trilho.alvo?.id === 'retrato') {
+    const naConsulta = trilho.perto && trilho.alvo?.id === 'retrato';
+    if (naConsulta) {
       const rr = frameRect(), pp = pt(e);
       portrait.mirar([
         ((pp.x - rr.left) / rr.width) * 2 - 1,
@@ -4711,7 +4736,12 @@ el.addEventListener('pointermove', e => {
       ]);
     } else portrait.mirar(null);
 
-    const sobreRetrato = !ctl && pickRetrato(e);
+    const hitRetrato = !ctl ? pickRetrato(e) : null;
+    const sobreRetrato = !!hitRetrato;
+    /* a linha sob o ponteiro, e ela só existe de perto: na pose da estação uma
+       pergunta mede três pixels de tela e apontar para ela seria sorte */
+    const sobreLinha = naConsulta && noPainel(hitRetrato)
+      && portrait.apontar(hitRetrato.uv.x, hitRetrato.uv.y);
     const estSob = ctl || sobreRetrato ? 0 : pickQuarto(e);
     if (estSob !== hoverEstacao) {
       hoverEstacao = estSob;
@@ -4722,6 +4752,7 @@ el.addEventListener('pointermove', e => {
       : ctl === 'fader' ? 'ew-resize'
       : ctl === 'sun' || ctl === 'moon' ? 'grab'
       : ctl === 'screen' && on ? 'pointer'
+      : sobreLinha ? 'pointer'
       : sobreRetrato ? 'pointer'
       : estSob ? 'pointer'
       : freeLook() ? 'grab' : 'default';
@@ -6616,6 +6647,21 @@ function frame(t) {
      prevent. It is a string compare when nothing has moved. */
   syncMirror();
   summoning.update(smooth(rite.k), t / 1000);
+  /**
+   * Sair de perto fecha a consulta, e o guarda fica aqui de propósito.
+   *
+   * `tocarRetrato` fecha a dele, mas ele é um dos caminhos: apertar um pad, escolher
+   * outra estação no quarto, voltar para o panorama e `trilho.soltar()` todos saem da
+   * pose fechada sem passar por lá. Uma resposta que sobrasse na tela ficaria contando
+   * uma consulta que ninguém está fazendo, e voltar de perto mostraria a resposta velha
+   * em vez das quatro perguntas. Um flanco no estado do trilho cobre os cinco caminhos
+   * de uma vez — que é a mesma razão pela qual `roomScenery` é uma varredura e não uma
+   * chamada em cada ponto de entrada.
+   */
+  if (trilho.perto !== consultando) {
+    consultando = trilho.perto;
+    if (!consultando) portrait.soltarConsulta();
+  }
   portrait.update(vigil, dt);
   tickFps(dt);
   /**
