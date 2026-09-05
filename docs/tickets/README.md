@@ -75,11 +75,13 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-32 | [O instrumento encolhe](T-32-the-instrument-shrinks.md) | B | — | **done** — `K = .46`; a Tela segue em 496 px |
 | T-33 | [A mobília se reagrupa](T-33-the-furniture-regroups.md) | B | T-32 | **done** — quatro grupos, coordenadas medidas |
 | T-34 | [O quarto vira a navegação](T-34-the-room-becomes-the-navigation.md) | B | T-30 | **meio feito** — 1, 2, 3 e 6 em `?trilho`; 4 e 5 atrás do T-30 |
-| T-35 | [O objeto faz som](T-35-the-object-makes-a-sound.md) | B | T-30 | **meio feito** — seis vozes e o laço em `?trilho`; falta quantizar a viagem |
+| T-35 | [O objeto faz som](T-35-the-object-makes-a-sound.md) | B | T-30 | **construído e revertido** — `a7850e2`, um `git revert` de volta |
 
-O **T-35** entregou o instrumento e não entregou a quantização: seis vozes sintetizadas, oito
-passos, um toque toca e segurar grava, e o padrão se vê nos pads. O que falta é a viagem cair no
-tempo forte, e ela depende do trilho contínuo — ou seja, do T-30, como tudo nesta ponta.
+O **T-35** foi construído e tirado do ar de propósito, em `a7850e2`: seis vozes sintetizadas, oito
+passos, um toque toca e segurar grava, o padrão nos pads. A premissa se sustentou; o acabamento
+não, e código desligado atrás de um `if` apodrece. Um `git revert` daquele commit o traz de volta.
+Falta, quando voltar, a viagem cair no tempo forte — e isso depende do trilho contínuo, ou seja do
+T-30, como tudo nesta ponta.
 
 O que sobra do **T-34** é a metade que o T-30 segura: a leitura na Plate plana (item 4) e a roda
 do sol como trilho contínuo (item 5). O estado, o anel, o pad que leva e a ECLIPSE ao chegar já
