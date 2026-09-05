@@ -245,6 +245,23 @@
     background:#141110;border:1px solid #3A2E20;border-radius:3px;letter-spacing:.12em}
   .touch button:active{background:#241D16}
   @media (hover:none){ .touch{display:flex} }
+  /* A linha das estações, e ela toma a faixa inteira.
+
+     Os outros mostradores da bancada leem um número e cabem entre dois vizinhos. Este
+     lê uma coordenada de três eixos duas vezes — a posição da câmera e o ponto que ela
+     olha — e no fim de uma linha compartilhada ele saía cortado na borda direita, que
+     é a única metade que importa: o número existe para ser copiado de volta para
+     `public/quarto/trilho.json`.
+
+     Fundo sólido pela mesma razão. O resto da bancada flutua sobre a cena e se lê mal,
+     e isso é tolerável num mostrador que diz `off`; não é num que diz `−0.76`. */
+  #est-row{flex:1 0 100%;order:9;background:#0A0A0Bee;
+    border:1px solid #2A2A28;padding:6px 10px;gap:6px;flex-wrap:wrap}
+  /* `[aria-current]` e não uma classe: o botão da estação em que a câmera está é o
+     estado corrente de um conjunto, e é isso que o atributo diz — de graça, para o
+     leitor de tela que abrir a bancada. */
+  #est-row button[aria-current]{background:#3A2E20;color:#E8DCC4;border-color:#6A5A40}
+  #est-row #estv{color:#8A8880;font-variant-numeric:tabular-nums;letter-spacing:.06em}
 </style>
 <div id="frame">
 <button id="full" type="button" hidden>TELA CHEIA</button>
@@ -318,6 +335,27 @@
   <span class="ctl">POOL <input id="pool" type="range" min="0" max="100" value="0" aria-label="Pool falloff"> <b id="poolv">off</b></span>
   <span class="ctl">WARM <input id="warm" type="range" min="0" max="100" value="0" aria-label="Light warmth"> <b id="warmv">rig</b></span>
   <span class="ctl">FPS <b id="fps">--</b></span>
+  <!-- O quarto, em botões.
+
+       Existe porque a viagem tem um beco: numa estação a câmera olha para a parede e
+       a Unidade fica **fora do quadro** — medido, a origem projeta em y = −1068 num
+       viewport de 741. Nenhum pad é clicável ali, então o gesto de voltar (apertar de
+       novo o pad de onde se está) é inalcançável com o mouse, e sobra o teclado 1–6,
+       que nada anuncia. Estes botões são a saída de bancada.
+
+       Não são a resposta. A resposta é a Plate plana do T-05 promovida a caminho
+       principal, que é o item 4 do T-34 e está atrás do T-30: uma superfície que
+       continua na tela quando a câmera sai de cima do objeto. Isto é o andaime. -->
+  <span class="ctl" id="est-row">SALA
+    <button type="button" data-est="0">ALTAR</button>
+    <button type="button" data-est="1">1 RETRATO</button>
+    <button type="button" data-est="2">2 ACERVO</button>
+    <button type="button" data-est="3">3 PORTA</button>
+    <button type="button" data-est="4">4 LEITURA</button>
+    <button type="button" data-est="5">5 LAREIRA</button>
+    <button type="button" data-est="6">6 OFICINA</button>
+    <b id="estv">sem trilho</b>
+  </span>
 </div>
 </div>
 <script>

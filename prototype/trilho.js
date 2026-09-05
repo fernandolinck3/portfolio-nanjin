@@ -208,6 +208,10 @@ export function createTrilho({ camera, base }) {
     moduloDe,
     irPara,
     get estacao() { return estacao },
+    /** A estação corrente como dado — para a bancada dizer onde a câmera está. */
+    get alvo() { return (dados && estacao >= 1) ? dados[estacao - 1] : null },
+    /** Quantas estações o JSON trouxe, para a bancada não inventar botões. */
+    get quantas() { return dados ? dados.length : 0 },
     /** O rig não pode disputar a câmera com o trilho — mesma regra do `focus`. */
     get dirigindo() { return !!curva && estacao !== 0 },
     get pronto() { return !!curva },

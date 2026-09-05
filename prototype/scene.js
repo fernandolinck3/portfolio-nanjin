@@ -6360,6 +6360,9 @@ function frame(t) {
   if (trilho.update(dt)) {
     const m = trilho.moduloDe(trilho.estacao);
     if (m) markSeen(MODULES.findIndex(x => x.id === m));
+    /* o mostrador da bancada acerta na chegada e não a cada quadro: durante a viagem
+       ele seria um borrão de dígitos, e o número que interessa é o de onde se parou */
+    mostrarEstacoes();
   }
   post.render(t / 1000);
   /* `interval` is what the visitor feels — wall time between frames, and with vsync
@@ -6453,6 +6456,53 @@ if (location.search.includes('sala')) {
 }
 
 /**
+ * A linha das estações — os botões da bancada e o mostrador que os acompanha.
+ *
+ * **O mostrador é tanto o ponto quanto os botões.** Toda queixa de enquadramento que
+ * esta cadeia vai gerar — o campo de visão apertado, a lareira e a oficina brigando na
+ * mesma parede, o acervo mostrando o plinto em vez dos discos — se conserta mudando um
+ * número em `public/quarto/trilho.json`. Então a bancada imprime exatamente aquele
+ * número, no formato do arquivo, pronto para colar. É a mesma razão do mostrador do
+ * FREECAM: o motivo de voar a câmera é quase sempre **achar** um ângulo, e um ângulo
+ * que não se lê é um ângulo que se procura de novo na sessão seguinte.
+ *
+ * Os botões chamam `trilho.irPara` direto e **não** `pressPad`. Ir a uma estação e
+ * abrir um Módulo são duas coisas diferentes numa bancada: passar pelo pad reacenderia
+ * o LED da ECLIPSE e soltaria o flash no visor a cada clique, que é ruído enquanto se
+ * confere enquadramento. O preço é que a Tela pode ficar mostrando outro Módulo que
+ * não o da estação, e num endereço de bancada isso é informação, não defeito.
+ */
+const estRow = document.getElementById('est-row');
+const estOut = document.getElementById('estv');
+function mostrarEstacoes() {
+  if (!estOut) return;
+  const n = trilho.estacao;
+  const a = trilho.alvo;
+  const p = camera.position;
+  const fmt = v => v.toFixed(2);
+  estOut.textContent = trilho.pronto
+    ? (a
+      /* no formato do JSON, para voltar para ele por cópia */
+      ? `${n} ${a.id} · camera [${fmt(p.x)}, ${fmt(p.y)}, ${fmt(p.z)}] · olhar [${a.olhar.map(v => v.toFixed(2)).join(', ')}]`
+      : `0 altar · camera [${fmt(p.x)}, ${fmt(p.y)}, ${fmt(p.z)}]`)
+    : 'sem trilho';
+  estRow?.querySelectorAll('[data-est]').forEach(b => {
+    if (+b.dataset.est === n) b.setAttribute('aria-current', 'true');
+    else b.removeAttribute('aria-current');
+  });
+}
+estRow?.querySelectorAll('[data-est]').forEach(b => {
+  b.addEventListener('click', () => {
+    if (!trilho.pronto) { flashLcd('TRILHO NÃO CARREGADO · use ?trilho', 1600); return; }
+    const n = +b.dataset.est;
+    if (n > trilho.quantas) return;
+    trilho.irPara(n);
+    mostrarEstacoes();
+  });
+});
+mostrarEstacoes();
+
+/**
  * `?trilho` — o quarto como navegação, num endereço só, e **de propósito num endereço**.
  *
  * O que ele liga é o resto do T-34 menos duas coisas: o pad leva a câmera até a
@@ -6480,6 +6530,12 @@ if (location.search.includes('sala')) {
  */
 if (location.search.includes('trilho')) {
   intro.skip();
+  /* A bancada sobe junto, sem pedir `?trilho&debug`. Numa estação a câmera olha para a
+     parede e a Unidade fica fora do quadro — a origem projeta em `y = −1068` num
+     viewport de 741 — então nenhum pad é clicável e o gesto de voltar não tem por onde
+     ser feito com o mouse. Um endereço que leva a um beco não é um endereço. */
+  document.body.dataset.debug = '1';
+  document.querySelector('.hud')?.removeAttribute('aria-hidden');
   setRoomAmount(1);
   if (POOL.amount.value === 0) setPool({ amount: .85, near: 5, far: 26 });
   /* o repouso do Altar, um pouco mais atrás e mais alto que o do visitante: daqui a
@@ -6488,6 +6544,7 @@ if (location.search.includes('trilho')) {
   /* o JSON baixa junto com o quarto, e nunca antes dele — `ROOM_K` começa em 0 e a
      regra do `room-mobilia.js` vale para qualquer asset novo do quarto */
   trilho.carregar(import.meta.env.BASE_URL + 'quarto/trilho.json').then(d => {
+    mostrarEstacoes();
     if (d) flashLcd('TRILHO · SEIS ESTAÇÕES', 2200);
   });
 }
