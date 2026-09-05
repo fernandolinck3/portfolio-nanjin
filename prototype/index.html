@@ -398,12 +398,6 @@
      leitor de tela que abrir a bancada. */
   #est-row button[aria-current]{background:#3A2E20;color:#E8DCC4;border-color:#6A5A40}
   #est-row #estv{color:#8A8880;font-variant-numeric:tabular-nums;letter-spacing:.06em}
-  /* o laço mostra as seis pistas numa fonte de largura fixa, senão as colunas dos
-     oito passos não se alinham e o padrão deixa de ser legível como padrão */
-  #som-row{flex:1 0 100%;order:10;background:#0A0A0Bee;border:1px solid #2A2A28;
-    padding:6px 10px;gap:8px}
-  #som-row #somv{color:#8A8880;letter-spacing:.28em;white-space:pre}
-  #som-row button[aria-pressed=true]{background:#3A2E20;color:#E8DCC4;border-color:#6A5A40}
 </style>
 <div id="frame">
 <button id="full" type="button" hidden>TELA CHEIA</button>
@@ -509,14 +503,6 @@
     <button type="button" data-est="5">5 LAREIRA</button>
     <button type="button" data-est="6">6 OFICINA</button>
     <b id="estv">sem trilho</b>
-  </span>
-  <!-- O laço, e ele é a única parte do objeto que não serve para nada — o que é
-       exatamente o ponto. Nada de placar: sem pontuação, sem tempo, sem ranking e sem
-       tela de resultado. Um instrumento, não um jogo com objetivo. -->
-  <span class="ctl" id="som-row">LAÇO
-    <button type="button" id="mudo">SOM</button>
-    <button type="button" id="limpar">LIMPAR</button>
-    <b id="somv">toque um pad</b>
   </span>
 </div>
 </div>
