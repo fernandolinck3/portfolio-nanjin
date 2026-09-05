@@ -1,0 +1,59 @@
+{
+  "sobre": "As seis estacoes do quarto e o anel de camera que passa por elas. Uma estacao a mais e uma linha a mais aqui, nao uma linha de codigo — ver docs/specs/quarto-navegavel.md e prototype/trilho.js.",
+  "unidades": "Mundo. 3,2 unidades por metro, pela regua da porta. O chao esta em y = -2,95, o tampo do Altar em y = 0.",
+  "olhar": "O centro do que a estacao **e**, e nao a peca de parede que lhe da nome. A primeira montagem mirava a lareira e enquadrava a cornija de perto, com o sofa e a poltrona fora do quadro: a estacao vira uma foto de um objeto em vez do lugar onde alguem senta. O ponto e o centroide do grupo, na altura em que ele acontece.",
+  "camera": {
+    "anel": "Cada camera esta a 40% do caminho entre o centro do quarto e o que a estacao olha. Isso poe o anel inteiro fora da pegada do tampo (|x| < 3,5 · |z| < 2,1), deixa a distancia de leitura entre 5,5 e 7 unidades, e mantem o Altar na periferia do quadro — que e a composicao que a spec pede: a Unidade e o controlador, o quarto e o palco.",
+    "altura": "y = 1.9, ou 1,52 m acima do chao. Mais alto que o olho de quem esta em pe de proposito: o quarto tem 2,31 m de pe-direito e um campo de visao de 38 graus na vertical, entao a unica forma de ter o chao de um grupo no quadro a seis unidades e olhar um pouco de cima."
+  },
+  "estacoes": [
+    {
+      "id": "retrato",
+      "modulo": "identity",
+      "nome": "O retrato",
+      "feita_de": "Lyra emoldurada, o busto no pedestal, a luz de quadro",
+      "olhar": [-5.4, 0.9, -10.0],
+      "camera": [-2.16, 1.9, -4.0]
+    },
+    {
+      "id": "acervo",
+      "modulo": "projects",
+      "nome": "O acervo",
+      "feita_de": "A baia de 40 discos na parede esquerda, o plinto da invocacao ao lado",
+      "olhar": [-9.1, -0.3, -5.4],
+      "camera": [-3.64, 1.9, -2.16]
+    },
+    {
+      "id": "porta",
+      "modulo": "contact",
+      "nome": "A porta",
+      "feita_de": "A porta almofadada, o console da entrada, o armario gotico ao fundo",
+      "olhar": [-10.4, 0.2, 5.8],
+      "camera": [-4.16, 1.9, 2.32]
+    },
+    {
+      "id": "leitura",
+      "modulo": "path",
+      "nome": "A leitura",
+      "feita_de": "A estante com os livros, a cadeira virada para dentro do quarto",
+      "olhar": [9.8, 0.0, 4.8],
+      "camera": [3.92, 1.9, 1.92]
+    },
+    {
+      "id": "lareira",
+      "modulo": "criteria",
+      "nome": "A lareira",
+      "feita_de": "A lareira, o sofa e a poltrona sobre o segundo tapete",
+      "olhar": [8.8, -0.6, -1.9],
+      "camera": [3.52, 1.9, -0.76]
+    },
+    {
+      "id": "oficina",
+      "modulo": "skills",
+      "nome": "A oficina",
+      "feita_de": "A baia de pedais, os cabos, os dois monitores",
+      "olhar": [10.0, -0.2, -4.4],
+      "camera": [4.0, 1.9, -1.76]
+    }
+  ]
+}

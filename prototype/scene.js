@@ -20,6 +20,7 @@ import { createPost } from './post.js'
 import { createFocus } from './focus.js'
 import { createContact } from './contact.js'
 import { createIntro, REST } from './intro.js'
+import { createTrilho } from './trilho.js'
 import { createMirror } from './mirror.js'
 import {
   buffer as screenBuffer, render as renderScreen, SCREEN_W, SCREEN_H, setBoot,
@@ -246,6 +247,15 @@ const camLimits = () => (FREECAM ? FREE_LIMITS : CAM_LIMITS);
 let focusDriving = () => false;
 
 /**
+ * O trilho dirige a câmera enquanto a estação não é o Altar.
+ *
+ * Um `let` pela mesma razão que `focusDriving` acima: `placeCamera()` roda na
+ * inicialização do módulo, milhares de linhas antes de o trilho existir, e um `const`
+ * na zona morta temporal explode até em `typeof`. É no-op até o trilho ser montado.
+ */
+let trilhoDirigindo = () => false;
+
+/**
  * Push the instrument's state into the mirror.
  *
  * A plain `let` for the same reason as `focusDriving` above: `drawScreen()` runs at
@@ -259,6 +269,9 @@ function placeCamera() {
   /* the focus flight drives the camera outright while it runs; the rig must not
      fight it for the same transform */
   if (focusDriving()) return;
+  /* e o trilho, pela mesma razão: três mãos no mesmo transform não é uma câmera, é
+     uma briga — e o `?trilho` desliga o freecam justamente para não ser a quarta */
+  if (trilhoDirigindo()) return;
   const a = CAM.tilt * Math.PI / 180, y = CAM.yaw * Math.PI / 180;
   const h = Math.sin(a) * CAM.dist;
   /* the pivot the rig orbits, which only freecam ever moves off the origin */
@@ -4346,9 +4359,24 @@ function forceEclipse() {
   flashLcd('ECLIPSE LIBERADO · DEBUG', 1800);
 }
 
-/** Press a Pad: open its Module, or reset it if it is already open. */
+/**
+ * Press a Pad: open its Module, or reset it if it is already open.
+ *
+ * **E, onde o trilho existe, levar.** Um gesto: aperta-se o pad, a Tela troca e a
+ * câmera corre até a estação daquele Módulo. Não há um segundo modo de folhear —
+ * viajar é folhear, e quem precisa de texto corrido tem o espelho no DOM.
+ *
+ * O pad de quem já está no lugar **volta para o Altar**, que é o par natural do gesto
+ * de ir: sem isso a única saída do quarto seria recarregar a página. Fora do trilho
+ * esse mesmo pad continua fazendo o que sempre fez, reiniciar a vista do Módulo.
+ */
 function pressPad(i) {
   if (i === curPage) {
+    if (trilho.pronto && trilho.estacao !== 0) {
+      trilho.irPara(0);
+      flashLcd('O ALTAR');
+      return;
+    }
     resetPlace(curPage);
     if (focus.active) focus.exit();
     flashLcd('REINÍCIO · VISÃO GERAL DE ' + mod().title.replace(' / ', '/'));
@@ -4358,7 +4386,20 @@ function pressPad(i) {
   if (focus.active) focus.exit();
   setPage(i);
   track('module_open', { module: MODULES[i].id });
-  markSeen(i);
+  /**
+   * A ECLIPSE muda de gatilho onde há para onde ir.
+   *
+   * `markSeen` acende um LED por Módulo visto, escreve `SINAL 03/06` no visor e aos
+   * seis solta `SEIS SINAIS ALINHADOS` — tudo isso já existe e nada disso muda. O que
+   * muda é a condição: apertar seis pads não é explorar, **chegar** em seis lugares é.
+   * Um easter egg vira um jogo de exploração com placar já construído, sem uma linha
+   * de conteúdo nova.
+   *
+   * E o pad continua sendo o gatilho onde o trilho não existe, que é o caminho do
+   * visitante hoje: uma condição que só se cumpre num endereço de bancada é uma
+   * ECLIPSE que ninguém alcança.
+   */
+  if (!trilho.irPara(trilho.estacaoDe(MODULES[i].id))) markSeen(i);
   flashLcd(MODULES[i].title.replace(' / ', '/'));
 }
 
@@ -5683,12 +5724,28 @@ const focus = createFocus({
     const a = CAM.tilt * Math.PI / 180, y = CAM.yaw * Math.PI / 180;
     const h = Math.sin(a) * CAM.dist;
     const pos = new THREE.Vector3(Math.sin(y) * h, Math.cos(a) * CAM.dist, Math.cos(y) * h);
-    const look = new THREE.Vector3(0, .35 + Math.max(0, (CAM.tilt - 34) / 40) * 2.4, 0);
+    /* a mesma conta de `placeCamera` e pelo mesmo motivo: `.35` é uma altura no
+       instrumento e leva `K`, o termo do tilt é enquadramento do quarto e não leva.
+       Duas cópias desta linha divergindo é a pose de retorno do focus apontando um
+       pouco acima da pose do rig — meio grau que ninguém vê e ninguém explica. */
+    const look = new THREE.Vector3(0, .35 * K + Math.max(0, (CAM.tilt - 34) / 40) * 2.4, 0);
     const m = new THREE.Matrix4().lookAt(pos, look, new THREE.Vector3(0, 1, 0));
     return { pos, quat: new THREE.Quaternion().setFromRotationMatrix(m) };
   },
 });
 focusDriving = () => focus.active;
+
+/**
+ * O trilho, montado aqui porque esta é a primeira linha em que as duas outras mãos na
+ * câmera já existem — a abertura e o `focus` — e porque quem chega depois disto lê o
+ * arquivo sabendo que a câmera tem dono.
+ *
+ * `base` é para onde a câmera olha quando está no Altar, e é a mesma altura que
+ * `placeCamera` usa, com `K`: o Altar é uma estação como as outras e a volta para ele
+ * tem que pousar exatamente onde o rig deixaria.
+ */
+const trilho = createTrilho({ camera, base: new THREE.Vector3(0, .35 * K, 0) });
+trilhoDirigindo = () => trilho.dirigindo;
 
 /**
  * The mirror — everything the Screen shows, in the DOM, in step with it.
@@ -6299,6 +6356,11 @@ function frame(t) {
     track('boot_complete', { ms: Math.round(performance.now()) });
   }
   focus.update(dt);
+  /* devolve `true` no quadro da chegada, e é ali que o LED acende — ver `pressPad` */
+  if (trilho.update(dt)) {
+    const m = trilho.moduloDe(trilho.estacao);
+    if (m) markSeen(MODULES.findIndex(x => x.id === m));
+  }
   post.render(t / 1000);
   /* `interval` is what the visitor feels — wall time between frames, and with vsync
      on it is quantised to multiples of the refresh, so it shows dropped frames and
@@ -6388,6 +6450,48 @@ if (location.search.includes('sala')) {
      de câmera no console antes de olhar para uma coisa. Mais alto e mais longe: a sala
      inteira cabe, das cornijas ao armário do canto. */
   window.__unit.setCam({ tilt: 45, yaw: 0, dist: 31 });
+}
+
+/**
+ * `?trilho` — o quarto como navegação, num endereço só, e **de propósito num endereço**.
+ *
+ * O que ele liga é o resto do T-34 menos duas coisas: o pad leva a câmera até a
+ * estação do Módulo, o pad de quem já chegou volta para o Altar, e a ECLIPSE acende
+ * ao chegar em vez de ao apertar. O que ele não liga é a roda do sol como trilho
+ * contínuo e a leitura na Plate plana.
+ *
+ * **A razão de ser bancada é medida, não cautela.** A Tela tem 496 px no repouso — é o
+ * número que o T-22 comprou com uma sessão inteira — e o repouso está a 2,1 unidades do
+ * objeto. Uma estação está a seis, e a mesma Tela cai para perto de 170 px: texto que
+ * não se lê. A saída existe e está desenhada, é a Plate plana do T-05 promovida de
+ * plano B a caminho principal, e ela é a metade do T-34 que este endereço não tem.
+ * Ligar a viagem no caminho do visitante antes disso é entregar um quarto bonito onde
+ * não se lê nada.
+ *
+ * A segunda razão é o T-30, que contabiliza onze dos quinze pontos perdidos na crítica
+ * por nove controles sem legenda e proíbe explicitamente painel de ajuda, tooltip e
+ * onboarding. O pad já tem nome gravado na Plate, então ganhar um segundo efeito não
+ * acrescenta controle mudo — mas a roda do sol ganharia um décimo significado sem
+ * nada dizendo qual, e é por isso que ela fica de fora daqui.
+ *
+ * **Sem freecam.** O `?sala` liga o freecam porque ali a câmera é para ser dirigida à
+ * mão; aqui ela é dirigida pelo trilho, e duas mãos no mesmo transform é a briga que
+ * `placeCamera` já evita com o `focus`.
+ */
+if (location.search.includes('trilho')) {
+  intro.skip();
+  setRoomAmount(1);
+  if (POOL.amount.value === 0) setPool({ amount: .85, near: 5, far: 26 });
+  /* o repouso do Altar, um pouco mais atrás e mais alto que o do visitante: daqui a
+     câmera sai para o quarto, e sair de cima do objeto é sair de dentro dele */
+  window.__unit.setCam({ tilt: 26, yaw: 0, dist: 4.2 });
+  /* o JSON baixa junto com o quarto, e nunca antes dele — `ROOM_K` começa em 0 e a
+     regra do `room-mobilia.js` vale para qualquer asset novo do quarto */
+  trilho.carregar(import.meta.env.BASE_URL + 'quarto/trilho.json').then(d => {
+    if (!d) return;
+    trilho.ancorar();
+    flashLcd('TRILHO · SEIS ESTAÇÕES', 2200);
+  });
 }
 
 /**
