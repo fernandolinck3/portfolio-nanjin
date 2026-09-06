@@ -446,12 +446,23 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   /* madeira da prateleira: a mesma da credenza, porque numa parede escura duas
      madeiras diferentes a um metro uma da outra leem como erro e não como escolha */
   const PRAT = { fundo: .20, tampo: .055, borda: .05, comp: ACERVO.W - .40 }
+  /**
+   * As prateleiras sobem, e o número saiu de um objeto e não do olho.
+   *
+   * A primeira fila estava a 30 cm do tampo, que é o suficiente para as capas da
+   * parede e **não** para o que passou a ficar no tampo: uma capa encostada tem 94 cm
+   * e atravessava a prateleira de baixo. A 1,10 ela passa com folga, e de quebra é
+   * onde a referência põe a fila mais baixa — bem acima do móvel, na altura do olho
+   * de quem está de pé, e não rente a ele.
+   */
   const FILAS = [
-    { n: 4, y: leftTop.top + .30 },
-    { n: 3, y: leftTop.top + 1.48 },
+    { n: 4, y: leftTop.top + 1.10 },
+    { n: 3, y: leftTop.top + 2.28 },
   ]
   const PASSO = 1.16
 
+  /* a textura de cada capa, para a que fica encostada no tampo não construir a sua */
+  const texPorObra = new Map()
   let posta = 0
   for (const fila of FILAS) {
     /* a prateleira: um tabuleiro e um filete na frente. O filete é o que segura a capa
@@ -473,6 +484,7 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
       let tex
       const cv = sleeveFor(obra, posta, () => { if (tex) tex.needsUpdate = true })
       tex = new THREE.CanvasTexture(cv)
+      texPorObra.set(obra.id, tex)
       tex.colorSpace = THREE.SRGBColorSpace
       tex.anisotropy = 8
       const capa = new THREE.Mesh(sleeveGeo, new THREE.MeshStandardMaterial({
@@ -490,6 +502,28 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
       left.add(capa)
     }
   }
+
+  /**
+   * O tampo, decidido objeto por objeto contra as três referências.
+   *
+   * Elas concordam em três coisas e discordam no resto, e as três que sobrevivem são
+   * as que **afirmam** alguma coisa em vez de decorar:
+   *
+   * - **a vitrola**, que é o assunto;
+   * - **o amplificador** ao lado dela, porque uma vitrola sem nada ligado é um
+   *   adereço — é o objeto que diz que aquilo toca;
+   * - **a capa do que está tocando**, encostada, que é o que qualquer pessoa faz com
+   *   o disco que acabou de pôr.
+   *
+   * O que ficou de fora e por quê: caixas de som (a sala já tem dois monitores, e
+   * repetir é o que fazia a mobília ler como cenário), planta (saiu na rodada
+   * passada), luminária (desceu para o chão), quadrinhos e velas (a sala já tem
+   * ambas em outros lugares, e aqui competiriam com as capas).
+   *
+   * A capa encostada é a única **viva**: ela mostra a obra selecionada na Tela. É o
+   * elo que faltava entre o display e a cena — o mesmo estado, duas representações,
+   * como a linha da Tela e a capa na parede já são.
+   */
 
   /**
    * A vitrola, e ela **não é digital** — foi a palavra dele.
@@ -546,6 +580,44 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   const capsula = new THREE.Mesh(new THREE.BoxGeometry(.07, .05, .05), PRETO)
   capsula.position.set(.01, .19, .02)
   vit.add(capsula)
+
+  /* o amplificador: caixa baixa, painel escovado, dois botões e o filete do mostrador.
+     Fica à direita porque o braço da vitrola sai por ali e os dois lidos juntos leem
+     como uma instalação em vez de duas peças postas lado a lado. */
+  const amp = new THREE.Group()
+  amp.position.set(1.42, leftTop.top, .02)
+  left.add(amp)
+  amp.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(1.06, .26, .86), PRETO),
+    { position: new THREE.Vector3(0, .13, 0) }))
+  const face = new THREE.Mesh(new THREE.BoxGeometry(1.02, .20, .03), METAL)
+  face.position.set(0, .14, .43)
+  amp.add(face)
+  for (const bx of [-.34, -.16]) {
+    const k = new THREE.Mesh(new THREE.CylinderGeometry(.055, .055, .05, 16), METAL)
+    k.rotation.x = Math.PI / 2
+    k.position.set(bx, .14, .46)
+    amp.add(k)
+  }
+  const mostrador = new THREE.Mesh(new THREE.BoxGeometry(.34, .07, .01),
+    new THREE.MeshStandardMaterial({ color: 0xC9BE96, emissive: 0xB08D4A, emissiveIntensity: .5, roughness: .7 }))
+  mostrador.position.set(.26, .14, .45)
+  amp.add(mostrador)
+
+  /**
+   * A capa do que está tocando — encostada no tampo, à esquerda da vitrola.
+   *
+   * Reaproveita a textura que a parede já construiu: `texPorObra` é o mesmo canvas,
+   * então mostrar aqui não custa memória de vídeo nenhuma. Uma segunda cópia seria
+   * uma segunda lista, e a esta altura o repositório já pagou por isso três vezes.
+   */
+  const encostada = new THREE.Mesh(sleeveGeo, new THREE.MeshStandardMaterial({
+    map: null, roughness: .80, metalness: 0, transparent: true, opacity: 0,
+  }))
+  encostada.scale.set(CAPA, CAPA, 1)
+  encostada.rotation.x = -.16
+  encostada.position.set(-1.62, leftTop.top + CAPA / 2 - .02, paredeZ + .30)
+  left.add(encostada)
+
 
   /**
    * A planta saiu.
@@ -698,5 +770,20 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
 
   /* `lamps` so scene.js can put the globes out when the room itself is hidden —
      a light that illuminates nothing invisible still costs every lit fragment. */
-  return { update, setGlobe, group, discos, lamps: lamps.map(l => l.light) }
+  /**
+   * Qual capa está encostada no tampo. `null` apaga.
+   *
+   * Chamada do laço com um guarda de igualdade: trocar de Módulo ou de linha na Tela
+   * troca a capa aqui, e é assim que o quarto sabe o que o display está mostrando.
+   */
+  function destacar(obraId) {
+    const tex = obraId ? texPorObra.get(obraId) : null
+    encostada.material.map = tex || null
+    encostada.material.opacity = tex ? 1 : 0
+    encostada.material.needsUpdate = true
+    encostada.visible = !!tex
+  }
+  destacar(null)
+
+  return { update, setGlobe, destacar, group, discos, lamps: lamps.map(l => l.light) }
 }

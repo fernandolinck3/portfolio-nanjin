@@ -6389,6 +6389,31 @@ function visorDeveAparecer() {
  *
  * Não é ajuda, tooltip nem onboarding — é a saída de uma sala, que todo lugar tem.
  */
+/**
+ * A capa encostada no tampo mostra o que a Tela está mostrando.
+ *
+ * É o elo entre o display e a cena, e é a resposta à pergunta que ele fez — *"a
+ * relação entre o display da CDJ, os módulos e a cena"*. A linha selecionada em
+ * PROJETOS e a capa encostada na credenza são **o mesmo estado**, em duas
+ * representações, como a linha e a capa na parede já eram.
+ *
+ * Fora de PROJETOS não há capa: o tampo fica com a vitrola e o amplificador, e o
+ * quarto para de afirmar uma obra que ninguém escolheu.
+ */
+let capaEncostada = null;
+function pintarCapaEncostada() {
+  if (!decor?.destacar) return;
+  let id = null;
+  const i = MODULES.findIndex(m => m.id === 'projects');
+  if (i >= 0 && curPage === i) {
+    const it = itemsOf()[selectionOf(i)];
+    if (it?.act?.kind === 'work') id = it.act.value;
+  }
+  if (id === capaEncostada) return;
+  capaEncostada = id;
+  decor.destacar(id);
+}
+
 const voltarEl = document.getElementById('voltar-quarto');
 function pintarVoltar() {
   if (!voltarEl) return;
@@ -7020,6 +7045,7 @@ function frame(t) {
        60 quando ele só muda a 24 é dois terços de blit jogados fora */
     pintarVisor();
     pintarVoltar();
+    pintarCapaEncostada();
     screenClock = 0;
   }
   /* The mirror follows the Screen's own clock. `drawScreen()` is the deliberate

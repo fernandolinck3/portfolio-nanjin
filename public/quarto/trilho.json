@@ -44,7 +44,7 @@
    "feita_de": "A parede de capas sobre a credenza — sete obras em duas prateleiras, quatro sobre tres — a vitrola no tampo, e os sessenta discos de perfil na cavidade embaixo.",
    "olhar": [
     -9.6,
-    0.05,
+    0.45,
     -4.4
    ],
    "camera": [
@@ -53,15 +53,15 @@
     -2.16
    ],
    "perto": {
-    "sobre": "A parede de capas de perto. As sete obras estao em duas prateleiras — quatro sobre tres, centro em y = 0,05 — e no repouso da estacao uma capa mede uns cem pixels: da para ver que ha alguma coisa ali, nao da para ver qual. `cabe` 1.9 poe tres capas na largura do quadro. Os numeros foram medidos duas vezes em 2026-09-06: na primeira eu contei a face da parede em -SIDE_X, e ela esta em -SIDE_X + .3 porque a parede e uma caixa de .6 centrada — as capas nasceram dentro dela.",
+    "sobre": "A parede de capas de perto. As sete obras estao em duas prateleiras — quatro sobre tres, centro em y = 0,05 — e no repouso da estacao uma capa mede uns cem pixels: da para ver que ha alguma coisa ali, nao da para ver qual. `cabe` 1.9 poe tres capas na largura do quadro. Os numeros foram medidos duas vezes em 2026-09-06: na primeira eu contei a face da parede em -SIDE_X, e ela esta em -SIDE_X + .3 porque a parede e uma caixa de .6 centrada — as capas nasceram dentro dela. As prateleiras subiram em 2026-09-06 para a capa encostada no tampo caber embaixo delas, entao o centro das duas filas passou de 0,05 para 0.85.",
     "olhar": [
      -11.17,
-     0.05,
+     0.85,
      -4.4
     ],
     "camera": [
      -7.97,
-     0.3,
+     1.0,
      -4.4
     ],
     "cabe": 1.9
