@@ -582,74 +582,43 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   vit.add(capsula)
 
   /**
-   * A radiola — e não um amplificador de painel escovado, que foi o primeiro erro.
+   * O amplificador — ele volta, e só o metal escovado sai.
    *
-   * A caixa saiu com face de metal escovado e dois botões, que é a linguagem de um
-   * integrado dos anos 70. Ele apontou na hora: a estética da sala é barroca, e a peça
-   * tem que ser **móvel de madeira ornamentado**. Está certo, e o erro é o mesmo que a
-   * planta e a globo cometeram — objeto de outro cômodo posto neste.
+   * Eu o troquei por uma radiola de válvula na rodada passada, e não era isso que
+   * tinha sido pedido: o pedido era **somar** objetos pequenos, e o móvel de madeira
+   * ornamentado da referência é a credenza, não esta peça. Trocar um objeto que
+   * ninguém mandou trocar é a segunda vez neste arquivo que eu resolvo um problema que
+   * não me deram.
    *
-   * O objeto certo já existe no mundo e é anterior ao hi-fi: a radiola de válvula, com
-   * caixa em nogueira, pés torneados, moldura escalonada e a **grade em arco**. O arco
-   * não é escolha estética avulsa: é a mesma forma dos painéis acústicos e da janela em
-   * ogiva, então a peça entra na sala falando a língua dela. `archGeom` já desenha essa
-   * forma para os painéis, e reusá-la é o que garante que os arcos sejam o mesmo arco.
+   * O que fica da crítica é a metade que era sobre material e não sobre a peça: um
+   * painel de aço escovado é linguagem de integrado dos anos 70. A caixa passa a ser
+   * de nogueira, a face de latão, e os botões de baquelite — a mesma peça, na paleta
+   * do quarto.
+   *
+   * Fica à direita porque o braço da vitrola sai por ali, e os dois lidos juntos leem
+   * como uma instalação em vez de duas peças postas lado a lado.
    */
-  const rad = new THREE.Group()
-  rad.position.set(1.46, leftTop.top, .02)
-  left.add(rad)
-
-  const RD = { w: 1.12, h: .78, d: .80 }
-  const caixa = new THREE.Mesh(new THREE.BoxGeometry(RD.w, RD.h, RD.d), NOGUEIRA)
-  caixa.position.set(0, .14 + RD.h / 2, 0)
-  rad.add(caixa)
-  /* a moldura escalonada: dois degraus, e são eles que pegam a luz do globo de lado —
-     a mesma razão do perfil do torneado, e a razão de uma caixa lisa ler como caixa */
-  for (const [dw, dy, dh] of [[.10, .02, .05], [.18, .07, .04]]) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(RD.w + dw, dh, RD.d + dw), NOGUEIRA)
-    m.position.set(0, .14 + RD.h + dy, 0)
-    rad.add(m)
+  const amp = new THREE.Group()
+  amp.position.set(1.42, leftTop.top, .02)
+  left.add(amp)
+  const caixaAmp = new THREE.Mesh(new THREE.BoxGeometry(1.06, .26, .86), NOGUEIRA)
+  caixaAmp.position.set(0, .13, 0)
+  amp.add(caixaAmp)
+  const LATAO_FACE = new THREE.MeshStandardMaterial({ color: GILT, metalness: .82, roughness: .42 })
+  const face = new THREE.Mesh(new THREE.BoxGeometry(1.02, .20, .03), LATAO_FACE)
+  face.position.set(0, .14, .43)
+  amp.add(face)
+  const BAQUELITE = new THREE.MeshStandardMaterial({ color: 0x241C19, roughness: .55, metalness: .08 })
+  for (const bx of [-.34, -.16]) {
+    const k = new THREE.Mesh(new THREE.CylinderGeometry(.055, .055, .05, 16), BAQUELITE)
+    k.rotation.x = Math.PI / 2
+    k.position.set(bx, .14, .46)
+    amp.add(k)
   }
-  /* pés torneados, curtos: um móvel deste tamanho pousa, não flutua */
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    const pe = new THREE.Mesh(new THREE.CylinderGeometry(.05, .07, .14, 10), NOGUEIRA)
-    pe.position.set(sx * (RD.w / 2 - .12), .07, sz * (RD.d / 2 - .12))
-    rad.add(pe)
-  }
-
-  /* a grade: o arco vazado com o pano atrás. O pano é fosco e escuro para o vão ler
-     como profundidade — uma grade clara vira um adesivo colado na frente da caixa. */
-  const PANO = new THREE.MeshStandardMaterial({ color: 0x2A2320, roughness: .96, metalness: 0 })
-  const pano = new THREE.Mesh(new THREE.PlaneGeometry(.62, .46), PANO)
-  pano.position.set(-.20, .14 + RD.h * .56, RD.d / 2 + .005)
-  rad.add(pano)
-  const arco = new THREE.Mesh(archGeom(.66, .52, .06), NOGUEIRA)
-  arco.position.set(-.20, .14 + RD.h * .30, RD.d / 2 - .02)
-  rad.add(arco)
-
-  /* o mostrador: aro de latão, vidro aceso por trás, e o ponteiro. É o único ponto
-     quente da peça, e é ele que diz que ela está ligada sem acender luz nenhuma. */
-  const aro = new THREE.Mesh(new THREE.TorusGeometry(.15, .022, 8, 24), METAL)
-  aro.position.set(.32, .14 + RD.h * .60, RD.d / 2 + .01)
-  rad.add(aro)
-  const vidro = new THREE.Mesh(new THREE.CircleGeometry(.14, 24),
-    new THREE.MeshStandardMaterial({ color: 0xE8D9AE, emissive: 0xC98A3C, emissiveIntensity: .85, roughness: .8 }))
-  vidro.position.set(.32, .14 + RD.h * .60, RD.d / 2 + .004)
-  rad.add(vidro)
-  const ponteiro = new THREE.Mesh(new THREE.BoxGeometry(.012, .21, .008),
-    new THREE.MeshStandardMaterial({ color: 0x2A2320, roughness: .9 }))
-  ponteiro.position.set(.32, .14 + RD.h * .60, RD.d / 2 + .012)
-  ponteiro.rotation.z = .5
-  rad.add(ponteiro)
-
-  /* dois botões torneados de baquelite, abaixo do mostrador */
-  for (const bx of [.22, .42]) {
-    const b = new THREE.Mesh(new THREE.CylinderGeometry(.055, .065, .06, 14),
-      new THREE.MeshStandardMaterial({ color: 0x241C19, roughness: .55, metalness: .08 }))
-    b.rotation.x = Math.PI / 2
-    b.position.set(bx, .14 + RD.h * .26, RD.d / 2 + .03)
-    rad.add(b)
-  }
+  const mostrador = new THREE.Mesh(new THREE.BoxGeometry(.34, .07, .01),
+    new THREE.MeshStandardMaterial({ color: 0xC9BE96, emissive: 0xB08D4A, emissiveIntensity: .5, roughness: .7 }))
+  mostrador.position.set(.26, .14, .45)
+  amp.add(mostrador)
 
   /**
    * As coisas pequenas — e elas existem porque a cena estava **robótica**.
