@@ -6220,6 +6220,22 @@ const focus = createFocus({
     focus.show(WORKS[n])
   },
   restore() {
+    /**
+     * Sair de um case devolve o visitante **onde ele estava**, e não ao Altar.
+     *
+     * Esta função calculava sempre a pose do rig, que é a do Altar, porque quando foi
+     * escrita o Altar era o único lugar de onde se clicava numa obra. Com o acervo, o
+     * visitante clicava numa capa de perto da parede e era cuspido do outro lado da
+     * sala ao fechar — e o acervo é exatamente a estação onde se quer **ficar**,
+     * folheando, olhando o móvel. Ele reclamou disso na primeira vez que viu.
+     */
+    if (trilho?.dirigindo) {
+      const p = trilho.poseAtual();
+      if (p) {
+        const m = new THREE.Matrix4().lookAt(p.pos, p.olhar, new THREE.Vector3(0, 1, 0));
+        return { pos: p.pos, quat: new THREE.Quaternion().setFromRotationMatrix(m) };
+      }
+    }
     /* ask the rig where it wants the camera *now*, so a view dragged before
        entering is the view returned to */
     const a = CAM.tilt * Math.PI / 180, y = CAM.yaw * Math.PI / 180;

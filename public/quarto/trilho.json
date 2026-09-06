@@ -53,14 +53,14 @@
     -2.16
    ],
    "perto": {
-    "sobre": "A parede de capas de perto. As sete obras estao na parede em duas prateleiras — quatro sobre tres, centro em y = 0,05 — e no repouso da estacao uma capa mede uns cem pixels: da para ver que ha alguma coisa ali, nao da para ver qual. `cabe` 1.9 poe tres capas na largura do quadro, que e o que uma parede de discos entrega a quem chega perto para folhear. Mesma forma do `perto` do retrato: o objeto E o assunto e tambem e o controle. Os numeros mudaram em 2026-09-06, quando as capas sairam da boca da credenza (y = -2,05) e subiram para a parede.",
+    "sobre": "A parede de capas de perto. As sete obras estao em duas prateleiras — quatro sobre tres, centro em y = 0,05 — e no repouso da estacao uma capa mede uns cem pixels: da para ver que ha alguma coisa ali, nao da para ver qual. `cabe` 1.9 poe tres capas na largura do quadro. Os numeros foram medidos duas vezes em 2026-09-06: na primeira eu contei a face da parede em -SIDE_X, e ela esta em -SIDE_X + .3 porque a parede e uma caixa de .6 centrada — as capas nasceram dentro dela.",
     "olhar": [
-     -11.47,
+     -11.17,
      0.05,
      -4.4
     ],
     "camera": [
-     -8.4,
+     -7.97,
      0.3,
      -4.4
     ],

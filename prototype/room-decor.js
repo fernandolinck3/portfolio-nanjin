@@ -158,17 +158,24 @@ function archGeom(w, h, depth) {
 
 /* ---------- fittings ---------- */
 
-/** A frosted globe on a brass stem. The room's warm light that is not a Candle. */
-function globeLamp(parent, x, y, z) {
+/**
+ * A frosted globe on a brass stem. The room's warm light that is not a Candle.
+ *
+ * `haste` é o comprimento do pé, e é o que separa uma luminária de mesa de uma de
+ * chão. A do acervo virou de chão em 2026-09-06: com a vitrola no tampo, uma globo do
+ * lado dela punha dois objetos brilhantes no mesmo móvel, e as referências que ele deu
+ * põem a luz **ao lado** da parede de discos, no chão, iluminando as capas de baixo.
+ */
+function globeLamp(parent, x, y, z, haste = .34) {
   const stem = new THREE.Mesh(
-    new THREE.CylinderGeometry(.05, .10, .34, 12),
+    new THREE.CylinderGeometry(.05, .10, haste, 12),
     new THREE.MeshStandardMaterial({ color: GILT, metalness: .9, roughness: .32 }))
-  stem.position.set(x, y + .17, z); parent.add(stem)
+  stem.position.set(x, y + haste / 2, z); parent.add(stem)
 
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(.29, .022, 8, 32),
     new THREE.MeshStandardMaterial({ color: GILT, metalness: .95, roughness: .28 }))
-  ring.position.set(x, y + .60, z); ring.rotation.x = Math.PI / 2; parent.add(ring)
+  ring.position.set(x, y + haste + .26, z); ring.rotation.x = Math.PI / 2; parent.add(ring)
 
   const globe = new THREE.Mesh(
     new THREE.SphereGeometry(.27, 24, 18),
@@ -176,13 +183,13 @@ function globeLamp(parent, x, y, z) {
       color: 0xF6E3BE, emissive: 0xF3C878, emissiveIntensity: 1.5,
       roughness: .6, metalness: 0,
     }))
-  globe.position.set(x, y + .60, z); parent.add(globe)
+  globe.position.set(x, y + haste + .26, z); parent.add(globe)
 
   /* With skyLight demoted to real moonlight these two are the room's daylight, so
      they carry far more than they used to — and being point lights they do it in
      pools that fall off, which is the whole point. */
   const light = new THREE.PointLight(0xF3C070, 5.2, 16, 2)
-  light.position.set(x, y + .62, z); parent.add(light)
+  light.position.set(x, y + haste + .28, z); parent.add(light)
   return { globe, light }
 }
 
@@ -337,8 +344,21 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   const LEFT_D = ACERVO.D
   const left = bay(-sideX + ACERVO.RECUO + LEFT_D / 2, wallFace + ACERVO.DZ, Math.PI / 2)
   const leftTop = credenza(left, { x: 0, z: 0, w: ACERVO.W, h: ACERVO.H, d: LEFT_D, floorY, aberta: true })
-  /* a face interna da parede, em coordenadas da baia: o grupo está a `RECUO + D/2` dela */
-  const paredeZ = -(ACERVO.RECUO + LEFT_D / 2)
+  /**
+   * A face **interna** da parede, em coordenadas da baia — e a primeira conta aqui
+   * estava errada por 0,3, que é meia parede.
+   *
+   * A parede lateral é uma `BoxGeometry(.6, …)` **centrada** em `x = ±SIDE_X`
+   * (`scene.js`), então a face que se vê está em `-SIDE_X + .3` e não em `-SIDE_X`. O
+   * `RECUO` de .30 desta baia é exatamente essa meia espessura: a credenza encosta o
+   * fundo na parede. Logo a face fica em `-D/2` daqui, e não em `-(RECUO + D/2)`.
+   *
+   * Contando errado, as prateleiras e as sete capas nasceram 17 cm **dentro** da
+   * parede — invisíveis, e o realce de hover as empurrava .18 para fora, que é a
+   * "arte bugada aparecendo do lado" que ele viu. Um objeto dentro de uma parede não
+   * dá erro nenhum: é geometria válida.
+   */
+  const paredeZ = -LEFT_D / 2
 
   /**
    * Records: thin slabs leaning in a row. Their spines are the only place in the
@@ -522,20 +542,19 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   capsula.position.set(.01, .19, .02)
   vit.add(capsula)
 
-  /* a plant, because every studio has one and it is the only soft thing here */
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(.24, .18, .38, 14),
-    new THREE.MeshStandardMaterial({ color: 0x6B4A38, roughness: .9 }))
-  pot.position.set(2.35, leftTop.top + .19, -.06); left.add(pot)
-  const leafMat = new THREE.MeshStandardMaterial({ color: 0x35492F, roughness: .85, side: THREE.DoubleSide })
-  const leafGeom = new THREE.CircleGeometry(.20, 8, 0, Math.PI)
-  for (let i = 0; i < 9; i++) {
-    const a = (i / 9) * 6.2832
-    const l = new THREE.Mesh(leafGeom, leafMat)
-    l.position.set(2.35 + Math.cos(a) * .12, leftTop.top + .52 + (i % 3) * .14, -.06 + Math.sin(a) * .12)
-    l.rotation.set(-.9 + (i % 3) * .2, a, 0)
-    left.add(l)
-  }
-  lamps.push(globeLamp(left, -2.6, leftTop.top, -.04))
+  /**
+   * A planta saiu.
+   *
+   * Era um vaso de cilindro e nove meios-círculos como folhas, herdada de quando esta
+   * baia era "um estúdio" genérico. Numa parede de capas com uma vitrola embaixo ela
+   * não é o objeto macio que justifica a exceção — é a peça pior feita do enquadramento,
+   * e ele a viu na primeira olhada: *"uma flor estranha"*. Nada substitui: o assunto da
+   * estação agora tem dono, e um objeto a mais em cima do móvel disputa com a vitrola.
+   */
+
+  /* no chão, passada a ponta da credenza: é onde as três referências põem a luz da
+     parede de discos, e é o que tira o segundo objeto brilhante de cima do móvel */
+  lamps.push(globeLamp(left, ACERVO.W / 2 + .55, floorY, -.10, 2.30))
 
   /* ---- the right bay: the pedal cabinet, along the right wall ---- */
   const RIGHT_D = 1.10

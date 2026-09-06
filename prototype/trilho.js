@@ -362,6 +362,20 @@ export function createTrilho({ camera, base }) {
       passo(0)
       return true
     },
+    /**
+     * Onde a câmera **deve** estar agora — a pose da estação corrente, com `perto`.
+     *
+     * Existe para o `focus` devolver a câmera ao lugar certo. O `restore` dele
+     * calculava sempre a pose do Altar, porque quando foi escrito o Altar era o único
+     * lugar de onde se clicava numa obra. Com a estação, sair de um case jogava o
+     * visitante do outro lado da sala sem ter pedido — e o acervo é justamente onde se
+     * quer ficar folheando.
+     */
+    poseAtual() {
+      if (!curva || estacao === 0) return null
+      const a = alvoDe(estacao, perto)
+      return a ? { pos: a.pos.clone(), olhar: a.olhar.clone() } : null
+    },
     /** Devolve `true` no quadro em que a viagem termina, para quem quiser saber. */
     update(dt) { return passo(dt) },
   }
