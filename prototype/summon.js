@@ -18,6 +18,7 @@
 
 import * as THREE from 'three'
 import { sheetFor } from './works-art.js'
+import { medir } from './superficie.js'
 
 /** Texture for a Work, made once and kept — these are canvas draws, not cheap. */
 function textureFor(work, i) {
@@ -53,18 +54,42 @@ export function createSummoning(scene, works, { floorY }) {
    */
   const PED = { x: -7.6, z: -6.4 }
 
-  const stoneMat = new THREE.MeshStandardMaterial({
-    color: 0x4A443E, roughness: 0.92, metalness: 0,
-  })
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.52, 2.5, 16), stoneMat)
-  shaft.position.set(PED.x, floorY + 1.25, PED.z)
-  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.66, 0.16, 16), stoneMat)
-  cap.position.set(PED.x, floorY + 2.58, PED.z)
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.74, 0.82, 0.22, 16), stoneMat)
-  base.position.set(PED.x, floorY + 0.11, PED.z)
-  group.add(shaft, cap, base)
-
   const CAP_TOP = floorY + 2.66
+
+  /**
+   * O plinto tem perfil, e não três cilindros empilhados.
+   *
+   * Eram um fuste, um capitel e uma base — três `CylinderGeometry` de aresta viva,
+   * que a **3,5% do quadro** na estação do ACERVO liam como isopor ao lado de um
+   * armário gótico entalhado. O que faz uma pedra ser pedra a esta distância não é o
+   * material: é o **perfil**. Um pedestal tem soco, chanfro, filete, fuste em ligeiro
+   * afunilamento, ovolo e ábaco, e cada um desses degraus é uma linha de luz separada
+   * quando a lâmpada do globo bate de lado.
+   *
+   * `LatheGeometry` faz os seis num torneado só, então também é **uma malha em vez de
+   * três**. Mesmo vocabulário do castiçal em `scene.js`, que é feito assim pelo mesmo
+   * motivo.
+   *
+   * `CAP_TOP` não muda: a peça e a luz pousam onde sempre pousaram.
+   */
+  const stoneMat = new THREE.MeshStandardMaterial({
+    /* mais escuro que os 0x4A443E de antes: o globo da esquerda bate em cheio nele e
+       a pedra saía lavada, quase branca, num quarto que é escuridão com poços */
+    color: 0x3E3A34, roughness: 0.95, metalness: 0,
+  })
+  medir(stoneMat, { nor: 'reboco-nor.jpg', arm: 'reboco-arm.jpg' }, { repU: 3, repV: 2, forca: .55 })
+
+  /* raio, altura acima do chão — do soco ao ábaco */
+  const PERFIL = [
+    [.00, .00], [.82, .00], [.82, .16], [.74, .24], [.70, .30],
+    [.52, .38], [.48, .46],
+    [.44, .60], [.40, 2.10],
+    [.46, 2.24], [.56, 2.36], [.54, 2.44],
+    [.68, 2.50], [.68, 2.62], [.62, 2.66], [.00, 2.66],
+  ].map(([r, y]) => new THREE.Vector2(r, floorY + y))
+  const pedra = new THREE.Mesh(new THREE.LatheGeometry(PERFIL, 28), stoneMat)
+  pedra.position.set(PED.x, 0, PED.z)
+  group.add(pedra)
 
   /** The Work itself. Basic, not physical: it is emitting, not being lit. */
   const sheet = new THREE.Mesh(

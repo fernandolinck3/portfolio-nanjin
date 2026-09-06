@@ -21,6 +21,7 @@
  */
 
 import * as THREE from 'three'
+import { medir } from './superficie.js'
 
 const BONE = '#C9C2B0', EMBER = '#B4472A', COLD = '#6E8493'
 const GILT = 0xB08D4A
@@ -197,16 +198,76 @@ function monitor(parent, x, z, floorY, faceZ) {
 }
 
 /** A long low cabinet. `shelf` fills its front with whatever is passed back. */
-function credenza(parent, { x, z, w, h, d, floorY }) {
-  const wood = new THREE.MeshStandardMaterial({ color: 0x3A2E26, roughness: .52, metalness: .05 })
-  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), wood)
-  body.position.set(x, floorY + h / 2 + .16, z); parent.add(body)
-  for (const sx of [-1, 1]) {
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(.055, .045, .34, 10), wood)
-    leg.position.set(x + sx * (w / 2 - .22), floorY + .17, z + d / 2 - .18); parent.add(leg)
-    const leg2 = leg.clone(); leg2.position.z = z - d / 2 + .18; parent.add(leg2)
+/**
+ * O nogueira medido, uma vez para toda a mobília deste arquivo.
+ *
+ * Mesma regra de `superficie.js` que o `room-baroque.js` já segue: a fotografia
+ * entra pelo relevo e pela rugosidade, a cor continua autorada. `repV` alto porque
+ * a credenza é comprida e baixa — um ladrilho quadrado nela lê como xadrez.
+ */
+const NOGUEIRA = new THREE.MeshStandardMaterial({ color: 0x3A2E26, roughness: .52, metalness: .05 })
+medir(NOGUEIRA, { nor: 'nogueira-nor.jpg', arm: 'nogueira-arm.jpg' }, { repU: 3, repV: 1, forca: .45 })
+
+/**
+ * A credenza — e por que ela deixou de ser uma caixa.
+ *
+ * ## O defeito
+ *
+ * Era um `BoxGeometry(w, h, d)` sobre quatro pinos, cor chapada, sem mapa. Medido na
+ * estação do ACERVO: **11,2% do quadro**, mais que todo o resto somado, e o armário
+ * gótico ao lado — que é um modelo de verdade — ocupa 2,8%. A diferença entre os dois
+ * na tela é a diferença entre um móvel e uma caixa.
+ *
+ * Pior: **os quarenta discos estavam dentro dela.** Eles existem, têm seis cores de
+ * lombada, e a caixa era desenhada em volta. O corpo ia de `floorY + 0,16` a
+ * `floorY + 1,61` e os discos de `floorY + 0,27` a `floorY + 1,29` — enterrados
+ * inteiros. O comentário deles diz que as lombadas *"são o único lugar do quarto com
+ * cor arbitrária, e é o que faz aquilo ler como a coleção de alguém"*, e nenhuma delas
+ * jamais chegou a um pixel.
+ *
+ * ## O que ela é agora
+ *
+ * Uma carcaça: base recuada, duas ilhargas, fundo, prateleira e um tampo saliente —
+ * o vocabulário de um móvel de verdade, que é ter estrutura entre o topo e o chão. E
+ * `aberta` abre a frente, que é o ponto todo: uma credenza de discos que esconde os
+ * discos é uma caixa com um nome bonito.
+ *
+ * A baia dos pedais fica fechada, porque ali o assunto é o que está **em cima**.
+ */
+function credenza(parent, { x, z, w, h, d, floorY, aberta = false }) {
+  const wood = NOGUEIRA
+  const y0 = floorY + .16                      // onde o móvel começa
+  const topY = y0 + h                          // a face de cima do tampo
+  const BASE = .22, TAMPO = .09, LADO = .10
+
+  const põe = (gw, gh, gd, px, py, pz) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(gw, gh, gd), wood)
+    m.position.set(x + px, py, z + pz)
+    parent.add(m)
+    return m
   }
-  return { top: floorY + h + .16, front: z + d / 2 }
+
+  /* a base recuada: um móvel deste peso pousa num soco, não em quatro pinos */
+  põe(w - .20, BASE, d - .14, 0, y0 + BASE / 2, 0)
+  /* o tampo, saliente dos dois lados — é a saliência que faz a sombra que diz que há
+     um tampo */
+  põe(w + .10, TAMPO, d + .06, 0, topY - TAMPO / 2, 0)
+
+  const cavH = h - BASE - TAMPO
+  const cavY = y0 + BASE + cavH / 2
+  /* ilhargas e fundo */
+  for (const sx of [-1, 1]) põe(LADO, cavH, d, sx * (w / 2 - LADO / 2), cavY, 0)
+  põe(w - LADO * 2, cavH, .08, 0, cavY, -d / 2 + .04)
+  /* a prateleira em que os discos pousam */
+  põe(w - LADO * 2, .06, d - .10, 0, y0 + BASE + .03, 0)
+
+  if (!aberta) {
+    /* fechada: duas folhas com um filete entre elas, para não voltar a ser laje */
+    const meia = (w - LADO * 2) / 2
+    for (const sx of [-1, 1]) põe(meia - .04, cavH - .08, .06, sx * meia / 2, cavY, d / 2 - .03)
+  }
+
+  return { top: topY, front: z + d / 2, cavidade: { base: y0 + BASE + .06, altura: cavH - .06 } }
 }
 
 /* ---------- the room ---------- */
@@ -256,20 +317,48 @@ export function createRoomDecor(room, { floorY, wallFace, sideX }) {
   /* ---- the left bay: the credenza of records, along the left wall ---- */
   const LEFT_D = 1.15
   const left = bay(-sideX + 0.30 + LEFT_D / 2, wallFace + 6.4, Math.PI / 2)
-  const leftTop = credenza(left, { x: 0, z: 0, w: 6.0, h: 1.45, d: LEFT_D, floorY })
+  const leftTop = credenza(left, { x: 0, z: 0, w: 6.0, h: 1.45, d: LEFT_D, floorY, aberta: true })
 
-  /* Records: thin slabs leaning in a row. Their spines are the only place in the
-     room with arbitrary colour, which is what makes them read as somebody's
-     collection rather than as decoration. */
+  /**
+   * Records: thin slabs leaning in a row. Their spines are the only place in the
+   * room with arbitrary colour, which is what makes them read as somebody's
+   * collection rather than as decoration.
+   *
+   * E até 2026-09-06 nenhuma delas chegou a um pixel: estavam a `floorY + .78`, dentro
+   * de um corpo maciço que ia de `floorY + .16` a `floorY + 1.61`. A altura vem da
+   * cavidade agora, e não de uma constante que ninguém reconferia quando a carcaça
+   * mudava — é a mesma razão pela qual `credenza` devolve `top` em vez de o chamador
+   * recalcular.
+   *
+   * **A paleta continua sendo a antiga, e a primeira tentativa aqui errou por isso.**
+   * Abrindo a frente eu troquei os tons escuros por vivos — dourado, verde, terracota
+   * — e quarenta lombadas acesas viraram uma faixa de blocos de criança atravessando
+   * um quarto que é escuridão com poços de luz. `3A2E26` estar na lista **não** é um
+   * bug por ser a cor da madeira: um disco que quase some contra o móvel é o que faz
+   * os outros lerem como objetos separados. O que faltava era só a frente aberta.
+   *
+   * Uma cor entra, e é `8C3B2E`, para a fileira ter um ponto quente onde o globo bate.
+   */
   const rnd = rng(8123)
-  const spines = ['#5A2321', '#2E4750', '#7A6A4A', '#3A2E26', '#8A5A3C', '#243038']
-  const recGeom = new THREE.BoxGeometry(1, 1.02, .96)
-  for (let i = 0; i < 40; i++) {
+  const spines = ['#5A2321', '#2E4750', '#7A6A4A', '#3A2E26', '#8A5A3C', '#243038', '#8C3B2E']
+  const recAlt = leftTop.cavidade.altura - .10
+  const recGeom = new THREE.BoxGeometry(1, recAlt, LEFT_D - .22)
+  /* a fileira ocupa a cavidade inteira: quarenta discos a um passo fixo enchiam dois
+     terços dela, e uma estante pela metade lê como inacabada e não como espaço */
+  const DISCOS = 60
+  const util = 6.0 - .10 * 2 - .30
+  const passo = util / DISCOS
+  for (let i = 0; i < DISCOS; i++) {
     const rec = new THREE.Mesh(recGeom, new THREE.MeshStandardMaterial({
       color: spines[i % spines.length], roughness: .88, metalness: 0,
     }))
-    rec.scale.x = .035 + rnd() * .02
-    rec.position.set(-2.5 + i * .105, floorY + .78, .06)
+    /* 4 a 7 cm de lombada. Já é grosso para um disco — 5 mm seriam .016 aqui — e é
+       assim de propósito: mais fino que isto e a lombada some no `anisotropy` a seis
+       unidades de distância, que é o enquadramento entregue. */
+    rec.scale.x = .04 + rnd() * .03
+    /* encostados na frente, que é de onde se olha: um disco no fundo da cavidade fica
+       na sombra da própria ilharga */
+    rec.position.set(-util / 2 + passo * (i + .5), leftTop.cavidade.base + recAlt / 2, .10)
     rec.rotation.z = (rnd() - .5) * .05
     left.add(rec)
   }
