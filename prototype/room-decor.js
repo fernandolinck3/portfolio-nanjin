@@ -22,6 +22,7 @@
 
 import * as THREE from 'three'
 import { medir } from './superficie.js'
+import { sheetFor } from './works-art.js'
 
 const BONE = '#C9C2B0', EMBER = '#B4472A', COLD = '#6E8493'
 const GILT = 0xB08D4A
@@ -366,39 +367,61 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
    * Espalhadas, não agrupadas: sete juntas leriam como uma prateleira reservada, e o
    * que se quer dizer é que o trabalho dele está no meio do que ele ouve.
    */
-  const REAIS = obras.length
-  const vao = REAIS ? Math.floor(DISCOS / (REAIS + 1)) : 0
-  const tons = ['#7A2B26', '#2B4560', '#4E5B3A', '#9A7430', '#5B4463', '#2F5A57', '#8A4A2C']
   const discos = []
-
   for (let i = 0; i < DISCOS; i++) {
-    const nth = vao ? Math.round((i - vao) / vao) : -1
-    const obra = (vao && i === vao * (nth + 1) && nth >= 0 && nth < REAIS) ? obras[nth] : null
-
     const rec = new THREE.Mesh(recGeom, new THREE.MeshStandardMaterial({
-      color: obra ? tons[nth % tons.length] : spines[i % spines.length],
-      roughness: obra ? .72 : .88, metalness: 0,
+      color: spines[i % spines.length], roughness: .88, metalness: 0,
     }))
     /* 4 a 7 cm de lombada. Já é grosso para um disco — 5 mm seriam .016 aqui — e é
        assim de propósito: mais fino que isto e a lombada some no `anisotropy` a seis
        unidades de distância, que é o enquadramento entregue. */
-    rec.scale.x = obra ? .085 : .04 + rnd() * .03
-    rec.scale.y = obra ? 1.10 : 1
+    rec.scale.x = .04 + rnd() * .03
     /* encostados na frente, que é de onde se olha: um disco no fundo da cavidade fica
        na sombra da própria ilharga */
-    rec.position.set(
-      -util / 2 + passo * (i + .5),
-      leftTop.cavidade.base + recAlt * (obra ? 1.10 : 1) / 2,
-      obra ? .17 : .10,
-    )
-    rec.rotation.z = obra ? 0 : (rnd() - .5) * .05
-    if (obra) {
-      rec.name = 'acervo:obra'
-      rec.userData.obra = obra.id
-      discos.push(rec)
-    }
+    rec.position.set(-util / 2 + passo * (i + .5), leftTop.cavidade.base + recAlt / 2, .10)
+    rec.rotation.z = (rnd() - .5) * .05
     left.add(rec)
   }
+
+  /**
+   * As obras dele ficam **de frente**, e a lombada era a face errada.
+   *
+   * A primeira tentativa pôs as sete como lombadas salientes no meio da fileira, e
+   * falhou por uma razão que só aparece olhando: uma lombada tem uns dez pixels de
+   * largura no enquadramento da estação. Não dá para ver o que ela é, não dá para
+   * desconfiar que responde ao clique, e sessenta fatias finas coloridas numa caixa
+   * baixa leem como **livros numa mesa** — não como discos.
+   *
+   * Uma capa de frente tem uns cem. Ela é inconfundivelmente um disco, mostra o
+   * trabalho de verdade em vez de uma tarja de cor, e um objeto virado para quem olha
+   * é o que faz uma coisa parecer clicável. É também como uma loja de discos expõe: o
+   * que importa de frente, o resto de perfil atrás.
+   *
+   * A arte é a mesma que sobe no plinto — `works-art.js` desenha uma só folha por obra,
+   * e a capa aqui é aquela folha. Sete telas a mais na memória de vídeo, e é o preço de
+   * o visitante ver o trabalho antes de clicar em vez de depois.
+   */
+  const capaGeo = new THREE.PlaneGeometry(1, 1)
+  const CAPA_H = recAlt * .96
+  const vaoCapa = util / (obras.length + 1)
+  obras.forEach((obra, n) => {
+    const cv = sheetFor(obra, n)
+    const tex = new THREE.CanvasTexture(cv)
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.anisotropy = 8
+    const capa = new THREE.Mesh(capaGeo, new THREE.MeshStandardMaterial({
+      map: tex, roughness: .78, metalness: 0,
+    }))
+    capa.scale.set(CAPA_H * (cv.width / cv.height), CAPA_H, 1)
+    /* na boca da cavidade, encostada na frente — e `repouso` guarda o z para o realce
+       do hover ter de onde sair e para onde voltar */
+    capa.position.set(-util / 2 + vaoCapa * (n + 1), leftTop.cavidade.base + CAPA_H / 2, .34)
+    capa.name = 'acervo:obra'
+    capa.userData.obra = obra.id
+    capa.userData.repouso = capa.position.z
+    discos.push(capa)
+    left.add(capa)
+  })
 
   /* a plant, because every studio has one and it is the only soft thing here */
   const pot = new THREE.Mesh(new THREE.CylinderGeometry(.24, .18, .38, 14),

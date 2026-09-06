@@ -1,136 +1,150 @@
 {
-  "sobre": "As seis estacoes do quarto e o anel de camera que passa por elas. Uma estacao a mais e uma linha a mais aqui, nao uma linha de codigo — ver docs/specs/quarto-navegavel.md e prototype/trilho.js.",
-  "unidades": "Mundo. 3,2 unidades por metro, pela regua da porta. O chao esta em y = -2,95, o tampo do Altar em y = 0.",
-  "olhar": "O centro do que a estacao **e**, e nao a peca de parede que lhe da nome. A primeira montagem mirava a lareira e enquadrava a cornija de perto, com o sofa e a poltrona fora do quadro: a estacao vira uma foto de um objeto em vez do lugar onde alguem senta. O ponto e o centroide do grupo, na altura em que ele acontece.",
-  "camera": {
-    "anel": "Cada camera esta a 40% do caminho entre o centro do quarto e o que a estacao olha. Isso poe o anel inteiro fora da pegada do tampo (|x| < 3,5 · |z| < 2,1), deixa a distancia de leitura entre 5,5 e 7 unidades, e mantem o Altar na periferia do quadro — que e a composicao que a spec pede: a Unidade e o controlador, o quarto e o palco.",
-    "altura": "y = 1.9, ou 1,52 m acima do chao. Mais alto que o olho de quem esta em pe de proposito: o quarto tem 2,31 m de pe-direito e um campo de visao de 38 graus na vertical, entao a unica forma de ter o chao de um grupo no quadro a seis unidades e olhar um pouco de cima."
-  },
-  "estacoes": [
-    {
-      "id": "retrato",
-      "modulo": "identity",
-      "nome": "O retrato",
-      "feita_de": "Lyra emoldurada com a placa de nome, a luz de quadro, o armario gotico ao lado. O busto NAO fica aqui: room-baroque.js o poe na parede direita, perto da oficina, e so no layout cheio.",
-      "olhar": [
-        -5.4,
-        0.9,
-        -10.0
-      ],
-      "camera": [
-        -2.16,
-        1.9,
-        -4.0
-      ],
-      "perto": {
-        "sobre": "A consulta, e a distancia saiu de tres medidas e nao do olho. A regra do anel — camera a 40% do caminho, Altar na periferia — existe para que a estacao seja o lugar onde alguem senta e nao a foto de um objeto. No retrato o objeto E o assunto, e desde que o painel dele passou a fazer perguntas ele tambem e o unico controle da estacao. A 2,4 unidades a Lyra ocupava a tela inteira: o visitante ficava dentro da cara dela. A 4,24 a moldura cabia na largura mas nao na altura — medido no quadro de 2016 por 1260, a borda de baixo da abertura caia 113 pixels ABAIXO da tela, e junto com ela a caixa de dialogo inteira, que ocupa o quinto de baixo do painel. A 5,15 a moldura modelada inteira entra com folga de uns 37 pixels em cima e embaixo, a celula do desenho dela cai de 21 para 19 pixels de tela, e uma linha da caixa mede 44 pixels de altura — alvo de clique de verdade, e nao um alvo de sorte. O olhar desceu de 1,10 para 0,80 pelo mesmo motivo: 0,80 e o centro do painel, e mirar acima do centro gastava altura de tela em parede. Essa pose e a de tela larga. `cabe` e a meia-largura em unidades que TEM de caber, e o trilho recua a camera quando o aspecto nao a entrega: o fov do three.js e vertical e nada neste projeto compensa aspecto, entao num quadro de 402 por 874 o painel ia de x = -63 a x = 465 e as duas pontas de cada pergunta ficavam fora da tela. 1,12 e a meia-largura do painel (1,074) com 4% de folga — a moldura pode sair pelos lados, as perguntas nao. O painel acustico da esquerda entra na borda: ele e parede do quarto e estar ao lado dela e contexto — o que era erro era ele estar por cima.",
-        "olhar": [
-          -5.35,
-          0.8,
-          -10.74
-        ],
-        "camera": [
-          -5.35,
-          1.0,
-          -5.59
-        ],
-        "cabe": 1.12
-      }
-    },
-    {
-      "id": "acervo",
-      "modulo": "projects",
-      "nome": "O acervo",
-      "feita_de": "A baia de 40 discos na parede esquerda, o plinto da invocacao ao lado",
-      "olhar": [
-        -9.1,
-        -0.3,
-        -5.4
-      ],
-      "camera": [
-        -3.64,
-        1.9,
-        -2.16
-      ]
-    },
-    {
-      "id": "porta",
-      "modulo": "contact",
-      "nome": "A porta",
-      "feita_de": "A porta almofadada, o console da entrada, o armario gotico ao fundo",
-      "olhar": [
-        -10.4,
-        0.2,
-        5.8
-      ],
-      "camera": [
-        -4.16,
-        1.9,
-        2.32
-      ]
-    },
-    {
-      "id": "leitura",
-      "modulo": "criteria",
-      "nome": "A leitura",
-      "feita_de": "A estante de seis prateleiras, a cadeira virada para dentro do quarto",
-      "olhar": [
-        9.8,
-        0.0,
-        4.8
-      ],
-      "camera": [
-        3.92,
-        1.9,
-        1.92
-      ],
-      "por_que": "CRITERIOS sao cinco principios num layout de indice, e uma estante e onde doutrina fica escrita. A estante tem seis prateleiras, medidas pelo histograma de `prateleiras()` em room-mobilia.js: cinco principios cabem com uma sobrando."
-    },
-    {
-      "id": "lareira",
-      "modulo": "path",
-      "nome": "A lareira",
-      "feita_de": "A lareira e a cornija, o sofa e a poltrona sobre o segundo tapete",
-      "olhar": [
-        8.8,
-        -0.6,
-        -1.9
-      ],
-      "camera": [
-        3.52,
-        1.9,
-        -0.76
-      ],
-      "por_que": "TRAJETO e uma cronologia, e uma cronologia quer uma linha — a cornija da lareira e uma linha. E a lareira e onde se reconta: sofa e poltrona virados para o fogo sao o lugar do \"onde eu trabalhei\"."
-    },
-    {
-      "id": "oficina",
-      "modulo": "skills",
-      "nome": "A oficina",
-      "feita_de": "A baia de pedais, os cabos, os dois monitores, e o busto no pedestal quando o layout e cheio",
-      "olhar": [
-        10.0,
-        -0.2,
-        -4.4
-      ],
-      "camera": [
-        4.0,
-        1.9,
-        -1.76
-      ]
-    }
-  ],
-  "panorama": {
-    "sobre": "O quarto inteiro, visto de dentro. Nao e estacao e nao e Modulo: e a mesma posicao do Altar, vista de longe. Daqui tres estacoes caem na tela e o quarto fica clicavel; de perto, nenhuma cai, e foi por isso que a vista de trabalho da CDJ nao pode ser a unica.",
+ "sobre": "As seis estacoes do quarto e o anel de camera que passa por elas. Uma estacao a mais e uma linha a mais aqui, nao uma linha de codigo — ver docs/specs/quarto-navegavel.md e prototype/trilho.js.",
+ "unidades": "Mundo. 3,2 unidades por metro, pela regua da porta. O chao esta em y = -2,95, o tampo do Altar em y = 0.",
+ "olhar": "O centro do que a estacao **e**, e nao a peca de parede que lhe da nome. A primeira montagem mirava a lareira e enquadrava a cornija de perto, com o sofa e a poltrona fora do quadro: a estacao vira uma foto de um objeto em vez do lugar onde alguem senta. O ponto e o centroide do grupo, na altura em que ele acontece.",
+ "camera": {
+  "anel": "Cada camera esta a 40% do caminho entre o centro do quarto e o que a estacao olha. Isso poe o anel inteiro fora da pegada do tampo (|x| < 3,5 · |z| < 2,1), deixa a distancia de leitura entre 5,5 e 7 unidades, e mantem o Altar na periferia do quadro — que e a composicao que a spec pede: a Unidade e o controlador, o quarto e o palco.",
+  "altura": "y = 1.9, ou 1,52 m acima do chao. Mais alto que o olho de quem esta em pe de proposito: o quarto tem 2,31 m de pe-direito e um campo de visao de 38 graus na vertical, entao a unica forma de ter o chao de um grupo no quadro a seis unidades e olhar um pouco de cima."
+ },
+ "estacoes": [
+  {
+   "id": "retrato",
+   "modulo": "identity",
+   "nome": "O retrato",
+   "feita_de": "Lyra emoldurada com a placa de nome, a luz de quadro, o armario gotico ao lado. O busto NAO fica aqui: room-baroque.js o poe na parede direita, perto da oficina, e so no layout cheio.",
+   "olhar": [
+    -5.4,
+    0.9,
+    -10.0
+   ],
+   "camera": [
+    -2.16,
+    1.9,
+    -4.0
+   ],
+   "perto": {
+    "sobre": "A consulta, e a distancia saiu de tres medidas e nao do olho. A regra do anel — camera a 40% do caminho, Altar na periferia — existe para que a estacao seja o lugar onde alguem senta e nao a foto de um objeto. No retrato o objeto E o assunto, e desde que o painel dele passou a fazer perguntas ele tambem e o unico controle da estacao. A 2,4 unidades a Lyra ocupava a tela inteira: o visitante ficava dentro da cara dela. A 4,24 a moldura cabia na largura mas nao na altura — medido no quadro de 2016 por 1260, a borda de baixo da abertura caia 113 pixels ABAIXO da tela, e junto com ela a caixa de dialogo inteira, que ocupa o quinto de baixo do painel. A 5,15 a moldura modelada inteira entra com folga de uns 37 pixels em cima e embaixo, a celula do desenho dela cai de 21 para 19 pixels de tela, e uma linha da caixa mede 44 pixels de altura — alvo de clique de verdade, e nao um alvo de sorte. O olhar desceu de 1,10 para 0,80 pelo mesmo motivo: 0,80 e o centro do painel, e mirar acima do centro gastava altura de tela em parede. Essa pose e a de tela larga. `cabe` e a meia-largura em unidades que TEM de caber, e o trilho recua a camera quando o aspecto nao a entrega: o fov do three.js e vertical e nada neste projeto compensa aspecto, entao num quadro de 402 por 874 o painel ia de x = -63 a x = 465 e as duas pontas de cada pergunta ficavam fora da tela. 1,12 e a meia-largura do painel (1,074) com 4% de folga — a moldura pode sair pelos lados, as perguntas nao. O painel acustico da esquerda entra na borda: ele e parede do quarto e estar ao lado dela e contexto — o que era erro era ele estar por cima.",
     "olhar": [
-      0,
-      2.44,
-      0
+     -5.35,
+     0.8,
+     -10.74
     ],
     "camera": [
-      0,
-      3.4,
-      10.46
-    ]
+     -5.35,
+     1.0,
+     -5.59
+    ],
+    "cabe": 1.12
+   }
+  },
+  {
+   "id": "acervo",
+   "modulo": "projects",
+   "nome": "O acervo",
+   "feita_de": "A baia de 40 discos na parede esquerda, o plinto da invocacao ao lado",
+   "olhar": [
+    -9.1,
+    -0.3,
+    -5.4
+   ],
+   "camera": [
+    -3.64,
+    1.9,
+    -2.16
+   ],
+   "perto": {
+    "sobre": "A estante de perto, e a distancia vem da capa e nao do olho. As sete obras estao de frente na boca da cavidade, e no repouso da estacao uma capa mede uns cem pixels de largura: da para ver que ha alguma coisa ali, nao da para ver qual. `cabe` 3.0 poe tres capas na largura do quadro, que e o que uma caixa de discos entrega a quem se abaixa para folhear — e e a mesma forma do `perto` do retrato, onde o objeto tambem E o assunto e tambem e o controle.",
+    "olhar": [
+     -10.2,
+     -2.05,
+     -4.4
+    ],
+    "camera": [
+     -6.9,
+     -1.35,
+     -4.4
+    ],
+    "cabe": 3.0
+   }
+  },
+  {
+   "id": "porta",
+   "modulo": "contact",
+   "nome": "A porta",
+   "feita_de": "A porta almofadada, o console da entrada, o armario gotico ao fundo",
+   "olhar": [
+    -10.4,
+    0.2,
+    5.8
+   ],
+   "camera": [
+    -4.16,
+    1.9,
+    2.32
+   ]
+  },
+  {
+   "id": "leitura",
+   "modulo": "criteria",
+   "nome": "A leitura",
+   "feita_de": "A estante de seis prateleiras, a cadeira virada para dentro do quarto",
+   "olhar": [
+    9.8,
+    0.0,
+    4.8
+   ],
+   "camera": [
+    3.92,
+    1.9,
+    1.92
+   ],
+   "por_que": "CRITERIOS sao cinco principios num layout de indice, e uma estante e onde doutrina fica escrita. A estante tem seis prateleiras, medidas pelo histograma de `prateleiras()` em room-mobilia.js: cinco principios cabem com uma sobrando."
+  },
+  {
+   "id": "lareira",
+   "modulo": "path",
+   "nome": "A lareira",
+   "feita_de": "A lareira e a cornija, o sofa e a poltrona sobre o segundo tapete",
+   "olhar": [
+    8.8,
+    -0.6,
+    -1.9
+   ],
+   "camera": [
+    3.52,
+    1.9,
+    -0.76
+   ],
+   "por_que": "TRAJETO e uma cronologia, e uma cronologia quer uma linha — a cornija da lareira e uma linha. E a lareira e onde se reconta: sofa e poltrona virados para o fogo sao o lugar do \"onde eu trabalhei\"."
+  },
+  {
+   "id": "oficina",
+   "modulo": "skills",
+   "nome": "A oficina",
+   "feita_de": "A baia de pedais, os cabos, os dois monitores, e o busto no pedestal quando o layout e cheio",
+   "olhar": [
+    10.0,
+    -0.2,
+    -4.4
+   ],
+   "camera": [
+    4.0,
+    1.9,
+    -1.76
+   ]
   }
+ ],
+ "panorama": {
+  "sobre": "O quarto inteiro, visto de dentro. Nao e estacao e nao e Modulo: e a mesma posicao do Altar, vista de longe. Daqui tres estacoes caem na tela e o quarto fica clicavel; de perto, nenhuma cai, e foi por isso que a vista de trabalho da CDJ nao pode ser a unica.",
+  "olhar": [
+   0,
+   2.44,
+   0
+  ],
+  "camera": [
+   0,
+   3.4,
+   10.46
+  ]
+ }
 }

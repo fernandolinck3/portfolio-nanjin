@@ -3919,6 +3919,9 @@ function pickQuarto(e) {
 /** O flanco de `trilho.perto`, lido no laço. Ver o guarda no fim do quadro. */
 let consultando = false;
 
+/** A capa do acervo sob o ponteiro, para saber qual devolver ao lugar. */
+let capaSobre = null;
+
 function pickRetrato(e) {
   if (ROOM_K === 0 || !portrait.group) return null;
   const r = frameRect(), p = pt(e);
@@ -4244,10 +4247,19 @@ function tocarAcervo(hit) {
   const w = WORKS.find(x => x.id === hit.object.userData.obra);
   if (!w) return false;
   const est = trilho.estacaoDe('projects');
-  if (est && trilho.estacao !== est) {
+  if (!est) return abrirObra(w, 'acervo');
+  /**
+   * Três estados, como no retrato: longe se aproxima, na estação chega perto, e **perto
+   * abre**. Abrir de longe puliria a etapa em que o visitante vê qual capa é qual — que
+   * é a etapa inteira desta estação, porque no repouso uma capa mede uns cem pixels e
+   * dá para ver que há algo ali sem dar para ver o quê.
+   */
+  if (trilho.estacao !== est) {
     const i = MODULES.findIndex(x => x.id === 'projects');
-    if (i >= 0) { pressPad(i); flashLcd(`O ACERVO · ${w.title}`); return true; }
+    if (i >= 0) { pressPad(i); flashLcd('O ACERVO'); return true; }
+    return false;
   }
+  if (!trilho.perto && trilho.irPara(est, { perto: true })) { flashLcd('MAIS PERTO'); return true; }
   return abrirObra(w, 'acervo');
 }
 
@@ -4918,6 +4930,23 @@ el.addEventListener('pointermove', e => {
         -((pp.y - rr.top) / rr.height) * 2 + 1,
       ]);
     } else portrait.mirar(null);
+
+    /**
+     * A capa sob o ponteiro sai um pouco da caixa.
+     *
+     * É o gesto de quem folheia uma caixa de discos, e é a resposta ao defeito que a
+     * cena tinha: nada ali dizia que respondia ao clique. Um objeto que se move quando
+     * o ponteiro passa diz isso sem rótulo, sem cursor especial e sem legenda.
+     *
+     * Move-se a posição e não a escala: uma capa que cresce lê como um botão de página,
+     * uma que **avança** lê como um objeto sendo puxado da caixa.
+     */
+    const naCapa = !ctl ? pickAcervo(e) : null;
+    if (naCapa?.object !== capaSobre) {
+      if (capaSobre) capaSobre.position.z = capaSobre.userData.repouso;
+      capaSobre = naCapa?.object || null;
+      if (capaSobre) capaSobre.position.z = capaSobre.userData.repouso + .18;
+    }
 
     const hitRetrato = !ctl ? pickRetrato(e) : null;
     const sobreRetrato = !!hitRetrato;

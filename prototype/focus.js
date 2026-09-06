@@ -26,7 +26,10 @@ import { UI } from '../src/content/strings.ts'
  * feels right.
  */
 
-const EASE = t => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+/* Quintica, e nao cubica: num percurso de nove unidades a cubica ainda chega rapido
+   demais no fim. O que se quer e sair devagar, atravessar, e **pousar** — a chegada e a
+   parte que o visitante olha. */
+const EASE = t => (t < .5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2)
 
 /**
  * Resolve a Work's still against the deployed base path.
@@ -528,7 +531,16 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
   /* ---------- state ---------- */
   let phase = 'idle'          // idle | in | held | out
   let k = 0                   // 0 .. 1
-  const DUR = 0.78
+  /**
+   * O voo dura conforme a distancia, e antes era fixo.
+   *
+   * 0.78s foi ajustado quando o destino era a Tela, a duas unidades e meia da pose de
+   * repouso. Agora ele atravessa o quarto ate o plinto — nove unidades — e a mesma
+   * duracao naquela distancia nao le como um movimento, le como um corte borrado. Um
+   * so numero nao serve a dois percursos que diferem por quatro vezes.
+   */
+  const DUR_MIN = 0.78, DUR_MAX = 1.9, POR_UNIDADE = 0.075
+  let dur = DUR_MIN
   const from = { pos: new THREE.Vector3(), quat: new THREE.Quaternion() }
   let to = null
   let current = null
@@ -875,6 +887,7 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
      */
     const q = alvo?.()
     to = q ? uprightFillPose(camera, q) : screenFillPose(camera, screen)
+    dur = Math.min(DUR_MAX, DUR_MIN + from.pos.distanceTo(to.pos) * POR_UNIDADE)
     phase = 'in'; k = 0
     /* focus moves in as soon as the panel exists, not when the flight lands: the
        flight is half a second and a keyboard user should not be stranded for it */
@@ -995,7 +1008,7 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
   function update(dt) {
     if (phase === 'idle') return
     if (phase === 'held') return
-    k = Math.min(1, k + dt / DUR)
+    k = Math.min(1, k + dt / dur)
     const e = EASE(k)
 
     if (phase === 'in') {
