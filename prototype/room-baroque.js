@@ -110,6 +110,12 @@ export function createBaroque(room, {
   const PLASTER = new THREE.MeshStandardMaterial({
     color: 0x4F4840, roughness: .95, metalness: 0,
   })
+  /* O ouro mais apagado da casa, e ele existe para uma peca so: o filete das almofadas
+     da porta. `GILT_DARK` ja e o dourado de sombra, e mesmo ele, repetido doze vezes em
+     linhas finas numa folha escura, punha o ouro de volta como assunto da estacao. */
+  const FILETE = new THREE.MeshStandardMaterial({
+    color: 0x5C4820, metalness: 1, roughness: .62,
+  })
   /* Bronze, for the bust: a pale bust is a chess piece, and this room has enough
      light-coloured mass in it already. */
   const BRONZE = new THREE.MeshStandardMaterial({
@@ -715,10 +721,16 @@ export function createBaroque(room, {
     for (let r = 0; r < 3; r++) {
       for (const c of [-1, 1]) {
         const y = 1.15 + r * 2.05
+        /* Fino e apagado, e as duas coisas foram medidas na tela e nao decididas na
+           folha. A 1,42 por 1,82 com chanfro de 0,03 o filete lia como uma moldura
+           laranja grossa em volta de cada almofada — o ouro voltava a ser o assunto,
+           que era o defeito que ele veio consertar. Metade da sobra e um dourado
+           proprio, mais escuro que o `GILT_DARK` do resto: numa sala a luz de vela um
+           filete de ouro **encosta** na luz, ele nao a devolve. */
         const filete = new THREE.Mesh(
-          new THREE.ExtrudeGeometry(roundedShape(1.42, 1.82, .10),
-            { depth: .05, bevelEnabled: true, bevelThickness: .03, bevelSize: .03, bevelSegments: 2 }),
-          GILT_DARK)
+          new THREE.ExtrudeGeometry(roundedShape(1.36, 1.76, .10),
+            { depth: .04, bevelEnabled: true, bevelThickness: .015, bevelSize: .015, bevelSegments: 2 }),
+          FILETE)
         filete.position.set(c * .78, y, .10)
         door.add(filete)
         const panel = new THREE.Mesh(

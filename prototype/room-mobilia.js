@@ -320,6 +320,45 @@ const MOBILIA = [
      `y` e o topo do pedestal, `floorY + 2,44`. E por isso que ele nao ganha mancha no
      chao: a base dele nao encosta no chao, e uma sombra de contato a dois metros e
      meio do objeto que a projeta e pior do que sombra nenhuma. */
+  /**
+   * O relogio na cornija da lareira, e ele e o Modulo em forma de objeto.
+   *
+   * TRAJETO e uma cronologia, e o `trilho.json` diz que a estacao e a lareira porque
+   * uma cronologia quer uma linha e a cornija e uma linha. Um relogio de cornija e a
+   * mesma frase dita outra vez, com a vantagem de ser a coisa que **mede** o tempo em
+   * vez de representa-lo.
+   *
+   * **E ele nao fica na cornija, que era o lugar obvio.** Medido: a prateleira da
+   * lareira esta em `y = 1,05` e projeta em `y = 81` de tela num quadro de 800 — a
+   * borda de cima — e o relogio em cima dela saia **fora do quadro**. A estacao nao
+   * mira a lareira: o `trilho.json` diz que o ponto e o centroide do grupo, e o grupo e
+   * o sofa e a poltrona sobre o tapete. A cornija esta na estacao; nao esta na foto.
+   *
+   * O que esta no meio do quadro, medido, e o topo da credenza da direita — `y = -1,49`
+   * projetando em `(680, 380)` de 1706 por 800. Um relogio de prateleira numa credenza
+   * de discos e a mesma peca no mesmo tipo de lugar, com a diferenca de que se ve.
+   *
+   * Ver `montar` — `y` troca o chao por outro plano de apoio.
+   */
+  {
+    arq: 'mantel_clock_01/mantel_clock_01_1k.gltf', m: .38, pos: [10.6, -2.55],
+    y: -1.49, ry: -Math.PI / 2, cor: 0x8E7A5E, layout: 'cheio',
+  },
+
+  /**
+   * O vaso no console da entrada.
+   *
+   * A estacao PORTA tinha um console entalhado com nada em cima. Um aparador vazio le
+   * como movel de catalogo pela mesma razao que uma estante vazia le — e o argumento
+   * que `encher` ja faz para a estante. Ceramica e nao latao de proposito: aquele canto
+   * ja tem a macaneta, o filete das almofadas e a arandela, e mais um dourado ali seria
+   * o quarto inteiro feito do mesmo material.
+   */
+  {
+    arq: 'antique_ceramic_vase_01/antique_ceramic_vase_01_1k.gltf', m: .34,
+    pos: [-10.2, 6.4], y: -.33, ry: .7, cor: 0x9A8E7E, layout: 'cheio',
+  },
+
   {
     arq: 'marble_bust_01/marble_bust_01_1k.gltf', m: .52, pos: [10.1, -6.88],
     /* O tint desce para 0x8E8478 e nao e correcao de cor, e de composicao. O mapa da
@@ -396,13 +435,35 @@ export function createMobilia(room, { floorY, layout = 'cheio' }) {
 
     raiz.traverse(o => {
       if (!o.isMesh) return
+      /**
+       * **O relevo e a rugosidade ficam; a cor continua nossa.**
+       *
+       * Isto guardava so o `map` e punha rugosidade 0,86 chapada em tudo. As duas
+       * outras metades do PBR — normal e roughness — vinham no download, eram
+       * decodificadas, e eram **descartadas na linha seguinte**: banda paga por nada, e
+       * todo movel do quarto com o mesmo acabamento fosco, que e metade do motivo de
+       * eles lerem como render de catalogo apesar de serem malhas de verdade.
+       *
+       * O que a decisao original protegia era a **cor**, e ela continua protegida: o
+       * `color` do item multiplica por cima, e e o que impede um sofa de chegar com a
+       * cor do estudio de quem o fotografou. E a mesma regra da parede, da porta e do
+       * `VELVET` — a fotografia sabe como um material se comporta e nao tem opiniao que
+       * valha sobre que cor este objeto tem nesta sala.
+       *
+       * `roughness` vai a 1 quando ha mapa porque ai ele **multiplica** em vez de
+       * substituir; sem mapa fica 0,86, como antes.
+       */
       const antigo = o.material
+      const temRug = !!antigo?.roughnessMap
       o.material = new THREE.MeshStandardMaterial({
         map: antigo?.map || null,
+        normalMap: antigo?.normalMap || null,
+        roughnessMap: antigo?.roughnessMap || null,
         color: item.cor,
-        roughness: .86,
+        roughness: temRug ? 1 : .86,
         metalness: 0,
       })
+      o.material.normalScale.set(.7, .7)
       antigo?.dispose?.()
       /* `groundShadows` roda uma vez no topo de `scene.js`, muito antes destes
          carregamentos terminarem. A política é a mesma dele, escrita aqui à mão:
