@@ -91,13 +91,36 @@ function screenFillPose(camera, { centre, width, depth }) {
 }
 
 /**
+ * Onde a câmera tem de ficar para uma coisa **em pé** preencher o quadro.
+ *
+ * O irmão de cima serve para a Tela, que está deitada numa placa horizontal: ele
+ * sobe a câmera na vertical e torce o `up` para o desenho não chegar de cabeça para
+ * baixo. A peça no plinto é o caso normal — um plano vertical de frente para +z — e
+ * o caso normal não cabe naquela função, porque ela não tem para onde ir senão para
+ * cima.
+ *
+ * A margem é a mesma 1.08, e por isso: uma peça que toca as bordas do quadro lê como
+ * recortada, e recortada é exatamente o que a Tela era antes de o `focus` existir.
+ */
+function uprightFillPose(camera, { centro, largura, altura }) {
+  const vFov = THREE.MathUtils.degToRad(camera.fov)
+  const forHeight = (altura / 2) / Math.tan(vFov / 2)
+  const forWidth = (largura / 2) / (Math.tan(vFov / 2) * camera.aspect)
+  const dist = Math.max(forHeight, forWidth) * 1.08
+
+  const pos = new THREE.Vector3(centro.x, centro.y, centro.z + dist)
+  const m = new THREE.Matrix4().lookAt(pos, centro, new THREE.Vector3(0, 1, 0))
+  return { pos, quat: new THREE.Quaternion().setFromRotationMatrix(m) }
+}
+
+/**
  * @param camera        the scene camera
  * @param mount         element to put the panel in (the stage)
  * @param screen        { centre: Vector3, width, depth } of the Screen in world space
  * @param onProgress    0 idle -> 1 fully focused; the room dims on this
  * @param restore       called on exit, to hand the camera back to the rig
  */
-export function createFocus({ camera, mount, screen, onProgress, restore, onStep }) {
+export function createFocus({ camera, mount, screen, alvo, onProgress, restore, onStep }) {
   /* ---------- the panel ---------- */
   const panel = document.createElement('div')
   panel.className = 'work-panel'
@@ -836,7 +859,22 @@ export function createFocus({ camera, mount, screen, onProgress, restore, onStep
        overwrite it with a button inside the panel */
     opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
     from.pos.copy(camera.position); from.quat.copy(camera.quaternion)
-    to = screenFillPose(camera, screen)
+    /**
+     * O voo aterra na peça, e cai na Tela se não houver peça.
+     *
+     * O cabeçalho deste arquivo diz que ele **reverte a ADR-0017** porque 320x180
+     * esticado é mingau para a fotografia de um pôster, e isso continua verdade: o
+     * conteúdo continua sendo DOM em resolução cheia. O que muda é só *onde a câmera
+     * pousa antes de o painel abrir* — e pousar na peça acesa no plinto, com o quarto
+     * se apagando na mesma curva, é a chegada que a ADR-0017 queria e que o voo até a
+     * Tela não dava. As duas decisões não estavam em conflito; estavam em camadas
+     * diferentes, e uma delas ficou sem ser reaproveitada.
+     *
+     * `alvo` pode devolver nada — nenhuma obra aplicada, plinto ausente — e nesse
+     * caso o comportamento antigo é o certo, não um erro.
+     */
+    const q = alvo?.()
+    to = q ? uprightFillPose(camera, q) : screenFillPose(camera, screen)
     phase = 'in'; k = 0
     /* focus moves in as soon as the panel exists, not when the flight lands: the
        flight is half a second and a keyboard user should not be stranded for it */

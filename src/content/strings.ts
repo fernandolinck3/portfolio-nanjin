@@ -92,6 +92,18 @@ export function stringsFor(locale: Locale) {
     voltarPainel: t('‹ voltar', '‹ back'),
     outraPergunta: t('‹ outra pergunta', '‹ another question'),
 
+    /**
+     * A placa da peça no plinto.
+     *
+     * Estes três estavam cravados em inglês dentro do `render.js` desde sempre, e
+     * ninguém os viu porque **o estado que os desenha era inalcançável** — as funções
+     * que disparavam a Invocação não eram chamadas de lugar nenhum. Ligar o rito
+     * tornou-os visíveis, numa página cujo `lang` é `pt-BR`.
+     */
+    noPlinto: t('NO PLINTO', 'ON THE PLINTH'),
+    devolver: t('CLIQUE PARA DEVOLVER', 'CLICK TO SEND IT BACK'),
+    provisorio: t('PROVISÓRIO', 'PLACEHOLDER'),
+
     /** Um convite, não uma exigência: a página funciona virada, só fica menor. */
     turnPhone: t('Vire o celular para uma tela maior', 'Turn your phone for a larger screen'),
 

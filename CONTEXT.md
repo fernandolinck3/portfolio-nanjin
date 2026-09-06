@@ -53,6 +53,20 @@ fitted by measurement rather than chosen. Ruled by Fernando when the divergence 
 a side chapel, not a ritual site.
 _Avoid_: table, desk, plinth, scene
 
+**Station**:
+One of the six places in the room that a Module belongs to, and the pose on the Trilho that frames
+it. A Station is a **stage, not a display**: it is where that Module's content would plausibly live,
+and the content itself still arrives through the Screen and the Plinth. So its objects are scenery,
+and what it owes the visitor is a place that is credible and lit — by the Pool rule, a Station with
+no source in it is not a Station.
+_Avoid_: scene, view, viewpoint, shot, camera, waypoint, hotspot
+
+**Trilho**:
+The closed ring of camera poses through the six Stations, read from `public/quarto/trilho.json` so
+that one more Station is one more line of data. Kept in Portuguese because it is a rail, and the
+English "track" collides with audio.
+_Avoid_: track, rail, path, tour, spline
+
 **Candle**:
 One of three gilt candlesticks standing on the Altar. They are the Vigil's visible body: each holds
 a live flame and its own light, and they go out one at a time as the Vigil rises, until only the
@@ -96,16 +110,23 @@ a site, a poster — which is why it cannot live on the Screen and is summoned t
 _Avoid_: piece, case study, portfolio item, project (Project 001 means the Unit)
 
 **Plinth**:
-The stone pedestal standing off the Altar's right shoulder. It is empty until a Work is called to
-it, which is what makes calling one an event. The Work stands on it lit from below, and the Screen
-becomes its plaque — the image where there is room for it, the words where words are legible.
+The stone pedestal in the Acervo, beside the bay of records. It is empty until a Work is called to
+it, which is what makes calling one an event. The Work stands on it lit from below, carrying its own
+number, name and kind printed on it — so the Plinth needs no plaque beside it, and the Screen is not
+one. It stood off the Altar's right shoulder until `summon.js` moved it here: a plinth against the
+table does not say where the piece came from. It is therefore the **subject** of the Acervo, not its
+scenery — which the bay of records is.
 _Avoid_: pedestal, stand, podium, display
 
 **Summoning**:
-The rite that brings a Work to the Plinth. The visitor clicks a Work on the Screen and the room puts
-itself out — the Candles gutter, the Plinth takes light, the Work assembles out of motes. Turning
-the Sun, or clicking the Screen again, sends it back and hands the Vigil to the visitor. The Vigil is
-borrowed for the duration, never kept.
+The rite that brings a Work to the Plinth. The visitor clicks a Work on the Screen at the Altar, the
+Trilho carries them to the Acervo, and there the room puts itself out — the Candles gutter, the
+Plinth takes light, the Work assembles out of motes. Turning the Sun, or clicking the Screen again,
+sends it back. **Borrowed, never kept**: the Vigil and the camera both return where they were.
+
+The camera travels because the Work cannot be seen from the Altar and the Screen cannot be read from
+the Acervo — the Screen is *behind* the camera there, not merely small. So the piece is watched where
+it stands and the case is read where the Screen is legible, and the rite is the trip between them.
 _Avoid_: modal, lightbox, detail view, popup
 
 **Portrait**:

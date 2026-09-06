@@ -14,6 +14,7 @@
    continuity between frames.
 */
 import { MODULES, WORKS, GAP, ECLIPSE, LYRA_NAME, lyraAt, LYRA_IDLE_MS } from '../../src/content/modules.ts'
+import { UI } from '../../src/content/strings.ts'
 import { EMBLEMS, disc, ring } from './sprites.js'
 import { drawWizard, drawRaven, updateRaven, flush, drawSpell, castHand,
          heldOrbs, heldBook, heldUnit, drawRobe } from './figure.js'
@@ -671,7 +672,7 @@ function drawWorks(x0, bodyW, top) {
     const w = WORKS[plinthWork]
     let y = top
     g.font = '8px Silkscreen, monospace'; g.fillStyle = GOLD
-    g.fillText('ON THE PLINTH', x0, y); y += 16
+    g.fillText(UI.noPlinto, x0, y); y += 16
 
     g.font = '17px UnifrakturMaguntia, serif'; g.fillStyle = INK
     g.fillText(w.title, x0, y); y += 13
@@ -685,10 +686,10 @@ function drawWorks(x0, bodyW, top) {
     if (w.placeholder) {
       y += 3
       g.font = '8px Silkscreen, monospace'; g.fillStyle = GOLD
-      g.fillText('PLACEHOLDER', x0, y); y += 12
+      g.fillText(UI.provisorio, x0, y); y += 12
     }
     g.font = '8px Silkscreen, monospace'; g.fillStyle = DIM
-    g.fillText('CLICK TO SEND IT BACK', x0, FLOOR - 2)
+    g.fillText(UI.devolver, x0, FLOOR - 2)
     return
   }
 

@@ -69,9 +69,16 @@ O Altar no centro não é módulo: é de onde se comanda.
 | 1 | O retrato | QUEM | `−5,4 · −10,4` | Lyra emoldurada, o busto, a luz de quadro |
 | 2 | O acervo | PROJETOS | `−9,6 · −4,4` | A baia de 40 discos, o plinto ao lado |
 | 3 | A porta | CONTATO | `−10,2 · +4,9` | A porta almofadada, o armário gótico |
-| 4 | A leitura | TRAJETO | `+9,6 · +3,6` | A estante com livros, a poltrona |
-| 5 | A lareira | CRITÉRIOS | `+9,2 · −1,0` | Lareira, poltrona e sofá virados para ela |
+| 4 | A leitura | CRITÉRIOS | `+9,6 · +3,6` | A estante com livros, a poltrona |
+| 5 | A lareira | TRAJETO | `+9,2 · −1,0` | Lareira, poltrona e sofá virados para ela |
 | 6 | A oficina | HABILIDADES | `+9,4 · −5,6` | Baia de pedais, cabos, os dois monitores |
+
+> **Estas duas linhas estavam trocadas** até 2026-09-06: a tabela dizia leitura → TRAJETO e
+> lareira → CRITÉRIOS, e `public/quarto/trilho.json` sempre entregou o contrário. Resolvido a favor
+> do JSON, e a razão é a que uma Estação é: uma estante é um cânone — as coisas em que se acredita,
+> enfileiradas, cada uma um título que se pode conferir — e CRITÉRIOS é uma lista de afirmações.
+> Duas poltronas viradas para o fogo é onde se olha para trás e se conta de onde se veio. **O JSON é
+> a verdade das coordenadas e dos Módulos; esta tabela é a leitura dela.**
 
 O trilho é um anel fechado passando por 1→6, e **sai de um JSON de pontos de controle** — não
 codificado à mão. É o que o basement faz com o próprio `blender-bezier-exporter`, e faz de uma

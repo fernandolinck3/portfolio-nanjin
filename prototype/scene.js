@@ -1386,7 +1386,7 @@ let xfVal = 1 - Math.max(0, Math.min(100, +(new URLSearchParams(location.search)
 
 /* Declared up here, not down with the rest of the rite, because `drawScreen` runs
    once at module load to fill the texture and reads this. */
-let rite = { phase: 'idle', work: -1, k: 0, restore: 0 };
+let rite = { phase: 'idle', work: -1, k: 0, restore: 0, subiu: false };
 
 /**
  * The Screen is drawn by `screen/render.js` — the same renderer the workbench
@@ -2259,7 +2259,21 @@ function updateFader(dt) {
    * out. Left is night, so left is Vigil 1.
    */
   const wantVigil = 1 - xfVal;
-  if (Math.abs(wantVigil - vigil) > 1e-4) {
+  /**
+   * O rito toma a Vigília emprestada, e este é o dono dela.
+   *
+   * `rite.phase !== 'idle'` é a única exceção, e ela existe porque este bloco
+   * **reescreve `vigil` a partir do crossfader em todo quadro em que os dois
+   * discordam** — que é exatamente o que o rito faz de propósito. Sem a guarda, a
+   * Invocação punha o quarto na noite e o quadro seguinte o trazia de volta, e o
+   * resultado medido era uma Vigília teimosamente em 0 com a peça já de pé.
+   *
+   * Não é o rito escapando do dono: o fader **não se mexe**, então quando o rito
+   * acaba este bloco volta a valer e traz a Vigília de volta para onde a mão do
+   * visitante deixou. Emprestada, nunca guardada, e o dono continua sendo o mesmo
+   * (ADR-0009).
+   */
+  if (rite.phase === 'idle' && Math.abs(wantVigil - vigil) > 1e-4) {
     setVigil(wantVigil);
     if (active === 'fader') flashLcd('LUZ · ' + lightName(xfVal) + ' · ' + Math.round(xfVal * 100) + '%', 900);
   }
@@ -4220,7 +4234,14 @@ function sunEnter() {
     /* `flashLcd` syncs, but it runs *before* the overlay opens — and opening a Work
        is the one state change on this object that does not end in `drawScreen()`. So
        it is said again afterwards, here and at the click that closes it. */
-    if (w) { flashLcd(`ABRIR · ${w.title}`); track('work_open', { work: w.id }); focus.enter(w); syncMirror(); }
+    if (w) {
+      flashLcd(`ABRIR · ${w.title}`); track('work_open', { work: w.id });
+      /* a Invocação antes do voo: `focus.enter` lê `summoning.quadro()` para saber
+         onde pousar, e o quadro depende da obra aplicada — pôster é retrato, site é
+         paisagem, e a altura muda com isso */
+      summonWork(WORKS.indexOf(w));
+      focus.enter(w); syncMirror();
+    }
     return;
   }
   /* The form stays on the page, so it is the one route that does not announce a
@@ -5933,58 +5954,77 @@ window.__unit = {
  *   — click the Screen again, which is where the visitor already is
  *   — touch the Sun, because bringing the light up is what dispels her work
  */
-const RITE = { UP: 1.15, DOWN: 0.75 };
-
-/**
- * Reduced motion does not cancel the rite — it arrives instantly instead.
- *
- * The summoning is not decoration that can be dropped: without it there is no way
- * to see a Work at all. So what goes is the travel, not the destination. The room
- * is dark, the Work is on the plinth, the Screen is its plaque, and none of it
- * moved to get there.
- */
-const stillness = matchMedia('(prefers-reduced-motion: reduce)');
-
 const smooth = k => k * k * (3 - 2 * k);
 
+/**
+ * ## O rito tinha um relógio próprio e nenhum gatilho
+ *
+ * Constatado 2026-09-06, medindo: `summonWork` e `banish` **nunca eram chamados de
+ * lugar nenhum**. O aparato inteiro estava construído — a peça, a luz de baixo, os
+ * quarenta e quatro motes, a curva de subida e descida — e `stepRite` rodava a cada
+ * quadro esperando uma fase que nada punha nele. Do quadro entregue: a peça
+ * invisível, a luz apagada, a Vigília em 0.
+ *
+ * Não foi esquecimento. `focus.js` diz no cabeçalho que **reverte a ADR-0017**, e a
+ * razão é boa e medida: uma obra é a fotografia de um pôster, e a Tela é uma janela
+ * de 320x180 esticada umas 4,7 vezes, o que é mingau. Então o clique numa obra foi
+ * religado ao `focus`, que voa a câmera e entrega o conteúdo ao DOM em resolução
+ * cheia. Só que as duas coisas nunca estiveram em conflito: uma é **onde o conteúdo
+ * mora** (DOM, e continua), a outra é **o que o quarto faz enquanto se chega lá**.
+ *
+ * Agora o voo do `focus` é o relógio do rito. Uma curva só, que é o que ela sempre
+ * quis ser — `onProgress` já apagava o quarto, e agora também levanta a peça e
+ * caminha a Vigília. Sem segunda linha de tempo para sincronizar, e a volta é a mesma
+ * curva ao contrário de graça.
+ *
+ * Movimento reduzido não precisa de caso especial aqui: `focus` já tem o seu.
+ */
 function summonWork(i) {
-  if (rite.phase === 'rising' || rite.phase === 'held') return;
-  rite = { phase: 'rising', work: i, k: 0, restore: vigil };
+  if (rite.phase !== 'idle') return;
+  rite = { phase: 'held', work: i, k: 0, restore: vigil, subiu: false };
   summoning.applyWork(i);
   setPlinthWork(i);
   setHoverWork(-1); hoverWork = -1;
   drawScreen();
 }
 
-function banish() {
-  if (rite.phase === 'idle' || rite.phase === 'falling') return;
-  rite.phase = 'falling';
-  setPlinthWork(-1);
-  drawScreen();
+/**
+ * A Vigília segue o voo, e é a única coisa que este passo ainda faz.
+ *
+ * Emprestada, nunca guardada: `restore` é onde o visitante a deixou, e quando o voo
+ * volta a zero ela volta para lá sozinha, porque `k` volta a zero.
+ */
+function stepRite() {
+  if (rite.phase === 'idle') return;
+  setVigil(rite.restore + (1 - rite.restore) * smooth(rite.k));
 }
 
-/** Advance the rite and drive the Vigil while it holds the room. */
-function stepRite(dt) {
+/**
+ * O voo entrega a sua própria progressão, e ela é a do rito.
+ *
+ * Chamada pelo `onProgress` do `focus`, que já vem suavizado. Quando ela chega a
+ * zero o rito acabou, e é aqui que a Vigília e o visor voltam ao que eram — não no
+ * `banish`, porque não existe um instante em que o rito "acaba" além deste.
+ */
+function driveRite(t) {
   if (rite.phase === 'idle') return;
-  if (stillness.matches) {
-    if (rite.phase === 'rising') { rite.k = 1; rite.phase = 'held'; drawScreen(); }
-    else if (rite.phase === 'falling') {
-      rite = { phase: 'idle', work: -1, k: 0, restore: rite.restore };
-      setVigil(rite.restore); drawScreen(); return;
-    }
-    setVigil(1);
-    return;
-  }
-  if (rite.phase === 'rising') {
-    rite.k = Math.min(1, rite.k + dt / RITE.UP);
-    if (rite.k >= 1) { rite.phase = 'held'; drawScreen(); }
-  } else if (rite.phase === 'falling') {
-    rite.k = Math.max(0, rite.k - dt / RITE.DOWN);
-    if (rite.k <= 0) { rite = { phase: 'idle', work: -1, k: 0, restore: rite.restore }; drawScreen(); }
-  }
-  const k = smooth(rite.k);
-  /* the room goes to full night and comes back to wherever the visitor left it */
-  setVigil(rite.restore + (1 - rite.restore) * k);
+  /**
+   * A marca de maré alta existe porque **o primeiro quadro da ida é idêntico ao
+   * último da volta**: nos dois `onProgress` entrega ~0. Sem ela o rito se desfazia
+   * no instante em que nascia — a peça não aparecia, a luz não acendia e a Vigília
+   * não saía de 0, que foi exatamente o que a primeira medição mostrou.
+   *
+   * A alternativa era o `focus` dizer a direção, e isso é pior: seria a fase do voo
+   * atravessando a fronteira só para este arquivo inferir o que ele já sabe.
+   */
+  if (t > 0.02) rite.subiu = true;
+  rite.k = t;
+  if (!rite.subiu || t > 0.002) return;
+  const restore = rite.restore;
+  rite = { phase: 'idle', work: -1, k: 0, restore, subiu: false };
+  setVigil(restore);
+  setPlinthWork(-1);
+  drawScreen();
 }
 
 /**
@@ -6033,8 +6073,24 @@ const post = createPost(renderer, scene, camera, {
  * when the panel arrives. The Vigil is *not* touched: the visitor's own setting is
  * still theirs when they come back out.
  */
+/**
+ * As luzes que caem quando uma obra sobe — e as duas que não caem.
+ *
+ * `rake` já estava de fora. A **luz do plinto** tem de estar também, e por um motivo
+ * exatamente oposto ao das outras: ela é a única que *acende* durante o rito. Estando
+ * na lista, `onProgress` a reescrevia para `base * (1 - t)` com `base` igual a zero —
+ * e como `focus.update` roda depois de `summoning.update` no quadro, quem escrevia
+ * por último era o apagador. Medido: a peça subia, assentava, e o plinto ficava com
+ * intensidade 0 do começo ao fim.
+ */
 const ROOM_DIM = [];
-scene.traverse(n => { if (n.isLight && n !== rake) ROOM_DIM.push([n, n.intensity]); });
+scene.traverse(n => {
+  if (!n.isLight || n === rake) return;
+  let p = n, doPlinto = false;
+  while (p) { if (p === summoning.group) { doPlinto = true; break } p = p.parent }
+  if (doPlinto) return;
+  ROOM_DIM.push([n, n.intensity]);
+});
 /**
  * The form's own surface, and it is mounted on the body rather than the stage.
  *
@@ -6059,10 +6115,14 @@ const focus = createFocus({
   camera,
   mount: document.getElementById('stage'),
   screen: { centre: new THREE.Vector3(0, FACE_Y, SCREEN_Z), width: OPENING.w, depth: OPENING.d },
+  /* onde pousar: a peça no plinto, e a Tela se não houver obra aplicada */
+  alvo: () => (rite.phase === 'idle' ? null : summoning.quadro()),
   onProgress(t) {
     /* the room falls away; the Screen's own glow and the phosphor do not */
     for (const [l, base] of ROOM_DIM) l.intensity = base * (1 - t * 0.88);
     post.set({ vignette: 0.70 + t * 0.5 });
+    /* e a mesma progressão levanta a peça e caminha a Vigília — ver `driveRite` */
+    driveRite(t);
   },
   /**
    * Prev/next while a Work is up, so browsing does not mean flying out and back in
@@ -6072,6 +6132,14 @@ const focus = createFocus({
     if (typeof d !== 'number') return
     const i = WORKS.indexOf(focus.work)
     const n = ((i < 0 ? 0 : i) + d + WORKS.length) % WORKS.length
+    /* a peça no plinto anda com o painel. `summonWork` não serve aqui: ele recusa
+       quando o rito já está de pé, que é exatamente o caso — o rito continua, é a
+       obra que muda. */
+    if (rite.phase !== 'idle') {
+      rite.work = n;
+      summoning.applyWork(n);
+      setPlinthWork(n);
+    }
     focus.show(WORKS[n])
   },
   restore() {
@@ -6784,7 +6852,7 @@ function frame(t) {
     const w = (.55 + c.live * .45) * (1 + (1 - f) * .55);
     c.flame.scale.set(w, 2.1 * (.6 + c.live * .4) * (.72 + f * .34), w);
   });
-  stepRite(dt);
+  stepRite();
   /**
    * The Screen is never static — the raven flies, the Cast types, she breathes —
    * but it does not have to move at 60fps, and it was the most expensive thing in
@@ -7027,6 +7095,16 @@ function mostrarEstacoes() {
 estRow?.querySelectorAll('[data-est]').forEach(b => {
   b.addEventListener('click', () => {
     if (!trilho.pronto) { flashLcd('TRILHO NÃO CARREGADO · use ?trilho', 1600); return; }
+    /**
+     * Sair é dispensar.
+     *
+     * Uma obra de pé e o visitante pedindo outra estação são duas mãos na câmera. A
+     * saída não é travar o trilho: travar a câmera é exatamente o que faz uma coisa
+     * ser modal, e a lista `_Avoid_` do termo Summoning no `CONTEXT.md` proíbe isso
+     * em tantas palavras. Então o pedido é atendido e o rito se desfaz no caminho —
+     * um gesto, dois trabalhos, e nada fica largado aceso do outro lado da sala.
+     */
+    if (rite.phase !== 'idle') focus.exit();
     const n = +b.dataset.est;
     if (n > trilho.quantas) return;
     if (n <= 0) { trilho.irPara(n); mostrarEstacoes(); return; }

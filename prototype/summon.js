@@ -183,5 +183,29 @@ export function createSummoning(scene, works, { floorY }) {
   update(0, 0)
   /* `group` so `castOnly()` in scene.js can let the Plinth and the summoned Work
      throw shadows — they stand in the key's cone and are the point of the rite. */
-  return { update, applyWork, refresh, group, count: works.length, get index() { return index } }
+  /**
+   * Onde a peça fica, para quem precisa enquadrá-la.
+   *
+   * O `focus` voa a câmera até uma coisa e a preenche com margem, e antes disto a
+   * única coisa que ele sabia enquadrar era a Tela — uma constante escrita no
+   * `scene.js`. Uma constante ali seria a quarta mão na posição do plinto: `PED`
+   * mora aqui, `CAP_TOP` mora aqui, e a **altura muda por obra** porque pôster é
+   * retrato e site é paisagem (ver `applyWork`). Então quem enquadra pergunta.
+   *
+   * `largura` sai da escala que `fit` acabou de pôr na malha, e não do aspecto da
+   * textura, porque é a malha que vai aparecer no quadro.
+   */
+  function quadro() {
+    return {
+      centro: new THREE.Vector3(PED.x, CAP_TOP + height / 2, PED.z),
+      largura: sheet.scale.x,
+      altura: height,
+    }
+  }
+
+  return {
+    update, applyWork, refresh, quadro, group,
+    count: works.length,
+    get index() { return index },
+  }
 }
