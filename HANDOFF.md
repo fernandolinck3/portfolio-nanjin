@@ -22,11 +22,14 @@ This file does not repeat them.
 > correção da luz. **Não empurre para `lyra` sem ele pedir**: `pages.yml` dispara no push para
 > essa branch e só nela, então qualquer outro nome é um push que não publica.
 >
-> Contra a perda, o que existe é um `git bundle` em `~/dev/backups/`, refeito quando o trabalho
-> vale mais que o último. Não há segunda cópia fora deste disco.
+> Contra a perda existe **um `git bundle` de 06/09 em `~/dev/backups/`**, com todas as branches
+> e worktrees, feito depois do último commit daquele dia. Ele está **no mesmo disco** — que já encheu uma vez — então protege
+> contra um `git checkout` errado e não contra o disco. Uma cópia fora daqui é decisão dele.
+> Nada refaz esse bundle sozinho: quem trabalhar aqui refaz à mão, depois do último commit.
 >
-> Árvore limpa. `npm run check` passa e `npx vitest run` dá **153 testes em 3,4s** (eram 140 em
-> 05/09). `npm run build:site` e `npm run verify:site` não foram rodados hoje.
+> Árvore limpa e as quatro verificações passam: `npm run check`, `npx vitest run` (**153 testes
+> em 3,4s** — eram 140 em 05/09), `npm run build:site` e `npm run verify:site`, este último com
+> as duas páginas, 6 Módulos, 22 linhas e ~9.200 caracteres legíveis em cada.
 >
 > O que a cadeia do quarto tem: o instrumento encolhido para `K = 0,46` (T-32), a mobília em
 > quatro grupos (T-33), o anel de seis estações com o pad levando (T-34, metade), e desde 05/09
