@@ -1,0 +1,78 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Capa fit — as quatro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700&family=Azeret+Mono:wght@400;500&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;background:#0B0A09;color:#8A8378;
+    font:12px/1.5 "Azeret Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+  h1{font-size:12px;letter-spacing:.22em;color:#C9C2B0;font-weight:600;padding:14px 18px;margin:0;
+     border-bottom:1px solid #1E1B18}
+  p.nota{padding:12px 18px;margin:0;max-width:78ch;color:#6E6559;border-bottom:1px solid #1E1B18}
+  section{padding:18px}
+  h2{font-size:11px;letter-spacing:.2em;color:#C9BE96;font-weight:500;margin:0 0 10px}
+  .parede{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;max-width:1500px}
+  figure{margin:0}
+  canvas{width:100%;display:block;background:#000;image-rendering:auto}
+  figcaption{padding:5px 1px;letter-spacing:.1em;color:#4E4841;font-size:10px}
+  /* a prova real: a mesma capa no tamanho que ela tem na parede do acervo */
+  .cem{display:flex;gap:8px;align-items:flex-end;margin-top:12px}
+  .cem canvas{width:100px;height:100px}
+  .rotulo{color:#4E4841;letter-spacing:.14em}
+</style>
+<h1>CAPA FIT — as quatro, e as sete de cada</h1>
+<p class="nota">
+  Cada fileira é um desenho aplicado às sete obras. A tira de baixo é a mesma capa a
+  <strong>cem pixels</strong>, que é o tamanho dela na parede do acervo no enquadramento da
+  estação — é ali que a escolha se decide, não no grande.
+</p>
+<div id="saida"></div>
+<script type="module">
+  import { WORKS } from '../../src/content/modules.ts'
+  import { DESENHOS, NOMES } from './desenhos.js'
+  import { asset } from '../asset.js'
+
+  const S = 640
+  const saida = document.getElementById('saida')
+
+  /* as capturas primeiro: dois dos quatro desenhos dependem delas, e desenhar antes
+     de elas chegarem seria julgar o fallback */
+  const imagens = await Promise.all(WORKS.map(w => new Promise(res => {
+    const src = w.images?.[0]
+    if (!src) return res(null)
+    const im = new Image()
+    im.onload = () => res(im)
+    im.onerror = () => res(null)
+    im.src = asset(src)
+  })))
+
+  for (const [chave, desenhar] of Object.entries(DESENHOS)) {
+    const sec = document.createElement('section')
+    sec.innerHTML = `<h2>${NOMES[chave]}</h2>`
+    const parede = document.createElement('div')
+    parede.className = 'parede'
+    const tira = document.createElement('div')
+    tira.className = 'cem'
+    tira.innerHTML = '<span class="rotulo">A CEM PIXELS →</span>'
+
+    WORKS.forEach((w, i) => {
+      const fig = document.createElement('figure')
+      const cv = document.createElement('canvas')
+      cv.width = S; cv.height = S
+      desenhar(cv.getContext('2d'), S, w, i, imagens[i])
+      fig.append(cv)
+      const cap = document.createElement('figcaption')
+      cap.textContent = `${w.no} · ${w.title}`
+      fig.append(cap)
+      parede.append(fig)
+
+      const mini = document.createElement('canvas')
+      mini.width = S; mini.height = S
+      mini.getContext('2d').drawImage(cv, 0, 0)
+      tira.append(mini)
+    })
+    sec.append(parede, tira)
+    saida.append(sec)
+  }
+</script>
