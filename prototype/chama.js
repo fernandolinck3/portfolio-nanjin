@@ -52,6 +52,18 @@ import * as THREE from 'three'
  * `superficie.js` para comparar o material *autorado* com o *medido* — ele desliga
  * fotografia. Aqui não há fotografia nenhuma: o gradiente é a autoria, e desligá-lo
  * devolveria a cor chapada que este arquivo existe para corrigir.
+ *
+ * ## O cálculo sai do `canvas`, para que exista teste
+ *
+ * `chamaPixels` e `brilhoPixels` devolvem o RGBA cru e não tocam em documento nenhum;
+ * `chamaTex` e `brilhoTex` só carimbam esse resultado num `canvas`. Não é gosto por
+ * função pequena: **o defeito que este arquivo corrige era invisível para qualquer
+ * teste porque não havia costura por onde perguntar dele.** A regra que falhou por
+ * tanto tempo — *o núcleo é branco* — é uma afirmação sobre números num buffer, e um
+ * buffer é testável em node; um `canvas` em `jsdom` não é sem dependência nova.
+ *
+ * Ver `chama.test.js`, e a razão de ele existir está no `CLAUDE.md`: uma regra sem
+ * teste é um desejo.
  */
 
 /** O manto, na cor que o material chapado tinha. */
@@ -71,13 +83,11 @@ let _brilho = null
  * intensidade. Abaixo disso o manto começa a empalidecer, e aí a chama deixa de ser
  * laranja, que é a razão de haver um manto.
  */
-export function chamaTex() {
-  if (_chama) return _chama
-  const w = 64, h = 128
-  const cv = document.createElement('canvas')
-  cv.width = w; cv.height = h
-  const ctx = cv.getContext('2d')
-  const img = ctx.createImageData(w, h)
+export const CHAMA_W = 64, CHAMA_H = 128
+
+/** O RGBA da gota, sem tocar em documento. @returns {Uint8ClampedArray} */
+export function chamaPixels(w = CHAMA_W, h = CHAMA_H) {
+  const px = new Uint8ClampedArray(w * h * 4)
   for (let y = 0; y < h; y++) {
     /* v corre 0 no pavio e 1 na ponta */
     const v = 1 - (y + .5) / h
@@ -92,14 +102,16 @@ export function chamaTex() {
       const b = Math.max(0, Math.min(1, f * (.30 + .70 * quente)))
       const k = Math.max(0, Math.min(1, (b - .40) / .34))
       const i = (y * w + x) * 4
-      for (let c = 0; c < 3; c++) img.data[i + c] = Math.round(255 * b * (MANTO[c] + (1 - MANTO[c]) * k))
-      img.data[i + 3] = 255
+      for (let c = 0; c < 3; c++) px[i + c] = Math.round(255 * b * (MANTO[c] + (1 - MANTO[c]) * k))
+      px[i + 3] = 255
     }
   }
-  ctx.putImageData(img, 0, 0)
-  const t = new THREE.CanvasTexture(cv)
-  t.colorSpace = THREE.SRGBColorSpace
-  return (_chama = t)
+  return px
+}
+
+export function chamaTex() {
+  if (_chama) return _chama
+  return (_chama = paraTextura(chamaPixels(), CHAMA_W, CHAMA_H))
 }
 
 /**
@@ -111,27 +123,48 @@ export function chamaTex() {
  * borda, então ele precisa da queda, e a queda precisa ser gaussiana e não linear —
  * uma rampa linear tem um fim visível, que é o problema de novo com outro nome.
  */
-export function brilhoTex() {
-  if (_brilho) return _brilho
-  const n = 64
-  const cv = document.createElement('canvas')
-  cv.width = n; cv.height = n
-  const ctx = cv.getContext('2d')
-  const img = ctx.createImageData(n, n)
+export const BRILHO_N = 64
+
+/** O RGBA do brilho, sem tocar em documento. @returns {Uint8ClampedArray} */
+export function brilhoPixels(n = BRILHO_N) {
+  const px = new Uint8ClampedArray(n * n * 4)
+  /* o meio de um lado: o texel da borda mais próximo do centro, e portanto o mais claro */
+  const borda = 1 - 1 / n
+  const piso = Math.exp(-borda * borda * 4.2)
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
       const u = (x + .5) / n - .5, v = (y + .5) / n - .5
       const d = Math.sqrt(u * u + v * v) * 2
-      const b = Math.max(0, Math.exp(-d * d * 4.2) - .0148) / (1 - .0148)
+      /* Subtrai o valor da borda e renormaliza: sem isso a gaussiana chega ao limite do
+         quadrado ainda valendo algo, e um brilho que termina no corte tem borda.
+         `piso` é derivado e não constante porque o ponto mais claro da borda é o meio
+         de um lado, não o canto — e onde ele fica depende de `n`. Escrito à mão como
+         .0148 isto funcionava só em 64 e deixava 1/255 sobrando. */
+      const b = Math.max(0, Math.exp(-d * d * 4.2) - piso) / (1 - piso)
       const i = (y * n + x) * 4
-      for (let c = 0; c < 3; c++) img.data[i + c] = Math.round(255 * b * MANTO[c])
-      img.data[i + 3] = 255
+      for (let c = 0; c < 3; c++) px[i + c] = Math.round(255 * b * MANTO[c])
+      px[i + 3] = 255
     }
   }
+  return px
+}
+
+export function brilhoTex() {
+  if (_brilho) return _brilho
+  return (_brilho = paraTextura(brilhoPixels(), BRILHO_N, BRILHO_N))
+}
+
+/** O único ponto do arquivo que precisa de um documento. */
+function paraTextura(px, w, h) {
+  const cv = document.createElement('canvas')
+  cv.width = w; cv.height = h
+  const ctx = cv.getContext('2d')
+  const img = ctx.createImageData(w, h)
+  img.data.set(px)
   ctx.putImageData(img, 0, 0)
   const t = new THREE.CanvasTexture(cv)
   t.colorSpace = THREE.SRGBColorSpace
-  return (_brilho = t)
+  return t
 }
 
 /**
