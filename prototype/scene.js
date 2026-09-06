@@ -4017,8 +4017,39 @@ let lastPick = null;
  *
  * It also raycasts once where the pair raycast twice on every move.
  */
+/**
+ * O que um acerto na Tela faz — e é um caminho só, venha do objeto ou do visor.
+ *
+ * Devolve `true` quando consumiu o clique. Os controles que a Tela desenha em si mesma
+ * vêm antes das linhas, porque cada um é registrado pelo passe que o pinta e pode
+ * ficar por cima da lista.
+ */
+function acionarTela(on) {
+  if (on?.kind === 'claim') {
+    flashLcd('ABRIR · INSTAGRAM');
+    track('outbound', { route: 'INSTAGRAM', kind: 'url', from: 'eclipse' });
+    window.open(claimURL(), '_blank', 'noopener'); return true;
+  }
+  if (on?.kind === 'back') { moonBack(); return true; }
+  if (on?.kind === 'mark') { openEclipse(eclipse.face); return true; }
+  if (on?.kind === 'row') { openRow(on.row); return true; }
+  return false;
+}
+
 function screenHit(e) {
   const sp = screenPoint(e);
+  return sp ? screenHitEm(sp) : null;
+}
+
+/**
+ * O mesmo acerto, a partir de um ponto já em coordenadas da Tela.
+ *
+ * Existe porque o visor precisa perguntar a mesma coisa sem ter um raycast: ele é um
+ * `drawImage` do mesmo buffer, então um clique nele **é** um clique na Tela, e a única
+ * diferença é como se chega ao par de coordenadas. Separar as duas metades é o que
+ * impede a segunda lista de alvos que este projeto já pagou uma vez.
+ */
+function screenHitEm(sp) {
   if (!sp) return null;
   /* the controls the Screen draws on itself come before the rows, because each is
      registered by the pass that paints it and can sit over the list */
@@ -4834,14 +4865,7 @@ el.addEventListener('pointerdown', e => {
        * Each is registered by the pass that paints it, so a control is clickable
        * exactly where it appears and cannot drift from its own picture.
        */
-      if (on?.kind === 'claim') {
-        flashLcd('ABRIR · INSTAGRAM');
-        track('outbound', { route: 'INSTAGRAM', kind: 'url', from: 'eclipse' });
-        window.open(claimURL(), '_blank', 'noopener'); return;
-      }
-      if (on?.kind === 'back') { moonBack(); return; }
-      if (on?.kind === 'mark') { openEclipse(eclipse.face); return; }
-      if (on?.kind === 'row') { openRow(on.row); return; }
+      if (acionarTela(on)) return;
       /* not on a row: fall through, so the Screen is still somewhere you can grab
          the view from the way every other dead area of the Unit is */
     }
@@ -6441,6 +6465,51 @@ voltarEl?.addEventListener('click', () => {
   if (trilho.perto) { trilho.irPara(trilho.estacao, { perto: false }); flashLcd('A ESTAÇÃO'); return; }
   if (trilho.estacao !== 0 || trilho.panoramico) { trilho.irPara(0); flashLcd('O ALTAR'); }
 });
+
+/**
+ * O visor **opera** — e sem isso a viagem era um beco.
+ *
+ * Ele viu e disse a coisa exata: apertando PROJETOS a câmera vai para o acervo e *"não
+ * tem mais o painel da lua, como é que eu vou girar ele?"*. Estava certo e a instrução
+ * que eu tinha dado era impossível de seguir — numa estação a Unidade está fora do
+ * quadro, e a roda da lua é uma malha dentro dela.
+ *
+ * O visor já mostra a Tela inteira, pixel por pixel: é `drawImage(screenBuffer)`. Então
+ * um clique nele **é** um clique na Tela, e a única coisa que faltava era a conta de
+ * coordenadas — o `screenPoint` chega ao par por raycast, aqui se chega pelo retângulo
+ * do canvas. Daí em diante é `screenHitEm` e `acionarTela`, os mesmos que o objeto usa.
+ *
+ * Isto não é chrome novo, que é o que o T-30 proíbe: é a mesma superfície, já aceita,
+ * já escolhida entre três formas, passando a responder onde ela já desenha.
+ */
+function ligarVisorComoControle() {
+  if (!visorCv) return;
+  const pontoNoVisor = e => {
+    const r = visorCv.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    return [
+      ((e.clientX - r.left) / r.width) * SCREEN_W,
+      ((e.clientY - r.top) / r.height) * SCREEN_H,
+    ];
+  };
+  visorCv.addEventListener('pointerdown', e => {
+    if (!visorLigado || focus.active) return;
+    const on = screenHitEm(pontoNoVisor(e));
+    if (!on) return;
+    /* o clique não pode seguir para a cena atrás: lá ele viraria um `pickQuarto` e
+       mandaria a câmera para outra estação — dois donos para um gesto */
+    e.stopPropagation();
+    e.preventDefault();
+    acionarTela(on);
+  });
+  /* o cursor diz que responde, que é a metade barata de dizer que uma coisa é um
+     controle. O resto quem diz é o realce que o próprio desenho da Tela já faz. */
+  visorCv.addEventListener('pointermove', e => {
+    if (!visorLigado || focus.active) { visorCv.style.cursor = ''; return; }
+    visorCv.style.cursor = screenHitEm(pontoNoVisor(e)) ? 'pointer' : '';
+  });
+}
+ligarVisorComoControle();
 
 function pintarVisor() {
   if (!visorCtx) return;

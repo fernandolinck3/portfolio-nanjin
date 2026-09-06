@@ -265,6 +265,9 @@
     opacity:0;transform:translateY(10px) scale(.985);
     transition:opacity .34s ease,transform .34s ease}
   #visor[data-on]{opacity:1;transform:none}
+  /* só a tela do visor recebe ponteiro, e só quando ele está aceso: a moldura é
+     ornamento e um ornamento que engole clique é um alvo falso */
+  #visor[data-on] canvas{pointer-events:auto}
 
   /* o voltar acompanha o visor: mesma quina, mesma entrada, e some junto */
   /* à esquerda, e não junto do visor: o visor chega a 452px de largura na quina
