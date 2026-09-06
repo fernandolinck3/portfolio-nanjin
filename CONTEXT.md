@@ -56,7 +56,7 @@ _Avoid_: table, desk, plinth, scene
 **Station**:
 One of the six places in the room that a Module belongs to, and the pose on the Trilho that frames
 it. A Station is a **stage, not a display**: it is where that Module's content would plausibly live,
-and the content itself still arrives through the Screen and the Plinth. So its objects are scenery,
+and the content itself still arrives through the Screen and the Vitrola. So its objects are scenery,
 and what it owes the visitor is a place that is credible and lit — by the Pool rule, a Station with
 no source in it is not a Station.
 _Avoid_: scene, view, viewpoint, shot, camera, waypoint, hotspot
@@ -106,22 +106,29 @@ Module, never selection *of* one (ADR-0017).
 
 **Work**:
 One of the numbered things Fernando has made, counting from this Unit as 001. A Work is an image —
-a site, a poster — which is why it cannot live on the Screen and is summoned to the Plinth instead.
+a site, a poster — which is why it cannot live on the Screen and is summoned to the Vitrola instead.
 _Avoid_: piece, case study, portfolio item, project (Project 001 means the Unit)
 
-**Plinth**:
-The stone pedestal in the Acervo, beside the bay of records. It is empty until a Work is called to
-it, which is what makes calling one an event. The Work stands on it lit from below, carrying its own
-number, name and kind printed on it — so the Plinth needs no plaque beside it, and the Screen is not
-one. It stood off the Altar's right shoulder until `summon.js` moved it here: a plinth against the
-table does not say where the piece came from. It is therefore the **subject** of the Acervo, not its
-scenery — which the bay of records is.
-_Avoid_: pedestal, stand, podium, display
+**Vitrola**:
+The record player on the credenza's top, in the Acervo. It is where a Work is put to be looked
+at — the piece rises over its platter, lit from below. **It is not digital**, and that is the
+point: the Unit is a CDJ, a controller with no disc, and the Acervo is its opposite. You command
+on the digital machine and the work plays on the analogue one. It replaced the **Plinth** on
+2026-09-06 (ADR-0031), which was a stone pedestal two metres away saying the same thing — a
+Station holds one place where the work happens, not two.
+_Avoid_: turntable (in PT-BR prose), toca-discos, deck (Deck is a Part of the Unit), pedestal
+
+**A parede de capas**:
+The wall above the credenza: seven sleeves on two shallow ledges, four over three, one per Work.
+It is the **exposição**; the sixty spines in the credenza below are the **coleção**. That
+distinction is the whole of what the Acervo has to say, and it comes from the references he gave
+on 2026-09-06. The sleeves are square and drawn by `sleeveFor` — a sleeve, not the piece.
+_Avoid_: gallery, grid, shelf (Shelf is CRITÉRIOS' bookcase), quadros
 
 **Summoning**:
-The rite that brings a Work to the Plinth. The visitor clicks a Work on the Screen at the Altar, the
+The rite that brings a Work to the Vitrola. The visitor clicks a Work on the Screen at the Altar, the
 Trilho carries them to the Acervo, and there the room puts itself out — the Candles gutter, the
-Plinth takes light, the Work assembles out of motes. Turning the Sun, or clicking the Screen again,
+the Vitrola takes light, the Work assembles out of motes. Turning the Sun, or clicking the Screen again,
 sends it back. **Borrowed, never kept**: the Vigil and the camera both return where they were.
 
 The camera travels because the Work cannot be seen from the Altar and the Screen cannot be read from
@@ -132,7 +139,7 @@ _Avoid_: modal, lightbox, detail view, popup
 **Portrait**:
 Lyra on the chapel wall, gilt-framed, with her name engraved on a plaque beneath her. A fixture, not
 a display: it is hanging there before the visitor touches anything, and a trace of self-illumination
-keeps her legible at full Vigil when every Candle is dead. Distinct from the Plinth in kind — a Work
+keeps her legible at full Vigil when every Candle is dead. Distinct from the Vitrola in kind — a Work
 is called and dismissed; she is simply there.
 _Avoid_: painting, picture, artwork, portrait of the character
 

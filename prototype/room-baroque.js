@@ -359,7 +359,21 @@ export function createBaroque(room, {
    */
   if (layout !== 'vazio') {
     const mirror = new THREE.Group()
-    mirror.position.set(-sideX + .38, floorY + 3.6, wallZ + depth * .42)
+    /**
+     * O espelho desce a parede — ele estava em cima da baia de discos.
+     *
+     * Medido em 2026-09-06: 2,9 x 5,0 centrado em `z = -2,68`, ocupando de -4,13 a
+     * -1,23. A credenza vai de -7,40 a -1,40 e a estação do acervo olha para -4,40 —
+     * ou seja, a borda do espelho caía **no ponto exato para onde a estação olha**, e
+     * sobravam 3,3 das 6 unidades de parede para as capas.
+     *
+     * É a mesma classe do quinto painel acústico, que estava por cima do retrato, e a
+     * regra que resolveu aquele resolve este: ninguém pendura duas coisas no mesmo
+     * lugar da parede. Só que aqui o espelho não sai, **anda** — `z = +0,80`, entre a
+     * ponta da credenza (-1,40) e a pilha (+3,20), a caminho da porta. Que é onde um
+     * espelho de corpo inteiro fica numa casa de verdade: perto da saída.
+     */
+    mirror.position.set(-sideX + .38, floorY + 3.6, wallZ + depth * .586)
     mirror.rotation.y = Math.PI / 2
     group.add(mirror)
 

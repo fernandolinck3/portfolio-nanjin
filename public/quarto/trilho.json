@@ -41,11 +41,11 @@
    "id": "acervo",
    "modulo": "projects",
    "nome": "O acervo",
-   "feita_de": "A baia de 40 discos na parede esquerda, o plinto da invocacao ao lado",
+   "feita_de": "A parede de capas sobre a credenza — sete obras em duas prateleiras, quatro sobre tres — a vitrola no tampo, e os sessenta discos de perfil na cavidade embaixo.",
    "olhar": [
-    -9.1,
-    -0.3,
-    -5.4
+    -9.6,
+    0.05,
+    -4.4
    ],
    "camera": [
     -3.64,
@@ -53,18 +53,18 @@
     -2.16
    ],
    "perto": {
-    "sobre": "A estante de perto, e a distancia vem da capa e nao do olho. As sete obras estao de frente na boca da cavidade, e no repouso da estacao uma capa mede uns cem pixels de largura: da para ver que ha alguma coisa ali, nao da para ver qual. `cabe` 3.0 poe tres capas na largura do quadro, que e o que uma caixa de discos entrega a quem se abaixa para folhear — e e a mesma forma do `perto` do retrato, onde o objeto tambem E o assunto e tambem e o controle.",
+    "sobre": "A parede de capas de perto. As sete obras estao na parede em duas prateleiras — quatro sobre tres, centro em y = 0,05 — e no repouso da estacao uma capa mede uns cem pixels: da para ver que ha alguma coisa ali, nao da para ver qual. `cabe` 1.9 poe tres capas na largura do quadro, que e o que uma parede de discos entrega a quem chega perto para folhear. Mesma forma do `perto` do retrato: o objeto E o assunto e tambem e o controle. Os numeros mudaram em 2026-09-06, quando as capas sairam da boca da credenza (y = -2,05) e subiram para a parede.",
     "olhar": [
-     -10.2,
-     -2.05,
+     -11.47,
+     0.05,
      -4.4
     ],
     "camera": [
-     -6.9,
-     -1.35,
+     -8.4,
+     0.3,
      -4.4
     ],
-    "cabe": 3.0
+    "cabe": 1.9
    }
   },
   {

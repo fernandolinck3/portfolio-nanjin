@@ -11,7 +11,7 @@ import { printLayer, engravedLayer } from './plate-art.js'
 import { track, trackSettled } from './track.js'
 import { padMaps, faderSlot, faderCap } from './control-faces.js';
 import { deckMaps, deckGlow } from './deck-faces.js'
-import { createRoomDecor } from './room-decor.js'
+import { createRoomDecor, vitrolaPos } from './room-decor.js'
 import { createBaroque } from './room-baroque.js'
 import { chamaTex, brilhoTex, chamaGeo } from './chama.js';
 import { medir } from './superficie.js'
@@ -3389,7 +3389,12 @@ room.add(wallWash, wallWash.target);
    A Work is an image and the Screen is a 590px inset — it cannot carry one. So a
    Work leaves the Unit and stands on a plinth, and the Screen becomes its plaque.
    The plinth is empty until the visitor calls something to it. */
-const summoning = createSummoning(scene, WORKS, { floorY: FLOOR_Y });
+/* a face interna da parede do fundo, e ela tem dois leitores: a decoração e o pouso
+   da peça invocada. Um número, um dono. */
+const WALL_FACE = WALL_Z + 0.7;
+/* onde a peça pousa: o prato da vitrola, que quem sabe posicionar é `room-decor.js` */
+const POUSO = vitrolaPos({ floorY: FLOOR_Y, sideX: SIDE_X, wallFace: WALL_FACE });
+const summoning = createSummoning(scene, WORKS, { pouso: POUSO });
 
 /* ---------- the portrait ----------
    Lyra, gilt-framed on the wall left of the window, with her plaque under her.
@@ -3398,7 +3403,7 @@ const summoning = createSummoning(scene, WORKS, { floorY: FLOOR_Y });
 /* Sized for the old 12-unit wall, she topped out at y=4.65 — above the new
    ceiling at 4.45, so her frame was growing through it. */
 const portrait = createPortrait(scene, {
-  x: -5.35, y: FLOOR_Y + 3.75, wallFace: WALL_Z + 0.7,
+  x: -5.35, y: FLOOR_Y + 3.75, wallFace: WALL_FACE,
   height: 2.9, name: 'Lyra', line: 'KEEPER OF THE VIGIL',
   camera,
 });
@@ -3429,7 +3434,7 @@ const PIC0 = pictureLight.intensity;
    Acoustic panels, monitors, the credenza of records, the pedal cabinet and the
    two globe lamps. The Altar, the Candles, the window and the Portrait are not
    touched — this furnishes the room around them. */
-const decor = createRoomDecor(room, { floorY: FLOOR_Y, wallFace: WALL_Z + 0.7, sideX: SIDE_X, obras: WORKS });
+const decor = createRoomDecor(room, { floorY: FLOOR_Y, wallFace: WALL_FACE, sideX: SIDE_X, obras: WORKS });
 
 /**
  * The baroque fittings — cornice, ceiling rose, chandelier, sconces, mirror, drapery,

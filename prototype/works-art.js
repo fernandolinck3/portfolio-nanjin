@@ -157,3 +157,78 @@ function site(work, seed) {
 export function sheetFor(work, index) {
   return work.kind === 'Site' ? site(work, 9001 + index * 77) : poster(work, 4200 + index * 131)
 }
+
+/**
+ * A capa — 12 polegadas, quadrada, e é o que vai na parede do acervo.
+ *
+ * `sheetFor` desenha a **peça**: um pôster em retrato ou a captura de um site em
+ * paisagem, que é o formato da coisa que a obra é. Uma parede de discos pede a outra
+ * face do mesmo trabalho: a capa com que ele se apresenta na prateleira. São quadradas
+ * porque um disco é quadrado, e a diferença não é decorativa — quatro retratos e três
+ * paisagens numa grade não formam uma parede de discos, formam quadros pendurados.
+ *
+ * A marca de cada uma vem do índice e não de aleatório: a esta distância, o que separa
+ * uma capa da outra é a **silhueta** — um disco cheio, um eclipse, um arco, uma barra —
+ * e não a cor nem o texto. É a mesma lição que a lombada de dez pixels ensinou.
+ */
+export function sleeveFor(work, index) {
+  const c = document.createElement('canvas')
+  c.width = 640; c.height = 640
+  const g = c.getContext('2d')
+  const rnd = rng(7700 + index * 149)
+  const S = c.width
+
+  g.fillStyle = INK; g.fillRect(0, 0, S, S)
+
+  /* o mesmo chão de meio-tom do pôster, mais fechado: uma capa é vista de frente e de
+     perto, e o gradiente que ajuda num pôster de parede aqui vira sujeira */
+  for (let y = 0; y < S; y += 7) {
+    for (let x = 0; x < S; x += 7) {
+      if (rnd() > 0.38) continue
+      g.fillStyle = `rgba(201,190,150,${0.04 + rnd() * 0.09})`
+      g.beginPath(); g.arc(x, y, 0.8 + rnd() * 1.8, 0, 6.2832); g.fill()
+    }
+  }
+
+  /* A marca. Seis silhuetas, uma por índice, e todas cabem no mesmo quadrado de
+     segurança — o bloco de tipo embaixo é território reservado em todas elas. */
+  const cx = S * 0.5, cy = S * 0.40, r = S * 0.26
+  g.fillStyle = RED
+  const marca = index % 6
+  if (marca === 0) {                                   /* o disco cheio */
+    g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.fill()
+  } else if (marca === 1) {                            /* o eclipse */
+    g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.fill()
+    g.globalCompositeOperation = 'destination-out'
+    g.beginPath(); g.arc(cx + r * 0.42, cy - r * 0.22, r * 0.86, 0, 6.2832); g.fill()
+    g.globalCompositeOperation = 'source-over'
+  } else if (marca === 2) {                            /* o arco */
+    g.lineWidth = r * 0.30; g.strokeStyle = RED; g.lineCap = 'butt'
+    g.beginPath(); g.arc(cx, cy + r * 0.30, r, Math.PI, 0); g.stroke()
+  } else if (marca === 3) {                            /* as barras */
+    for (let i = 0; i < 4; i++)
+      g.fillRect(cx - r, cy - r + i * (r * 0.56), r * 2, r * 0.30)
+  } else if (marca === 4) {                            /* o losango */
+    g.save(); g.translate(cx, cy); g.rotate(Math.PI / 4)
+    g.fillRect(-r * 0.72, -r * 0.72, r * 1.44, r * 1.44); g.restore()
+  } else {                                             /* o anel */
+    g.lineWidth = r * 0.26; g.strokeStyle = RED
+    g.beginPath(); g.arc(cx, cy, r * 0.86, 0, 6.2832); g.stroke()
+  }
+
+  /* o filete dourado que separa a arte do bloco de tipo — é o que toda capa tem e o
+     que faz o texto ler como impresso na capa e não posto por cima dela */
+  g.strokeStyle = GOLD; g.lineWidth = 2
+  g.beginPath(); g.moveTo(S * 0.08, S * 0.72); g.lineTo(S * 0.92, S * 0.72); g.stroke()
+
+  g.fillStyle = BONE
+  g.font = `700 ${Math.round(S * 0.115)}px "Archivo", system-ui, sans-serif`
+  g.textAlign = 'left'
+  g.fillText(work.no, S * 0.08, S * 0.845)
+  g.font = `400 ${Math.round(S * 0.045)}px "Azeret Mono", ui-monospace, monospace`
+  g.fillStyle = GOLD
+  g.fillText(work.title.toUpperCase(), S * 0.08, S * 0.915)
+
+  stamp(g, S, S, work.kind.toUpperCase(), work.placeholder)
+  return c
+}

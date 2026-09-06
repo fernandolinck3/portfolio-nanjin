@@ -22,7 +22,7 @@
 
 import * as THREE from 'three'
 import { medir } from './superficie.js'
-import { sheetFor } from './works-art.js'
+import { sleeveFor } from './works-art.js'
 
 const BONE = '#C9C2B0', EMBER = '#B4472A', COLD = '#6E8493'
 const GILT = 0xB08D4A
@@ -30,6 +30,24 @@ const GILT = 0xB08D4A
 function rng(seed) {
   let s = seed >>> 0
   return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296)
+}
+
+/**
+ * A baia do acervo, em números — e eles saem daqui porque duas pessoas os leem.
+ *
+ * `summon.js` precisa saber onde a peça pousa, e a peça pousa **na vitrola**, que fica
+ * no tampo desta credenza. Antes era um plinto de pedra com coordenada própria, escrita
+ * num arquivo e conferida em nenhum: a lição do `screenHit` vale para geometria igual.
+ */
+const ACERVO = { W: 6.0, H: 1.45, D: 1.15, RECUO: .30, DZ: 6.4 }
+
+/** Onde o disco pousa: o centro do prato da vitrola, em coordenadas de mundo. */
+export function vitrolaPos({ floorY, sideX, wallFace }) {
+  return {
+    x: -sideX + ACERVO.RECUO + ACERVO.D / 2 + .05,
+    y: floorY + .16 + ACERVO.H + .16,
+    z: wallFace + ACERVO.DZ,
+  }
 }
 
 /* ---------- acoustic panels ---------- */
@@ -316,9 +334,11 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   }
 
   /* ---- the left bay: the credenza of records, along the left wall ---- */
-  const LEFT_D = 1.15
-  const left = bay(-sideX + 0.30 + LEFT_D / 2, wallFace + 6.4, Math.PI / 2)
-  const leftTop = credenza(left, { x: 0, z: 0, w: 6.0, h: 1.45, d: LEFT_D, floorY, aberta: true })
+  const LEFT_D = ACERVO.D
+  const left = bay(-sideX + ACERVO.RECUO + LEFT_D / 2, wallFace + ACERVO.DZ, Math.PI / 2)
+  const leftTop = credenza(left, { x: 0, z: 0, w: ACERVO.W, h: ACERVO.H, d: LEFT_D, floorY, aberta: true })
+  /* a face interna da parede, em coordenadas da baia: o grupo está a `RECUO + D/2` dela */
+  const paredeZ = -(ACERVO.RECUO + LEFT_D / 2)
 
   /**
    * Records: thin slabs leaning in a row. Their spines are the only place in the
@@ -384,44 +404,123 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   }
 
   /**
-   * As obras dele ficam **de frente**, e a lombada era a face errada.
+   * As obras dele vão para a **parede**, em prateleiras rasas — e a credenza volta a
+   * ser o que ela é.
    *
-   * A primeira tentativa pôs as sete como lombadas salientes no meio da fileira, e
-   * falhou por uma razão que só aparece olhando: uma lombada tem uns dez pixels de
-   * largura no enquadramento da estação. Não dá para ver o que ela é, não dá para
-   * desconfiar que responde ao clique, e sessenta fatias finas coloridas numa caixa
-   * baixa leem como **livros numa mesa** — não como discos.
+   * As três referências que ele deu concordam numa anatomia só: as capas ficam na
+   * parede, de frente, na altura do olho, em prateleiras de dois dedos de fundo; o
+   * móvel embaixo guarda o resto de perfil; e no tampo fica a vitrola. É a diferença
+   * entre exposição e coleção, e é exatamente a distinção que este Módulo precisa
+   * fazer — sete obras dele contra sessenta discos que são o gosto dele.
    *
-   * Uma capa de frente tem uns cem. Ela é inconfundivelmente um disco, mostra o
-   * trabalho de verdade em vez de uma tarja de cor, e um objeto virado para quem olha
-   * é o que faz uma coisa parecer clicável. É também como uma loja de discos expõe: o
-   * que importa de frente, o resto de perfil atrás.
+   * A tentativa anterior pôs as sete de frente na boca da cavidade. A face estava
+   * certa e o móvel errado: uma capa na boca de uma credenza é uma capa **guardada**
+   * virada para fora, que não é como ninguém expõe nada.
    *
-   * A arte é a mesma que sobe no plinto — `works-art.js` desenha uma só folha por obra,
-   * e a capa aqui é aquela folha. Sete telas a mais na memória de vídeo, e é o preço de
-   * o visitante ver o trabalho antes de clicar em vez de depois.
+   * Quatro em cima de três, centradas. Não é a grade cheia da referência porque a
+   * parede aqui não é uma coleção — são sete, e sete fingindo ser vinte é a mesma
+   * desonestidade que as sessenta lombadas anônimas eram.
    */
-  const capaGeo = new THREE.PlaneGeometry(1, 1)
-  const CAPA_H = recAlt * .96
-  const vaoCapa = util / (obras.length + 1)
-  obras.forEach((obra, n) => {
-    const cv = sheetFor(obra, n)
-    const tex = new THREE.CanvasTexture(cv)
-    tex.colorSpace = THREE.SRGBColorSpace
-    tex.anisotropy = 8
-    const capa = new THREE.Mesh(capaGeo, new THREE.MeshStandardMaterial({
-      map: tex, roughness: .78, metalness: 0,
-    }))
-    capa.scale.set(CAPA_H * (cv.width / cv.height), CAPA_H, 1)
-    /* na boca da cavidade, encostada na frente — e `repouso` guarda o z para o realce
-       do hover ter de onde sair e para onde voltar */
-    capa.position.set(-util / 2 + vaoCapa * (n + 1), leftTop.cavidade.base + CAPA_H / 2, .34)
-    capa.name = 'acervo:obra'
-    capa.userData.obra = obra.id
-    capa.userData.repouso = capa.position.z
-    discos.push(capa)
-    left.add(capa)
-  })
+  const CAPA = recAlt * .96
+  const sleeveGeo = new THREE.PlaneGeometry(1, 1)
+  /* madeira da prateleira: a mesma da credenza, porque numa parede escura duas
+     madeiras diferentes a um metro uma da outra leem como erro e não como escolha */
+  const PRAT = { fundo: .20, tampo: .055, borda: .05, comp: ACERVO.W - .40 }
+  const FILAS = [
+    { n: 4, y: leftTop.top + .30 },
+    { n: 3, y: leftTop.top + 1.48 },
+  ]
+  const PASSO = 1.16
+
+  let posta = 0
+  for (const fila of FILAS) {
+    /* a prateleira: um tabuleiro e um filete na frente. O filete é o que segura a capa
+       inclinada e é o que faz a peça ler como prateleira de disco em vez de tábua. */
+    const tab = new THREE.Mesh(new THREE.BoxGeometry(PRAT.comp, PRAT.tampo, PRAT.fundo), NOGUEIRA)
+    tab.position.set(0, fila.y, paredeZ + PRAT.fundo / 2)
+    left.add(tab)
+    const lip = new THREE.Mesh(new THREE.BoxGeometry(PRAT.comp, PRAT.borda, .022), NOGUEIRA)
+    lip.position.set(0, fila.y + PRAT.tampo / 2 + PRAT.borda / 2, paredeZ + PRAT.fundo - .011)
+    left.add(lip)
+
+    const x0 = -((fila.n - 1) * PASSO) / 2
+    for (let i = 0; i < fila.n && posta < obras.length; i++, posta++) {
+      const obra = obras[posta]
+      const cv = sleeveFor(obra, posta)
+      const tex = new THREE.CanvasTexture(cv)
+      tex.colorSpace = THREE.SRGBColorSpace
+      tex.anisotropy = 8
+      const capa = new THREE.Mesh(sleeveGeo, new THREE.MeshStandardMaterial({
+        map: tex, roughness: .80, metalness: 0,
+      }))
+      capa.scale.set(CAPA, CAPA, 1)
+      /* encostada na parede e apoiada no filete, com a inclinação que isso obriga:
+         uma capa a prumo numa prateleira rasa é uma capa colada, e o olho vê */
+      capa.rotation.x = -.055
+      capa.position.set(x0 + i * PASSO, fila.y + PRAT.tampo / 2 + CAPA / 2, paredeZ + .13)
+      capa.name = 'acervo:obra'
+      capa.userData.obra = obra.id
+      capa.userData.repouso = capa.position.z
+      discos.push(capa)
+      left.add(capa)
+    }
+  }
+
+  /**
+   * A vitrola, e ela **não é digital** — foi a palavra dele.
+   *
+   * A Unidade é uma CDJ: um controlador sem disco, que é o que um portfólio de front-end
+   * é. O acervo é o oposto exato, e a oposição é o motivo de o quarto existir. Comanda-se
+   * no aparelho digital e o trabalho toca no analógico.
+   *
+   * Escrita e não baixada: procurei `turntable`, `record player`, `gramophone` e
+   * `vinyl` nos modelos do Poly Haven e não existe nenhum. O ADR-0029 manda modelar o
+   * cenário, e a razão dele é o capitonê de um Chesterfield — uma vitrola é caixa,
+   * prato, disco e um braço, que é precisamente a peça que o código faz bem.
+   */
+  const PRETO = new THREE.MeshStandardMaterial({ color: 0x171314, roughness: .55, metalness: .1 })
+  const METAL = new THREE.MeshStandardMaterial({ color: 0x8A8578, roughness: .35, metalness: .85 })
+  const vit = new THREE.Group()
+  vit.position.set(0, leftTop.top, .05)
+  left.add(vit)
+
+  const corpo = new THREE.Mesh(new THREE.BoxGeometry(1.42, .12, 1.02), NOGUEIRA)
+  corpo.position.y = .06
+  vit.add(corpo)
+  const prato = new THREE.Mesh(new THREE.CylinderGeometry(.48, .48, .04, 32), METAL)
+  prato.position.set(-.16, .14, 0)
+  vit.add(prato)
+
+  /* o disco no prato, e o rótulo dele — o rótulo é o que faz o giro se ver. Um disco
+     preto liso girando é um disco preto parado. */
+  const disco = new THREE.Group()
+  disco.position.copy(prato.position)
+  disco.position.y += .025
+  vit.add(disco)
+  disco.add(new THREE.Mesh(new THREE.CylinderGeometry(.46, .46, .008, 32), PRETO))
+  const rot = new THREE.Mesh(new THREE.CylinderGeometry(.15, .15, .010, 24),
+    new THREE.MeshStandardMaterial({ color: 0xC9BE96, roughness: .8 }))
+  rot.position.y = .002
+  disco.add(rot)
+  /* a marca fora do centro: sem ela o rótulo é um círculo, e um círculo girando em
+     torno do próprio centro é indistinguível de um parado */
+  const mira = new THREE.Mesh(new THREE.BoxGeometry(.10, .012, .02),
+    new THREE.MeshStandardMaterial({ color: 0x8C3B2E, roughness: .9 }))
+  mira.position.set(.07, .008, 0)
+  disco.add(mira)
+
+  /* o braço: pivô atrás à direita, tubo por cima do disco, cápsula na ponta */
+  const pivo = new THREE.Mesh(new THREE.CylinderGeometry(.07, .08, .10, 16), METAL)
+  pivo.position.set(.52, .17, -.34)
+  vit.add(pivo)
+  const braco = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, .82, 12), METAL)
+  braco.rotation.set(0, 0, Math.PI / 2)
+  braco.rotation.y = -.62
+  braco.position.set(.30, .22, -.16)
+  vit.add(braco)
+  const capsula = new THREE.Mesh(new THREE.BoxGeometry(.07, .05, .05), PRETO)
+  capsula.position.set(.01, .19, .02)
+  vit.add(capsula)
 
   /* a plant, because every studio has one and it is the only soft thing here */
   const pot = new THREE.Mesh(new THREE.CylinderGeometry(.24, .18, .38, 14),
@@ -536,7 +635,24 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
    * that these lamps have **one** writer. `setRoomAmount` dimming them and `applyVigil`
    * turning them straight back on was the third instance of that bug in one session.
    */
+  /**
+   * O prato gira a 33⅓ — 3,49 rad/s, que é o número e não uma velocidade escolhida.
+   *
+   * O `dt` sai do relógio e não do laço porque `update` foi escrita com dois
+   * argumentos e os dois são estado, não tempo. Assim um quadro perdido não vira giro
+   * acumulado, e o disco para junto com o quarto: `roomK === 0` é quarto desligado, e
+   * um `rotation.y` avançando para ninguém é trabalho pago por nada.
+   */
+  let ultimoGiro = 0
+  function girar(roomK) {
+    const agora = performance.now() / 1000
+    const dt = ultimoGiro ? Math.min(.1, agora - ultimoGiro) : 0
+    ultimoGiro = agora
+    if (roomK > 0) disco.rotation.y += 3.49 * dt
+  }
+
   function update(vigil, roomK = 1) {
+    girar(roomK)
     const k = Math.max(0, Math.min(1, 1 - vigil / .55))
     const e = k * k * (3 - 2 * k) * Math.max(0, Math.min(1, roomK))
     lastK = e

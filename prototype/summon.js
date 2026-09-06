@@ -18,7 +18,6 @@
 
 import * as THREE from 'three'
 import { sheetFor } from './works-art.js'
-import { medir } from './superficie.js'
 
 /** Texture for a Work, made once and kept — these are canvas draws, not cheap. */
 function textureFor(work, i) {
@@ -35,61 +34,27 @@ function textureFor(work, i) {
  * default camera without ever being between the visitor and the Unit — the Unit
  * stays the subject even while something else is lit.
  */
-export function createSummoning(scene, works, { floorY }) {
+export function createSummoning(scene, works, { pouso }) {
   const sheets = works.map(textureFor)
   const group = new THREE.Group(); scene.add(group)
   /**
-   * O plinto vai para o acervo, e ele **não** encolhe com o instrumento.
+   * A peça pousa **na vitrola**, e o plinto morreu.
    *
-   * Ele estava em `(5,6 · −4,2)`, que era debaixo do tampo do Altar quando o tampo
-   * cobria `x −7,6..+7,6` — o único motivo de a peça invocada ainda se ver é que ela
-   * sobe acima da mesa. Agora que a pegada caiu para `|x| < 3,5`, o lugar ficou livre
-   * e ficou errado ao mesmo tempo: um plinto colado na mesa não diz de onde a peça
-   * vem.
+   * Ele foi construído com perfil torneado em 2026-09-06 e vivia dois metros ao lado
+   * da credenza. Ruling dele no mesmo dia, olhando as três referências que trouxe:
+   * *"mata o plinto"*. E a razão é de composição, não de gosto — com a vitrola no
+   * tampo havia **dois pedestais dizendo a mesma coisa** a dois metros um do outro, e
+   * numa estação só cabe um lugar onde a obra acontece.
    *
-   * Vai para junto da baia de 40 discos, que ocupa `z −7,4..−1,4` na parede esquerda —
-   * o acervo é a estação de PROJETOS, e o plinto é onde uma peça do acervo é posta
-   * para ser olhada. É uma coordenada de **mundo**: o plinto pousa no chão da sala e é
-   * mobília, não parte do instrumento, então `K` não entra aqui.
+   * O aparato inteiro sobrevive: a peça sobe, a luz de baixo acende, os quarenta e
+   * quatro pontos montam, a Vigília caminha. Só o **destino** mudou, e ele agora vem
+   * de `vitrolaPos` em `room-decor.js`, que é quem sabe onde a credenza está. Uma
+   * coordenada com dois donos foi o que pôs os quarenta discos dentro do móvel.
+   *
+   * Isto reverte a ADR-0017 pela segunda vez, e desta vez com ADR escrita.
    */
-  const PED = { x: -7.6, z: -6.4 }
-
-  const CAP_TOP = floorY + 2.66
-
-  /**
-   * O plinto tem perfil, e não três cilindros empilhados.
-   *
-   * Eram um fuste, um capitel e uma base — três `CylinderGeometry` de aresta viva,
-   * que a **3,5% do quadro** na estação do ACERVO liam como isopor ao lado de um
-   * armário gótico entalhado. O que faz uma pedra ser pedra a esta distância não é o
-   * material: é o **perfil**. Um pedestal tem soco, chanfro, filete, fuste em ligeiro
-   * afunilamento, ovolo e ábaco, e cada um desses degraus é uma linha de luz separada
-   * quando a lâmpada do globo bate de lado.
-   *
-   * `LatheGeometry` faz os seis num torneado só, então também é **uma malha em vez de
-   * três**. Mesmo vocabulário do castiçal em `scene.js`, que é feito assim pelo mesmo
-   * motivo.
-   *
-   * `CAP_TOP` não muda: a peça e a luz pousam onde sempre pousaram.
-   */
-  const stoneMat = new THREE.MeshStandardMaterial({
-    /* mais escuro que os 0x4A443E de antes: o globo da esquerda bate em cheio nele e
-       a pedra saía lavada, quase branca, num quarto que é escuridão com poços */
-    color: 0x3E3A34, roughness: 0.95, metalness: 0,
-  })
-  medir(stoneMat, { nor: 'reboco-nor.jpg', arm: 'reboco-arm.jpg' }, { repU: 3, repV: 2, forca: .55 })
-
-  /* raio, altura acima do chão — do soco ao ábaco */
-  const PERFIL = [
-    [.00, .00], [.82, .00], [.82, .16], [.74, .24], [.70, .30],
-    [.52, .38], [.48, .46],
-    [.44, .60], [.40, 2.10],
-    [.46, 2.24], [.56, 2.36], [.54, 2.44],
-    [.68, 2.50], [.68, 2.62], [.62, 2.66], [.00, 2.66],
-  ].map(([r, y]) => new THREE.Vector2(r, floorY + y))
-  const pedra = new THREE.Mesh(new THREE.LatheGeometry(PERFIL, 28), stoneMat)
-  pedra.position.set(PED.x, 0, PED.z)
-  group.add(pedra)
+  const PED = { x: pouso.x, z: pouso.z }
+  const CAP_TOP = pouso.y
 
   /** The Work itself. Basic, not physical: it is emitting, not being lit. */
   const sheet = new THREE.Mesh(
