@@ -587,8 +587,12 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   const amp = new THREE.Group()
   amp.position.set(1.42, leftTop.top, .02)
   left.add(amp)
-  amp.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(1.06, .26, .86), PRETO),
-    { position: new THREE.Vector3(0, .13, 0) }))
+  /* `position` de um Object3D é somente leitura: só `.set()` escreve nele. Um
+     `Object.assign` com `position` lança em tempo de execução e mata a cena inteira,
+     que foi como este bloco nasceu. */
+  const caixaAmp = new THREE.Mesh(new THREE.BoxGeometry(1.06, .26, .86), PRETO)
+  caixaAmp.position.set(0, .13, 0)
+  amp.add(caixaAmp)
   const face = new THREE.Mesh(new THREE.BoxGeometry(1.02, .20, .03), METAL)
   face.position.set(0, .14, .43)
   amp.add(face)

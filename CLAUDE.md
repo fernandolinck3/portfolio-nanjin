@@ -47,6 +47,9 @@ goes to `docs/log/<year>-<month>.md`.
   of it. One `<base href="../">`, before the first script, covers markup and runtime alike.
 - **`public/CNAME` holds the domain.** A deploy that arrives without it clears the custom domain
   silently.
+- **`position` de um `Object3D` é somente leitura.** `Object.assign(mesh, { position })` compila,
+  passa no bundle, e lança `Cannot assign to read only property 'position'` no primeiro quadro —
+  matando a cena inteira. Só `.set()` escreve em `position`, `rotation` e `scale`.
 - **Measure before optimising**, and **build and show** rather than describe. Every decision that
   stuck was settled by a render or a number, never by a paragraph.
 
