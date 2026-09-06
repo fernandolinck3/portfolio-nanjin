@@ -3429,7 +3429,7 @@ const PIC0 = pictureLight.intensity;
    Acoustic panels, monitors, the credenza of records, the pedal cabinet and the
    two globe lamps. The Altar, the Candles, the window and the Portrait are not
    touched — this furnishes the room around them. */
-const decor = createRoomDecor(room, { floorY: FLOOR_Y, wallFace: WALL_Z + 0.7, sideX: SIDE_X });
+const decor = createRoomDecor(room, { floorY: FLOOR_Y, wallFace: WALL_Z + 0.7, sideX: SIDE_X, obras: WORKS });
 
 /**
  * The baroque fittings — cornice, ceiling rose, chandelier, sconces, mirror, drapery,
@@ -4216,6 +4216,52 @@ function openRow(row) {
 }
 
 /**
+ * Abrir uma obra — o único caminho, venha o pedido de onde vier.
+ *
+ * A Tela e a baia do acervo pedem a mesma coisa e não podem responder diferente: são as
+ * duas metades de um objeto só. `summonWork` vem **antes** do voo porque `focus.enter`
+ * lê `summoning.quadro()` para saber onde pousar, e o quadro depende da obra aplicada —
+ * pôster é retrato, site é paisagem, e a altura muda com isso.
+ */
+function abrirObra(w, de) {
+  if (!w) return false;
+  flashLcd(`ABRIR · ${w.title}`);
+  track('work_open', { work: w.id, from: de });
+  summonWork(WORKS.indexOf(w));
+  focus.enter(w);
+  syncMirror();
+  return true;
+}
+
+/**
+ * Clicar uma obra na baia do acervo.
+ *
+ * Mesma forma que `tocarRetrato`: longe da estação o clique **leva até lá** em vez de
+ * abrir, porque abrir uma coisa que não está enquadrada é pular uma etapa que o
+ * visitante não pediu. Chegando, o clique abre.
+ */
+function tocarAcervo(hit) {
+  const w = WORKS.find(x => x.id === hit.object.userData.obra);
+  if (!w) return false;
+  const est = trilho.estacaoDe('projects');
+  if (est && trilho.estacao !== est) {
+    const i = MODULES.findIndex(x => x.id === 'projects');
+    if (i >= 0) { pressPad(i); flashLcd(`O ACERVO · ${w.title}`); return true; }
+  }
+  return abrirObra(w, 'acervo');
+}
+
+/** As lombadas das obras dele, e só elas — as de enchimento não respondem. */
+function pickAcervo(e) {
+  if (ROOM_K === 0 || !decor.discos?.length) return null;
+  const r = frameRect(), p = pt(e);
+  ndc.x = ((p.x - r.left) / r.width) * 2 - 1;
+  ndc.y = -((p.y - r.top) / r.height) * 2 + 1;
+  ray.setFromCamera(ndc, camera);
+  return ray.intersectObjects(decor.discos, false)[0] || null;
+}
+
+/**
  * Sun centre — open, enter, activate.
  *
  * An `act` is data, not a branch the caller has to know about: `modules.ts` says
@@ -4234,14 +4280,7 @@ function sunEnter() {
     /* `flashLcd` syncs, but it runs *before* the overlay opens — and opening a Work
        is the one state change on this object that does not end in `drawScreen()`. So
        it is said again afterwards, here and at the click that closes it. */
-    if (w) {
-      flashLcd(`ABRIR · ${w.title}`); track('work_open', { work: w.id });
-      /* a Invocação antes do voo: `focus.enter` lê `summoning.quadro()` para saber
-         onde pousar, e o quadro depende da obra aplicada — pôster é retrato, site é
-         paisagem, e a altura muda com isso */
-      summonWork(WORKS.indexOf(w));
-      focus.enter(w); syncMirror();
-    }
+    if (w) abrirObra(w, 'tela');
     return;
   }
   /* The form stays on the page, so it is the one route that does not announce a
@@ -4813,6 +4852,10 @@ el.addEventListener('pointerdown', e => {
        específico dos dois é quem deve ganhar */
     const noRetrato = pickRetrato(e);
     if (noRetrato && tocarRetrato(noRetrato)) return;
+    /* a lombada antes do chão, pela mesma razão que o quadro: as duas respondem pela
+       estação do acervo e a mais específica ganha */
+    const naBaia = pickAcervo(e);
+    if (naBaia && tocarAcervo(naBaia)) return;
     const est = pickQuarto(e);
     if (est) {
       const m = trilho.moduloDe(est);

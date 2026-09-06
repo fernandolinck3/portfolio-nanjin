@@ -278,7 +278,7 @@ function credenza(parent, { x, z, w, h, d, floorY, aberta = false }) {
  * `wallFace` is the z of the far wall's visible surface — it is an extrusion, so
  * its face is not at its position.
  */
-export function createRoomDecor(room, { floorY, wallFace, sideX }) {
+export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   /* Everything this builds goes in one group rather than loose into the room, so
      `__unit.perf()` can switch the whole furnishing off in a frame and price it.
      Reassigning the parameter keeps the sixty `room.add` calls below untouched. */
@@ -348,18 +348,55 @@ export function createRoomDecor(room, { floorY, wallFace, sideX }) {
   const DISCOS = 60
   const util = 6.0 - .10 * 2 - .30
   const passo = util / DISCOS
+
+  /**
+   * As obras dele ficam **na** baia, e é a diferença entre a cena dizer a verdade e não.
+   *
+   * A cenografia prometia um catálogo de sessenta lombadas para um portfólio de sete
+   * obras, e — o que é pior para um portfólio — nada ali separava as dele das de
+   * enchimento. O visitante ficava de pé dentro do arquivo sem que um único objeto da
+   * cena fosse trabalho dele, e o plinto, único lugar onde o conteúdo do Módulo existe
+   * fisicamente, ficava vazio o tempo todo em que ninguém invocasse nada.
+   *
+   * A distinção é de **silhueta antes de cor**: a esta distância uma lombada tem uns
+   * dez pixels de largura e o tom sozinho não separa nada. Elas saem da fileira — mais
+   * altas e puxadas para a frente — e é a quebra do alinhamento que o olho pega, do
+   * outro lado da sala, antes de qualquer matiz.
+   *
+   * Espalhadas, não agrupadas: sete juntas leriam como uma prateleira reservada, e o
+   * que se quer dizer é que o trabalho dele está no meio do que ele ouve.
+   */
+  const REAIS = obras.length
+  const vao = REAIS ? Math.floor(DISCOS / (REAIS + 1)) : 0
+  const tons = ['#7A2B26', '#2B4560', '#4E5B3A', '#9A7430', '#5B4463', '#2F5A57', '#8A4A2C']
+  const discos = []
+
   for (let i = 0; i < DISCOS; i++) {
+    const nth = vao ? Math.round((i - vao) / vao) : -1
+    const obra = (vao && i === vao * (nth + 1) && nth >= 0 && nth < REAIS) ? obras[nth] : null
+
     const rec = new THREE.Mesh(recGeom, new THREE.MeshStandardMaterial({
-      color: spines[i % spines.length], roughness: .88, metalness: 0,
+      color: obra ? tons[nth % tons.length] : spines[i % spines.length],
+      roughness: obra ? .72 : .88, metalness: 0,
     }))
     /* 4 a 7 cm de lombada. Já é grosso para um disco — 5 mm seriam .016 aqui — e é
        assim de propósito: mais fino que isto e a lombada some no `anisotropy` a seis
        unidades de distância, que é o enquadramento entregue. */
-    rec.scale.x = .04 + rnd() * .03
+    rec.scale.x = obra ? .085 : .04 + rnd() * .03
+    rec.scale.y = obra ? 1.10 : 1
     /* encostados na frente, que é de onde se olha: um disco no fundo da cavidade fica
        na sombra da própria ilharga */
-    rec.position.set(-util / 2 + passo * (i + .5), leftTop.cavidade.base + recAlt / 2, .10)
-    rec.rotation.z = (rnd() - .5) * .05
+    rec.position.set(
+      -util / 2 + passo * (i + .5),
+      leftTop.cavidade.base + recAlt * (obra ? 1.10 : 1) / 2,
+      obra ? .17 : .10,
+    )
+    rec.rotation.z = obra ? 0 : (rnd() - .5) * .05
+    if (obra) {
+      rec.name = 'acervo:obra'
+      rec.userData.obra = obra.id
+      discos.push(rec)
+    }
     left.add(rec)
   }
 
@@ -498,5 +535,5 @@ export function createRoomDecor(room, { floorY, wallFace, sideX }) {
 
   /* `lamps` so scene.js can put the globes out when the room itself is hidden —
      a light that illuminates nothing invisible still costs every lit fragment. */
-  return { update, setGlobe, group, lamps: lamps.map(l => l.light) }
+  return { update, setGlobe, group, discos, lamps: lamps.map(l => l.light) }
 }
