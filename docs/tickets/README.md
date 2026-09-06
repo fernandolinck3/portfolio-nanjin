@@ -74,8 +74,34 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-31 | [O portfólio em inglês](T-31-o-portfolio-em-ingles.md) | A | — | **done 2026-09-02** — `/` e `/en/`, indexáveis |
 | T-32 | [O instrumento encolhe](T-32-the-instrument-shrinks.md) | B | — | **done** — `K = .46`; a Tela segue em 496 px |
 | T-33 | [A mobília se reagrupa](T-33-the-furniture-regroups.md) | B | T-32 | **done** — quatro grupos, coordenadas medidas |
-| T-34 | [O quarto vira a navegação](T-34-the-room-becomes-the-navigation.md) | B | T-30 | **meio feito** — 1, 2, 3 e 6 em `?trilho`; 4 e 5 atrás do T-30 |
+| T-34 | [O quarto vira a navegação](T-34-the-room-becomes-the-navigation.md) | B | T-30 | **meio feito** — 1, 2, 3 e 6 em `?trilho`; 4 e 5 atrás do T-30. Desde 05/09 as estações também *fazem* coisas: ver a seção abaixo |
 | T-35 | [O objeto faz som](T-35-the-object-makes-a-sound.md) | B | T-30 | **construído e revertido** — `a7850e2`, um `git revert` de volta |
+
+## O que foi construído depois do board (05–06/09)
+
+Este board parou em 05/09 12:04 e o trabalho não. **Dois dias e vinte e dois commits não têm
+ticket**, e não é esquecimento: eles saíram de medição em sessão contra a cena, não de uma fila.
+Ficam registrados aqui como *feito* para que ninguém os redescubra, com o diário em
+`docs/log/2026-09.md` e o raciocínio nos corpos dos commits.
+
+| O que | Onde | Commits |
+|---|---|---|
+| A estação do retrato: o painel que cobria a pintura, a pose fechada, o olhar pelo ponteiro | `portrait.js`, `room-baroque.js` | `f92ee1c`, `004404b` |
+| A Lyra deixa de ser pintura e vira mostrador, com `REACTION_FRAMES` — a que PROJETOS desenha | `portrait.js` | `8ad1a31`, `fab64bc`, `eecb9fe`, `ef486c0` |
+| O oráculo de QUEM: quatro perguntas, a Vigília escolhe a resposta, a bio chega antes | `portrait.js`, `modules.ts` | `d081490`, `7cc86bd`, `838c732` |
+| A matéria do quarto: a escala de mundo na parede, o bloom opcional, a lareira, a porta, o relógio, o vaso, e o PBR inteiro dos modelos | `room-baroque.js`, `room-mobilia.js`, `post.js` | `774e301`, `831549c`, `9e9c726`, `c490850` |
+| A luz: o teto do grade e as duas chamas de cor chapada | `post.js`, `chama.js` | `4063a93`, `0c5bfd2` |
+| O acervo: a credenza vira móvel, os discos saem de dentro dela, as sete obras entram e viram capa | `room-decor.js`, `scene.js` | `75b91ec`, `293fd7f`, `e79ca07` |
+| A Invocação passa a acontecer — o voo do `focus` vira o relógio do rito | `summon.js`, `focus.js`, `scene.js` | `2622806` |
+
+**O que essa fila deixou em aberto**, e que ainda não é ticket:
+
+- `drawWorks` continua sem chamador. Latente de propósito — a peça carrega o próprio número e
+  nome impressos, e o caso fica no painel em DOM — mas é código vivo que ninguém executa.
+- A pose `perto` do acervo e o realce da capa **nunca foram vistos por ele**. Foram medidos numa
+  aba automatizada, onde o `rAF` não roda.
+- O acervo é a terceira estação a ganhar o par *estação → perto*, depois do retrato. Se uma quarta
+  ganhar, isso vira uma regra e devia estar escrito num lugar só.
 
 O **T-35** foi construído e tirado do ar de propósito, em `a7850e2`: seis vozes sintetizadas, oito
 passos, um toque toca e segurar grava, o padrão nos pads. A premissa se sustentou; o acabamento

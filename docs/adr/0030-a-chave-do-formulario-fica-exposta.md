@@ -1,6 +1,10 @@
-# ADR-0029 — A chave do formulário fica exposta, e isso é uma decisão
+# ADR-0030 — A chave do formulário fica exposta, e isso é uma decisão
 
 **Data:** 2026-09-03 · **Status:** aceita
+**Renumerada de 0029 em 2026-09-06:** duas ADRs nasceram com esse número no mesmo fim de
+semana. A outra — `0029-the-unit-is-written-the-scenery-is-modelled.md` — ficou com o 0029
+porque cinco arquivos de código, o HANDOFF e o diário já a chamam assim; esta não era
+referenciada por ninguém.
 **Toca:** `prototype/contact.js`, e a ADR-0027 que escolheu o Web3Forms
 
 ## Contexto

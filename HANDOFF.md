@@ -1,34 +1,47 @@
 # Handoff — Fernando Linck portfolio ("Tenebrae")
 
-**Date:** 2026-08-31 · **Repo:** `~/dev/fernando-portfolio` · **Branch:** `lyra`
-**Remote:** https://github.com/fernandolinck3/tenebrae · **Live:** https://nanj.in
+**Date:** 2026-09-06 · **Repo:** `~/dev/fernando-portfolio` · **Branch:** `lyra`
+**Remote:** https://github.com/fernandolinck3/portfolio-nanjin · **Live:** https://nanj.in
 **Language:** Fernando writes EN and PT-BR, often in one message; the *product* is PT-BR.
 Reply in whichever he used last (last was mixed, leaning PT-BR).
 
 ## Read this first
 
-**Twenty-six ADRs**, several of them reversals. `CONTEXT.md` is the glossary.
-`docs/tickets/README.md` is the board. `docs/realism-budget.md` is the plan for adding to the room
-without spending the frame. This file does not repeat them.
+**Thirty ADRs**, several of them reversals — 0001 a 0030, e duas nasceram 0029: a do
+formulário virou 0030 em 06/09, porque a do cenário já era citada por nome em cinco arquivos.
+`CONTEXT.md` is the glossary. `docs/tickets/README.md` is the board.
+`docs/realism-budget.md` is the plan for adding to the room without spending the frame.
+This file does not repeat them.
 
-> **Estado em 2026-09-05:** o parágrafo abaixo **não vale mais**. `lyra` está dezoito commits à
-> frente de `origin/lyra`, com a árvore limpa. Além do quarto barroco e da mobília modelada
-> (`prototype/room-mobilia.js`, ADR-0029, 2,3 MB em `public/mobilia/`), a cadeia do quarto
-> navegável andou: o instrumento encolheu para `K = 0,46` (T-32), a mobília formou quatro grupos
-> (T-33) e o pad passou a levar a câmera por um anel de seis estações (T-34, metade).
+> **Estado em 2026-09-06.** Este bloco substitui o de 05/09, que dizia dezoito commits e já
+> nascia velho. Os parágrafos abaixo dele, sobre tudo estar publicado, **não valem mais.**
+>
+> **`lyra` está 53 commits à frente de `origin/lyra`, e isso é deliberado.** Ele foi perguntado
+> hoje e disse que não quer publicar. O site no ar é `f607fe9`, de 03/09 03:41 — não tem o quarto
+> navegável, nem a estação do retrato, nem o oráculo, nem o acervo, nem a Invocação, nem a
+> correção da luz. **Não empurre para `lyra` sem ele pedir**: `pages.yml` dispara no push para
+> essa branch e só nela, então qualquer outro nome é um push que não publica.
+>
+> Contra a perda, o que existe é um `git bundle` em `~/dev/backups/`, refeito quando o trabalho
+> vale mais que o último. Não há segunda cópia fora deste disco.
+>
+> Árvore limpa. `npm run check` passa e `npx vitest run` dá **153 testes em 3,4s** (eram 140 em
+> 05/09). `npm run build:site` e `npm run verify:site` não foram rodados hoje.
+>
+> O que a cadeia do quarto tem: o instrumento encolhido para `K = 0,46` (T-32), a mobília em
+> quatro grupos (T-33), o anel de seis estações com o pad levando (T-34, metade), e desde 05/09
+> as estações **fazem** coisas — o retrato responde perguntas e o acervo abre obras. O que foi
+> construído sem ticket está tabelado no fim de `docs/tickets/README.md`, com os commits.
 >
 > **O quarto navegável vive em `?trilho`, que é bancada e não o caminho do visitante.** A razão é
 > medida: a Tela tem 496 px no repouso e cai para perto de 170 px a seis unidades de distância,
 > onde fica uma estação. Quem responde a isso é a Plate plana do T-05, promovida de plano B a
 > caminho principal — item 4 do T-34, atrás do T-30. Enquanto isso não existir, ligar a viagem em
 > `/` entrega um quarto bonito onde não se lê nada.
->
-> `npm run check`, `npm run build:site`, `npm run verify:site` e `npx vitest run` (140 testes)
-> passam. Um push para `lyra` constrói e publica em `nanj.in` em cerca de um minuto, e é decisão
-> do Fernando, não consequência de uma sessão.
 
-**Everything is committed and deployed.** Sixteen commits on 2026-08-28, working tree clean, and
-`origin/lyra` is level with local. Nothing is waiting on a ruling.
+~~**Everything is committed and deployed.** Sixteen commits on 2026-08-28, working tree clean, and
+`origin/lyra` is level with local.~~ **Verdade em 28/08 e falso desde 03/09** — ver o bloco acima.
+O que continua verdade: nada está esperando uma decisão para *poder* ser construído.
 
 **The site is live on his own domain, over HTTPS.**
 
@@ -220,7 +233,7 @@ same instinct as `prototype/light-fit/`; use it, and extend it when you add a ne
 - **`npm run check`** bundles both entry points through esbuild in about a second. Run it before
   handing anything over. It has caught duplicate declarations that would have killed the scene.
 - **It will not catch anything geometric.** A mesh facing the wrong way is valid code.
-- **`npx vitest run`** — 41 tests, ~17s.
+- **`npx vitest run`** — 153 tests, ~3,4s (eram 41 quando esta linha foi escrita).
 - **Arithmetic is verification.** The opening tilt was found by projecting the candlestick's top into
   NDC, not by looking at it.
 
