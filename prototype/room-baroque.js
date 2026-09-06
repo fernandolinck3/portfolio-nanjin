@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { medir } from './superficie.js'
+import { chamaTex, chamaGeo } from './chama.js'
 
 /**
  * The baroque fittings of the room — cornice, ceiling rose, chandelier, sconces,
@@ -62,22 +63,24 @@ function moulding(profile, length, mat, flip = false) {
 }
 
 /**
- * A flame: two crossed billboard-ish planes with an emissive material.
+ * A flame: two crossed quads, one mesh, and the drawn flame from `chama.js`.
  *
  * Not a light, and the room has sixteen of them. A candle at this distance is a
  * bright point and a halo; the shape of the flame is below the resolution the eye
  * gets from across a room, which is the same argument `docs/realism-budget.md` makes
- * for the Altar's own Candles at the shipped framing.
+ * for the Altar's own Candles at the shipped framing — and it is *not* an argument
+ * for a rectangle, which is what this was. Thirteen pixels is small; it is not small
+ * enough to hide a corner, and it was never small enough to hide the fact that a
+ * flat 0xFFC66B has no white in it. See `chamaTex`.
+ *
+ * The two planes used to be two meshes inside a group. `chamaGeo` puts them in one
+ * buffer, so the room's thirty-two flames cost thirty-two draw calls rather than
+ * sixty-four, and `baroque.flames` still toggles exactly one object per flame.
  */
 function flame(mat, scale = 1) {
-  const g = new THREE.Group()
-  for (const rot of [0, Math.PI / 2]) {
-    const p = new THREE.Mesh(new THREE.PlaneGeometry(.07 * scale, .17 * scale), mat)
-    p.rotation.y = rot
-    p.position.y = .085 * scale
-    g.add(p)
-  }
-  return g
+  const m = new THREE.Mesh(chamaGeo(.07 * scale, .17 * scale), mat)
+  m.position.y = .085 * scale
+  return m
 }
 
 /* O relevo medido, e a regra dele, moram em `superficie.js` — a parede do fundo usa o
@@ -144,11 +147,17 @@ export function createBaroque(room, {
   const WAX = new THREE.MeshStandardMaterial({
     color: 0xEFE6D2, roughness: .62, metalness: 0,
   })
-  /* The flame's own colour, carried on `emissive` so it survives the room going out.
-     `emissiveIntensity` is what the Vigil walks down. */
+  /* The flame's own colour is carried on the map now rather than on `emissive` — see
+     `chamaTex` for why a flat 0xFFC66B could never have a core. `emissive` is white
+     so the map's own white survives, and `emissiveIntensity` is still exactly what
+     the Vigil walks down. It is 5.4 rather than 3.2 because the map's mantle sits at
+     about six tenths: 5.4 × .6 is the 3.2 the flat material had, so the warm body of
+     the flame is unchanged and only the core is new. */
   const FLAME = new THREE.MeshStandardMaterial({
-    color: 0x000000, emissive: 0xFFC66B, emissiveIntensity: 3.2,
-    transparent: true, opacity: .92, depthWrite: false, side: THREE.DoubleSide,
+    color: 0x000000, emissive: 0xFFFFFF, emissiveIntensity: 5.4,
+    emissiveMap: chamaTex(),
+    transparent: true, blending: THREE.AdditiveBlending,
+    depthWrite: false, side: THREE.DoubleSide,
   })
   /* A mirror without a reflection: dark glass that takes the environment map and
      almost nothing else. A real reflection needs a second render of the whole scene,

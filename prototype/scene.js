@@ -13,6 +13,7 @@ import { padMaps, faderSlot, faderCap } from './control-faces.js';
 import { deckMaps, deckGlow } from './deck-faces.js'
 import { createRoomDecor } from './room-decor.js'
 import { createBaroque } from './room-baroque.js'
+import { chamaTex, brilhoTex, chamaGeo } from './chama.js';
 import { medir } from './superficie.js'
 import { createMobilia } from './room-mobilia.js'
 import { marquetryTexture } from './marquetry.js'
@@ -2560,12 +2561,55 @@ function candlestick(x, z, height) {
       color: 0xF3E7CE, roughness: .55, metalness: 0,
     }));
   wax.position.y = height * .98 + .26; g.add(wax);
-  const flame = new THREE.Mesh(new THREE.SphereGeometry(.075, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0xFFD08A, transparent: true, blending: THREE.AdditiveBlending }));
+  /**
+   * The flame is drawn, and it was a sphere of flat colour.
+   *
+   * These are the three Candles the rite puts out, and they were the worst instance
+   * in the piece of the thing `chama.js` exists to fix. A sphere in additive blending
+   * with one flat colour draws a **capsule**: uniform inside, hard at the silhouette,
+   * no core and no falloff. Worse, 0xFFD08A is a pale warm cream and it sat directly
+   * on top of the wax, which is 0xF3E7CE and lit by this candle's own light — so the
+   * flame was cream on cream and the eye read one white pill on a candlestick.
+   *
+   * Same two crossed quads and the same drawn teardrop the room's flames use, so the
+   * Altar and the chandelier are lit by the same kind of fire. The geometry is .15
+   * across, which is the diameter the sphere had, because the 2.1 vertical stretch
+   * lives in the flicker at `applyFlicker` rather than here and stretching it twice
+   * would double the flame's height.
+   *
+   * `color` is set linear and above one on purpose: the map's core is white at 1.0,
+   * and 1.0 through ACES at this exposure lands at about 240 — near white, which is
+   * exactly the near that made the room look like it had no sources in it. At 3.2 the
+   * core saturates and the mantle keeps its temperature, because the mantle is six
+   * tenths of the map rather than all of it.
+   */
+  /* `depthWrite: false` is not tidiness. With it on, the quad writes depth in the
+     transparent pass and punches the halo out of its own rectangle — which draws as
+     two black wedges flanking the flame's tip, because the glow is missing exactly
+     where the quad is and present all around it. `side` is double for the reason the
+     geometry has two quads at all: one of them faces the other way. */
+  const flame = new THREE.Mesh(chamaGeo(.15, .15),
+    new THREE.MeshBasicMaterial({
+      map: chamaTex(), transparent: true, blending: THREE.AdditiveBlending,
+      depthWrite: false, side: THREE.DoubleSide,
+    }));
+  flame.material.color.setRGB(3.2, 3.2, 3.2);
   flame.scale.set(1, 2.1, 1);
   flame.position.y = height * .98 + .60; g.add(flame);
-  const halo = new THREE.Mesh(new THREE.SphereGeometry(.20, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0xFF9A3C, transparent: true, opacity: .3, blending: THREE.AdditiveBlending }));
+  /**
+   * The halo is a sprite, because a glow is the one thing that must not have an edge.
+   *
+   * It was a sphere of flat colour in additive blending, which draws a hard-edged
+   * orange **disc** — visible in every close framing as a ring behind the candle.
+   * A sprite faces the camera without a line of per-frame code, and `brilhoTex`
+   * gives it a gaussian falloff, so what it draws is a glow rather than a shape.
+   * `opacity` and `visible` are all the Vigil ever touched on it, and both still work.
+   */
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: brilhoTex(), transparent: true, opacity: .3, blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  }));
+  halo.scale.set(.62, .62, 1);
   halo.position.copy(flame.position); g.add(halo);
   /* 5.5 while three falloff-free directionals were doing the work; the fit against
      the reference puts it here now that this light is actually carrying the Altar.
@@ -3668,7 +3712,7 @@ function applyVigil() {
    */
   {
     const k = Math.max(0, Math.min(1, 1 - vigil / .72));
-    baroque.materials.FLAME.emissiveIntensity = 3.2 * k * k;
+    baroque.materials.FLAME.emissiveIntensity = 5.4 * k * k;
     for (const f of baroque.flames) f.visible = k > .01;
     /* The fire is the last thing in the room to go, and it does not go out — it sinks.
        A fire that blows out like a candle is the tell that it was never a fire. */

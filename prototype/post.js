@@ -176,10 +176,39 @@ const GradeShader = {
          weight is the pixel's own luminance, so it is a split tone rather than a
          tint over everything. */
       float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
-      c.rgb += lift * (1.0 - l) * 0.35;
-      c.rgb *= mix(vec3(1.0), gain, l * 0.6);
 
-      c.rgb = mix(vec3(l), c.rgb, saturation);
+      /**
+       * The top of the range is released, and that is what lets a source be a source.
+       *
+       * Measured: with the exposure driven to 30, where every pixel in the frame has
+       * saturated the tone mapper, the whitest colour this chain could produce was
+       * **rgb(255, 237, 211)**. Not near white — that exact warm cream, and no scene
+       * change could move it. Emissive white at intensity 20 on the room's thirty-two
+       * flames did not shift the maximum by one unit.
+       *
+       * The cause is here. The gain is weighted by the luminance times 0.6, saturation
+       * is 1.06, and both bite hardest exactly where the luminance is highest, so
+       * the grade was taking the top off every highlight in the picture. A room lit
+       * by flames whose flames cannot reach white has no sources in it — only warm
+       * lit surfaces, which is what the histogram said: 0.02% of the frame above
+       * luminance 230 and nothing at all above 240.
+       *
+       * A split tone toward candlelight is right for the mids and the upper mids, and
+       * it is wrong for the core of a flame: a sensor that saturates saturates in all
+       * three channels, which is why a candle photographs with a white centre and an
+       * orange mantle. So the grade holds to luminance 0.80 and then lets go, and
+       * above that the picture is allowed to blow out to white.
+       *
+       * The shoulder is worth its three instructions: p99 of the frame is luminance
+       * 203, so the shoulder is zero for ninety-nine pixels in a hundred and this
+       * changes nothing whatsoever below the sources.
+       */
+      float core = smoothstep(0.80, 1.0, l);
+
+      c.rgb += lift * (1.0 - l) * 0.35;
+      c.rgb *= mix(vec3(1.0), gain, l * 0.6 * (1.0 - core));
+
+      c.rgb = mix(vec3(l), c.rgb, mix(saturation, 1.0, core));
 
       /* vignette, measured from the centre with a soft shoulder */
       vec2 d = vUv - 0.5;

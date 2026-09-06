@@ -140,3 +140,50 @@ O limiar continua 2.6 e não 0.85, com o joelho suave que a primeira montagem n�
 sem ele, uma chama cintilando em volta do limiar liga e desliga o halo dela entre
 quadros. O alvo continua sendo 90fps / 11,1ms.
 
+
+## Terceira emenda: o grade tinha um teto, e ele estava em rgb(255, 237, 211)
+
+Esta ADR já dizia que o que sobrou do pós-processamento é *a metade barata: tone mapping
+e um grade de tela cheia para a vinheta e o grão*. O grade era barato e estava cobrando
+uma coisa que ninguém tinha medido: **ele impedia o objeto de ter branco.**
+
+O grade faz um split tone — sombras para a lua, brilhos para a vela — e o peso dele é a
+própria luminância do pixel:
+
+    c.rgb *= mix(vec3(1.0), gain, l * 0.6);
+    c.rgb  = mix(vec3(l), c.rgb, saturation);
+
+com `gain` em 0xFFF0DC e `saturation` em 1.06. Os dois mordem mais forte exatamente onde
+`l` é mais alto, que é onde estão as fontes. O resultado é um teto, e o teto é uma
+constante da cadeia e não uma propriedade da cena:
+
+**Medido.** Com `toneMappingExposure` forçada a 30 — onde todo pixel do quadro satura o
+tone mapping e a entrada do grade é (1,1,1) — a cor mais clara que a cadeia produzia era
+**rgb(255, 237, 211)**. Não perto do branco: aquele creme, e mudança nenhuma na cena
+movia o número. Emissiva branca em intensidade **20** nas trinta e duas chamas do quarto
+não mexeu no máximo em uma unidade. No quadro entregue: **zero** pixels acima de
+luminância 240, e 0,02% acima de 230.
+
+Uma sala iluminada por chamas cujas chamas não podem chegar ao branco não tem fonte
+nenhuma dentro dela — tem superfície morna iluminada. É a explicação de por que o bloom
+em 0,45 virava névoa: ele estava sendo posto a **fabricar** luz em vez de espalhar,
+porque não havia estouro nenhum para espalhar.
+
+**A correção é um ombro, e é cirúrgica.** O grade segura até luminância 0,80 e solta:
+
+    float core = smoothstep(0.80, 1.0, l);
+    c.rgb *= mix(vec3(1.0), gain, l * 0.6 * (1.0 - core));
+    c.rgb  = mix(vec3(l), c.rgb, mix(saturation, 1.0, core));
+
+p99 do quadro é luminância 203, então `core` é zero para noventa e nove pixels em cada
+cem — abaixo das fontes nada muda, e é por isso que o split tone continua sendo o split
+tone que foi ajustado. Acima disso o quadro tem permissão de estourar para branco, que é
+o que um sensor faz quando satura: nos três canais, e é por isso que uma vela
+fotografada tem centro branco e franja laranja.
+
+Três instruções, o mesmo passe, nenhum passe novo. Depois disso: máximo rgb(255,255,255),
+2.342 pixels acima de 240 e ~250 pixels brancos onde antes havia zero de cada.
+
+**E o corolário, que é a metade que importa.** Levantar o teto não acende nada sozinho —
+só torna possível. As duas chamas da peça eram cor chapada e nenhuma delas tinha branco
+na cor, então nenhuma podia ter núcleo em nenhuma exposição. Ver `prototype/chama.js`.
