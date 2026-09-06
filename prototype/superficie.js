@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { asset } from './asset.js'
 
 /**
  * Relevo e rugosidade fotografados por cima de um material já autorado.
@@ -45,7 +46,7 @@ const desligado = () => typeof location !== 'undefined' && location.search.inclu
 export function medir(mat, { nor, arm, cor } = {}, { repU = 1, repV = repU, forca = .6, base = '/textures/' } = {}) {
   if (desligado()) return Promise.resolve(false)
   const load = new THREE.TextureLoader()
-  const raiz = (import.meta.env?.BASE_URL || '/') + base.replace(/^\//, '')
+  const raiz = asset(base)
   const põe = arq => new Promise((ok, erro) => load.load(raiz + arq, t => {
     t.wrapS = t.wrapT = THREE.RepeatWrapping
     t.repeat.set(repU, repV)

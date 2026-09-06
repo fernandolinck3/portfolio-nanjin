@@ -15,6 +15,8 @@
  * reads as belonging to the chapel rather than as a foreign image pasted into it.
  */
 
+import { asset } from './asset.js'
+
 const BONE = '#DCD6C6', GOLD = '#C9BE96', EMBER = '#F87A5E', RED = '#C4281C', INK = '#0C0A0B'
 
 /** Deterministic noise, so a sheet looks the same every load. */
@@ -159,29 +161,61 @@ export function sheetFor(work, index) {
 }
 
 /**
- * A capa — 12 polegadas, quadrada, e é o que vai na parede do acervo.
+ * A capa — 12 polegadas, quadrada, e feita **do site**.
  *
- * `sheetFor` desenha a **peça**: um pôster em retrato ou a captura de um site em
- * paisagem, que é o formato da coisa que a obra é. Uma parede de discos pede a outra
- * face do mesmo trabalho: a capa com que ele se apresenta na prateleira. São quadradas
- * porque um disco é quadrado, e a diferença não é decorativa — quatro retratos e três
- * paisagens numa grade não formam uma parede de discos, formam quadros pendurados.
+ * A primeira versão desenhou seis silhuetas geométricas: disco, eclipse, arco, barras,
+ * losango, anel. Ele olhou e disse o que estava errado: *"as capas não podem ter essa
+ * estética de simplesmente ter uns ícones, elas podem pegar algum elemento do site tal
+ * como se fosse uma capa de álbum mesmo"*. Ele tem razão e o defeito é de fundo — um
+ * ícone genérico numa capa diz *"aqui vai um projeto"*, e uma capa de álbum diz **qual**.
  *
- * A marca de cada uma vem do índice e não de aleatório: a esta distância, o que separa
- * uma capa da outra é a **silhueta** — um disco cheio, um eclipse, um arco, uma barra —
- * e não a cor nem o texto. É a mesma lição que a lombada de dez pixels ensinou.
+ * Então a capa é um recorte da obra de verdade. `public/works/` tem as capturas, uma
+ * por obra em `images[]`, e o que vai para a parede é um **detalhe** ampliado 2,2× e
+ * não a página inteira reduzida: uma captura de site espremida em 640 quadrados é
+ * ilegível, e um pedaço dela é um grafismo. É o que uma capa faz com uma fotografia.
+ *
+ * O tratamento é duotone na paleta do quarto — tinta, vermelho, ouro, osso. Sem ele a
+ * parede vira sete retângulos de branco de navegador num quarto que é escuridão com
+ * poços de luz, que é o mesmo erro das sessenta lombadas em cores vivas.
+ *
+ * A imagem chega depois, então `aoCarregar` avisa quem tem de marcar a textura suja.
+ * A capa desenha completa antes disso: quem não esperar vê o campo e o tipo, nunca um
+ * quadrado vazio.
  */
-export function sleeveFor(work, index) {
+export function sleeveFor(work, index, aoCarregar) {
   const c = document.createElement('canvas')
   c.width = 640; c.height = 640
   const g = c.getContext('2d')
   const rnd = rng(7700 + index * 149)
   const S = c.width
 
-  g.fillStyle = INK; g.fillRect(0, 0, S, S)
+  /** O bloco de tipo, que é desenhado duas vezes: antes e depois da imagem chegar. */
+  const tipo = () => {
+    /* a faixa escura sob o texto: sobre um recorte claro o osso sumia, e uma capa que
+       só se lê em metade das obras não é um sistema */
+    const grad = g.createLinearGradient(0, S * 0.60, 0, S)
+    grad.addColorStop(0, 'rgba(12,10,11,0)')
+    grad.addColorStop(.45, 'rgba(12,10,11,.86)')
+    grad.addColorStop(1, 'rgba(12,10,11,.97)')
+    g.fillStyle = grad; g.fillRect(0, S * 0.60, S, S * 0.40)
 
-  /* o mesmo chão de meio-tom do pôster, mais fechado: uma capa é vista de frente e de
-     perto, e o gradiente que ajuda num pôster de parede aqui vira sujeira */
+    g.strokeStyle = GOLD; g.lineWidth = 2
+    g.beginPath(); g.moveTo(S * 0.08, S * 0.72); g.lineTo(S * 0.92, S * 0.72); g.stroke()
+
+    g.fillStyle = BONE
+    g.font = `700 ${Math.round(S * 0.115)}px "Archivo", system-ui, sans-serif`
+    g.textAlign = 'left'
+    g.fillText(work.no, S * 0.08, S * 0.845)
+    g.font = `400 ${Math.round(S * 0.045)}px "Azeret Mono", ui-monospace, monospace`
+    g.fillStyle = GOLD
+    g.fillText(work.title.toUpperCase(), S * 0.08, S * 0.915)
+
+    stamp(g, S, S, work.kind.toUpperCase(), work.placeholder)
+  }
+
+  /* o campo, para a capa existir inteira antes de a captura chegar — e para ser o
+     fundo dela quando chegar, porque um recorte não cobre os quatro cantos sempre */
+  g.fillStyle = INK; g.fillRect(0, 0, S, S)
   for (let y = 0; y < S; y += 7) {
     for (let x = 0; x < S; x += 7) {
       if (rnd() > 0.38) continue
@@ -189,46 +223,50 @@ export function sleeveFor(work, index) {
       g.beginPath(); g.arc(x, y, 0.8 + rnd() * 1.8, 0, 6.2832); g.fill()
     }
   }
+  tipo()
 
-  /* A marca. Seis silhuetas, uma por índice, e todas cabem no mesmo quadrado de
-     segurança — o bloco de tipo embaixo é território reservado em todas elas. */
-  const cx = S * 0.5, cy = S * 0.40, r = S * 0.26
-  g.fillStyle = RED
-  const marca = index % 6
-  if (marca === 0) {                                   /* o disco cheio */
-    g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.fill()
-  } else if (marca === 1) {                            /* o eclipse */
-    g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.fill()
-    g.globalCompositeOperation = 'destination-out'
-    g.beginPath(); g.arc(cx + r * 0.42, cy - r * 0.22, r * 0.86, 0, 6.2832); g.fill()
-    g.globalCompositeOperation = 'source-over'
-  } else if (marca === 2) {                            /* o arco */
-    g.lineWidth = r * 0.30; g.strokeStyle = RED; g.lineCap = 'butt'
-    g.beginPath(); g.arc(cx, cy + r * 0.30, r, Math.PI, 0); g.stroke()
-  } else if (marca === 3) {                            /* as barras */
-    for (let i = 0; i < 4; i++)
-      g.fillRect(cx - r, cy - r + i * (r * 0.56), r * 2, r * 0.30)
-  } else if (marca === 4) {                            /* o losango */
-    g.save(); g.translate(cx, cy); g.rotate(Math.PI / 4)
-    g.fillRect(-r * 0.72, -r * 0.72, r * 1.44, r * 1.44); g.restore()
-  } else {                                             /* o anel */
-    g.lineWidth = r * 0.26; g.strokeStyle = RED
-    g.beginPath(); g.arc(cx, cy, r * 0.86, 0, 6.2832); g.stroke()
+  const src = work.images?.[0]
+  if (!src) return c
+
+  const img = new Image()
+  img.onload = () => {
+    /**
+     * O recorte: 2,2× e um ponto focal por obra.
+     *
+     * Uma captura de site tem o interessante em cima e à esquerda — logotipo, título,
+     * a imagem grande — e o resto é texto corrido que vira cinza a esta escala. O
+     * deslocamento vem do índice para as sete não recortarem no mesmo lugar, e fica
+     * na metade de cima porque é onde a página tem desenho.
+     */
+    const zoom = 2.2
+    const escala = (S / Math.min(img.width, img.height)) * zoom
+    const lw = img.width * escala, lh = img.height * escala
+    const fx = .10 + (index % 3) * .18
+    const fy = .04 + (index % 2) * .12
+    g.save()
+    g.beginPath(); g.rect(0, 0, S, S); g.clip()
+    g.drawImage(img, -(lw - S) * fx, -(lh - S) * fy, lw, lh)
+    g.restore()
+
+    /* duotone: a luminância vira uma rampa de quatro paradas na paleta do quarto. É o
+       que faz sete capturas de navegador virarem sete capas do mesmo selo. */
+    const d = g.getImageData(0, 0, S, S)
+    const px = d.data
+    const paradas = [[12, 10, 11], [122, 40, 28], [201, 190, 150], [236, 230, 214]]
+    for (let i = 0; i < px.length; i += 4) {
+      const l = (px[i] * .299 + px[i + 1] * .587 + px[i + 2] * .114) / 255
+      const t = l * (paradas.length - 1)
+      const n = Math.min(paradas.length - 2, Math.floor(t))
+      const f = t - n
+      const a = paradas[n], b = paradas[n + 1]
+      px[i] = a[0] + (b[0] - a[0]) * f
+      px[i + 1] = a[1] + (b[1] - a[1]) * f
+      px[i + 2] = a[2] + (b[2] - a[2]) * f
+    }
+    g.putImageData(d, 0, 0)
+    tipo()
+    aoCarregar?.()
   }
-
-  /* o filete dourado que separa a arte do bloco de tipo — é o que toda capa tem e o
-     que faz o texto ler como impresso na capa e não posto por cima dela */
-  g.strokeStyle = GOLD; g.lineWidth = 2
-  g.beginPath(); g.moveTo(S * 0.08, S * 0.72); g.lineTo(S * 0.92, S * 0.72); g.stroke()
-
-  g.fillStyle = BONE
-  g.font = `700 ${Math.round(S * 0.115)}px "Archivo", system-ui, sans-serif`
-  g.textAlign = 'left'
-  g.fillText(work.no, S * 0.08, S * 0.845)
-  g.font = `400 ${Math.round(S * 0.045)}px "Azeret Mono", ui-monospace, monospace`
-  g.fillStyle = GOLD
-  g.fillText(work.title.toUpperCase(), S * 0.08, S * 0.915)
-
-  stamp(g, S, S, work.kind.toUpperCase(), work.placeholder)
+  img.src = asset(src)
   return c
 }

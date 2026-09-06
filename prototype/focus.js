@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { caseOf } from '../src/content/modules.ts'
 import { track, trackSettled } from './track.js'
 import { UI } from '../src/content/strings.ts'
+import { asset } from './asset.js'
 
 /**
  * Zoom to the Screen, then hand the Work to the DOM.
@@ -31,20 +32,7 @@ import { UI } from '../src/content/strings.ts'
    parte que o visitante olha. */
 const EASE = t => (t < .5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2)
 
-/**
- * Resolve a Work's still against the deployed base path.
- *
- * `modules.ts` stores these as `/works/foo.jpg`, which is the right shape for the
- * *data* — a bare, root-relative path that says nothing about where the site is
- * hosted. But the build emits its scripts relatively (`base: './'`), so the site
- * runs from a subdirectory as well as a domain root, and a root-absolute image URL
- * would resolve past that subdirectory to the server root and 404.
- *
- * That failure only ever appears in a deployed build — never in `npm run dev`,
- * where the site *is* at the root — which makes it precisely the kind of bug worth
- * spending four lines to never have.
- */
-const asset = p => (import.meta.env?.BASE_URL || '/') + String(p).replace(/^\//, '')
+/* o caminho de um still contra a base do deploy — a regra mora em `asset.js` */
 
 /**
  * Rejoin lines that were broken for a 320-pixel Screen.
@@ -105,13 +93,19 @@ function screenFillPose(camera, { centre, width, depth }) {
  * A margem é a mesma 1.08, e por isso: uma peça que toca as bordas do quadro lê como
  * recortada, e recortada é exatamente o que a Tela era antes de o `focus` existir.
  */
-function uprightFillPose(camera, { centro, largura, altura }) {
+/**
+ * `normal` chegou quando a capa entrou como alvo: a peça na vitrola encara +z e uma
+ * capa na parede esquerda encara +x. Sem ela a câmera pousava na aresta do objeto e
+ * enquadrava uma linha. O padrão continua +z, que é o que o rito sempre entregou.
+ */
+function uprightFillPose(camera, { centro, largura, altura, normal }) {
   const vFov = THREE.MathUtils.degToRad(camera.fov)
   const forHeight = (altura / 2) / Math.tan(vFov / 2)
   const forWidth = (largura / 2) / (Math.tan(vFov / 2) * camera.aspect)
   const dist = Math.max(forHeight, forWidth) * 1.08
 
-  const pos = new THREE.Vector3(centro.x, centro.y, centro.z + dist)
+  const n = normal ? normal.clone().normalize() : new THREE.Vector3(0, 0, 1)
+  const pos = centro.clone().addScaledVector(n, dist)
   const m = new THREE.Matrix4().lookAt(pos, centro, new THREE.Vector3(0, 1, 0))
   return { pos, quat: new THREE.Quaternion().setFromRotationMatrix(m) }
 }

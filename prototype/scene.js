@@ -4231,8 +4231,26 @@ function openRow(row) {
  * lê `summoning.quadro()` para saber onde pousar, e o quadro depende da obra aplicada —
  * pôster é retrato, site é paisagem, e a altura muda com isso.
  */
-function abrirObra(w, de) {
+/**
+ * O alvo do zoom quando a obra foi aberta por uma capa da parede.
+ *
+ * Fica em `null` para tudo que vem da Tela: ali o alvo é a peça na vitrola, que é o
+ * que o rito monta. Clicando uma capa, o assunto é **a capa** — foi o que ele pediu
+ * ao ver a primeira versão: *"não precisa vir ao lado a câmera, pode ser do mesmo
+ * jeito que quando o usuário ficava no projeto dentro do módulo, esse zoom"*.
+ */
+let alvoCapa = null;
+
+/** O quadro de uma capa em coordenadas de mundo, com a normal dela. */
+function quadroDaCapa(malha) {
+  const centro = malha.getWorldPosition(new THREE.Vector3());
+  const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(malha.getWorldQuaternion(new THREE.Quaternion()));
+  return { centro, normal, largura: malha.scale.x, altura: malha.scale.y };
+}
+
+function abrirObra(w, de, capa) {
   if (!w) return false;
+  alvoCapa = capa ? quadroDaCapa(capa) : null;
   flashLcd(`ABRIR · ${w.title}`);
   track('work_open', { work: w.id, from: de });
   summonWork(WORKS.indexOf(w));
@@ -4242,30 +4260,22 @@ function abrirObra(w, de) {
 }
 
 /**
- * Clicar uma obra na baia do acervo.
+ * Clicar uma capa na parede do acervo — e ela **abre**, de onde quer que se clique.
  *
- * Mesma forma que `tocarRetrato`: longe da estação o clique **leva até lá** em vez de
- * abrir, porque abrir uma coisa que não está enquadrada é pular uma etapa que o
- * visitante não pediu. Chegando, o clique abre.
+ * A primeira versão tinha três estados, como o retrato: longe leva, na estação chega
+ * perto, perto abre. Ele viu funcionando e cortou: *"não precisa vir ao lado a câmera,
+ * pode ser do mesmo jeito que quando o usuário ficava no projeto dentro do módulo, e
+ * abrir a página, esse zoom"*.
+ *
+ * Ele está certo, e a razão é que a etapa que eu estava protegendo não existe aqui. No
+ * retrato aproximar-se é o conteúdo — a pose fechada é onde o oráculo responde. Numa
+ * parede de capas, aproximar-se é só andar até uma coisa em que já se acertou o clique.
+ * O zoom do `focus` já **é** a aproximação, e ele termina na página.
  */
 function tocarAcervo(hit) {
   const w = WORKS.find(x => x.id === hit.object.userData.obra);
   if (!w) return false;
-  const est = trilho.estacaoDe('projects');
-  if (!est) return abrirObra(w, 'acervo');
-  /**
-   * Três estados, como no retrato: longe se aproxima, na estação chega perto, e **perto
-   * abre**. Abrir de longe puliria a etapa em que o visitante vê qual capa é qual — que
-   * é a etapa inteira desta estação, porque no repouso uma capa mede uns cem pixels e
-   * dá para ver que há algo ali sem dar para ver o quê.
-   */
-  if (trilho.estacao !== est) {
-    const i = MODULES.findIndex(x => x.id === 'projects');
-    if (i >= 0) { pressPad(i); flashLcd('O ACERVO'); return true; }
-    return false;
-  }
-  if (!trilho.perto && trilho.irPara(est, { perto: true })) { flashLcd('MAIS PERTO'); return true; }
-  return abrirObra(w, 'acervo');
+  return abrirObra(w, 'acervo', hit.object);
 }
 
 /** As lombadas das obras dele, e só elas — as de enchimento não respondem. */
@@ -6193,7 +6203,7 @@ const focus = createFocus({
   mount: document.getElementById('stage'),
   screen: { centre: new THREE.Vector3(0, FACE_Y, SCREEN_Z), width: OPENING.w, depth: OPENING.d },
   /* onde pousar: a peça no plinto, e a Tela se não houver obra aplicada */
-  alvo: () => (rite.phase === 'idle' ? null : summoning.quadro()),
+  alvo: () => alvoCapa || (rite.phase === 'idle' ? null : summoning.quadro()),
   onProgress(t) {
     /* the room falls away; the Screen's own glow and the phosphor do not */
     for (const [l, base] of ROOM_DIM) l.intensity = base * (1 - t * 0.88);
@@ -6365,6 +6375,48 @@ function visorDeveAparecer() {
   if (trilho.perto && trilho.alvo?.id === 'retrato') return false;
   return larguraDaTela() < LIMIAR_VISOR;
 }
+/**
+ * O voltar do quarto — o gesto que faltava.
+ *
+ * Numa estação a Unidade está fora do quadro e **nenhum controle é clicável**: o
+ * `?trilho` destapava a bancada para servir de saída, o que é endereço de trabalho e
+ * não de visitante. Ele pediu isto na segunda olhada: *"a gente precisa realmente ter
+ * o botão de voltar, pro usuário poder voltar pra sessão"*.
+ *
+ * Dois níveis, e o rótulo diz qual: da pose fechada volta-se para a estação, da
+ * estação volta-se para o Altar. É a mesma escada que o `moonBack` sobe na Tela, e
+ * por isso não inventa um terceiro caminho: quem sai daqui chega onde o pad levaria.
+ *
+ * Não é ajuda, tooltip nem onboarding — é a saída de uma sala, que todo lugar tem.
+ */
+const voltarEl = document.getElementById('voltar-quarto');
+function pintarVoltar() {
+  if (!voltarEl) return;
+  const fora = !!trilho?.dirigindo && !focus.active;
+  const perto = !!trilho?.perto;
+  if (fora) {
+    const nome = perto ? (trilho.alvo?.nome || 'A ESTAÇÃO') : 'O ALTAR';
+    const rotulo = `← ${nome.toUpperCase()}`;
+    if (voltarEl.textContent !== rotulo) voltarEl.textContent = rotulo;
+  }
+  if (fora === !!voltarEl.dataset.on) return;
+  if (fora) {
+    voltarEl.hidden = false;
+    voltarEl.removeAttribute('aria-hidden');
+    requestAnimationFrame(() => voltarEl.dataset.on = '1');
+  } else {
+    delete voltarEl.dataset.on;
+    voltarEl.setAttribute('aria-hidden', 'true');
+    /* sai do layout depois da transição, pela mesma razão do visor: `hidden` junto
+       com a opacidade mata o desvanecimento */
+    setTimeout(() => { if (!voltarEl.dataset.on) voltarEl.hidden = true; }, 400);
+  }
+}
+voltarEl?.addEventListener('click', () => {
+  if (trilho.perto) { trilho.irPara(trilho.estacao, { perto: false }); flashLcd('A ESTAÇÃO'); return; }
+  if (trilho.estacao !== 0 || trilho.panoramico) { trilho.irPara(0); flashLcd('O ALTAR'); }
+});
+
 function pintarVisor() {
   if (!visorCtx) return;
   const deve = visorDeveAparecer();
@@ -6967,6 +7019,7 @@ function frame(t) {
     /* no relógio da Tela e não no da cena: o visor mostra o mesmo buffer, e copiá-lo a
        60 quando ele só muda a 24 é dois terços de blit jogados fora */
     pintarVisor();
+    pintarVoltar();
     screenClock = 0;
   }
   /* The mirror follows the Screen's own clock. `drawScreen()` is the deliberate

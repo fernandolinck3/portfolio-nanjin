@@ -466,8 +466,13 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
     const x0 = -((fila.n - 1) * PASSO) / 2
     for (let i = 0; i < fila.n && posta < obras.length; i++, posta++) {
       const obra = obras[posta]
-      const cv = sleeveFor(obra, posta)
-      const tex = new THREE.CanvasTexture(cv)
+      /* a captura chega depois do primeiro quadro, e a textura precisa saber. `tex`
+         é declarada antes de propósito: o `onload` é assíncrono e chegaria depois de
+         qualquer jeito, mas uma seta que alcança para a frente um `const` da linha
+         seguinte é exatamente a forma do TDZ que já matou uma cena inteira aqui */
+      let tex
+      const cv = sleeveFor(obra, posta, () => { if (tex) tex.needsUpdate = true })
+      tex = new THREE.CanvasTexture(cv)
       tex.colorSpace = THREE.SRGBColorSpace
       tex.anisotropy = 8
       const capa = new THREE.Mesh(sleeveGeo, new THREE.MeshStandardMaterial({

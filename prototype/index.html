@@ -265,6 +265,22 @@
     opacity:0;transform:translateY(10px) scale(.985);
     transition:opacity .34s ease,transform .34s ease}
   #visor[data-on]{opacity:1;transform:none}
+
+  /* o voltar acompanha o visor: mesma quina, mesma entrada, e some junto */
+  /* à esquerda, e não junto do visor: o visor chega a 452px de largura na quina
+     direita, e um botão por cima dele é o mesmo defeito de composição que este
+     commit está consertando em outro lugar */
+  #voltar-quarto{position:fixed;left:22px;bottom:22px;z-index:5;
+    transform:translateY(10px);opacity:0;pointer-events:none;
+    transition:opacity .34s ease,transform .34s ease;
+    appearance:none;border:1px solid rgba(201,190,150,.34);border-radius:3px;
+    background:rgba(12,10,11,.82);color:#C9BE96;cursor:pointer;
+    font:400 11px/1 "Azeret Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing:.14em;padding:9px 13px}
+  #voltar-quarto[data-on]{opacity:1;transform:none;pointer-events:auto}
+  #voltar-quarto:hover{border-color:rgba(201,190,150,.7);color:#E4DCC6}
+  #voltar-quarto:focus-visible{outline:2px solid #C9BE96;outline-offset:2px}
+  body[data-debug] #voltar-quarto{bottom:64px}
   #visor canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;
     image-rendering:pixelated;background:#050706}
   /* fora do caminho da faixa de bancada, que ocupa a base inteira */
@@ -418,6 +434,16 @@
      quem lê a página lê o espelho, que já carrega o mesmo conteúdo como texto. Uma
      segunda cópia aqui seria conteúdo duplicado para quem usa leitor de tela. -->
 <figure id="visor" hidden aria-hidden="true"><canvas></canvas></figure>
+<!--
+  O voltar do quarto. Ele existe porque numa estação a Unidade está fora do quadro —
+  medido, a origem projeta em y = -1068 num viewport de 741 — e não havia gesto de
+  voltar com o mouse: o `?trilho` destapava a bancada para servir de saída, que é
+  endereço de trabalho e não de visitante. Um lugar de onde não se sai é um beco.
+
+  Mora ao lado do visor de propósito. Os dois só existem longe do Altar, e o visor é
+  onde ele pediu que estivesse o auxílio de entender o que está acontecendo.
+-->
+<button id="voltar-quarto" type="button" hidden aria-hidden="true"></button>
 <!--
   The semantic layer. ADR-0002: the DOM is the truth and the Screen is a render of
   it, so every control the hand can reach has a real focusable element here with a
