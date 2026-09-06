@@ -19,6 +19,7 @@ export const NOMES = {
   campo: 'B · CAMPO DE COR',
   selo: 'C · SELO',
   detalhe: 'D · UM ELEMENTO SÓ',
+  marca: 'E · A MARCA DO SITE',
 }
 
 function rng(seed) {
@@ -255,4 +256,163 @@ export function detalhe(g, S, work, i, img) {
   numero(g, S, work)
 }
 
-export const DESENHOS = { tipo, campo, selo, detalhe }
+
+/**
+ * A matéria — e é a resposta à queixa que valia pelas quatro.
+ *
+ * Ele viu os quatro desenhos e disse que **todos** estavam flat demais. Isso não é
+ * crítica de composição, é de material: uma capa de disco não é uma arte, é uma arte
+ * **impressa em papelão** e guardada por anos. O que faz o olho dizer "capa" antes de
+ * ler o que quer que seja é a soma de coisas que nenhum dos quatro tinha — grão de
+ * papel, retícula de impressão, o anel que o disco marca por dentro, o desgaste da
+ * beirada e o brilho oblíquo de uma superfície levemente encerada.
+ *
+ * Por isso é uma **camada** e não um quinto desenho: passa por cima de qualquer
+ * composição, e é o que separa "imagem quadrada" de "objeto".
+ */
+export function materia(g, S, i, { anel = true, desgaste = 1 } = {}) {
+  const rnd = rng(5100 + i * 71)
+
+  /* 1. o grão. Papelão tem fibra e fibra tem direção, então o ruído entra duas vezes
+        com pesos diferentes em vez de uma vez uniforme. */
+  const gr = g.getImageData(0, 0, S, S)
+  const px = gr.data
+  for (let k = 0; k < px.length; k += 4) {
+    const n = (rnd() - .5) * 15 + (rnd() - .5) * 7
+    px[k] = Math.max(0, Math.min(255, px[k] + n))
+    px[k + 1] = Math.max(0, Math.min(255, px[k + 1] + n))
+    px[k + 2] = Math.max(0, Math.min(255, px[k + 2] + n))
+  }
+  g.putImageData(gr, 0, 0)
+
+  /* 2. a retícula, a 45°: a marca de que aquilo saiu de uma máquina e não de uma tela.
+        Fina de propósito — visível de perto e sumindo a cem pixels, que é exatamente o
+        que uma retícula de verdade faz. */
+  g.save()
+  g.globalAlpha = .10
+  g.globalCompositeOperation = 'multiply'
+  g.translate(S / 2, S / 2); g.rotate(Math.PI / 4); g.translate(-S / 2, -S / 2)
+  g.fillStyle = '#000'
+  for (let y = -S; y < S * 2; y += 4)
+    for (let x = -S; x < S * 2; x += 4) { g.beginPath(); g.arc(x, y, 1.05, 0, 6.2832); g.fill() }
+  g.restore()
+
+  /* 3. o anel — o detalhe mais barato e o que mais diz "disco". O vinil marca o
+        papelão por dentro, e a marca fica fora de centro porque ninguém guarda um
+        disco alinhado. Sem ele é um quadrado impresso; com ele é uma capa com um
+        disco dentro. */
+  if (anel) {
+    const cx = S * (.5 + (rnd() - .5) * .04), cy = S * (.5 + (rnd() - .5) * .04)
+    g.save()
+    g.globalCompositeOperation = 'overlay'
+    for (const [r, a, w] of [[S * .385, .34, 2.4], [S * .376, .18, 1.2], [S * .128, .20, 1.6]]) {
+      g.globalAlpha = a * desgaste
+      g.strokeStyle = '#EFE7D2'; g.lineWidth = w
+      g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.stroke()
+    }
+    g.restore()
+  }
+
+  /* 4. a beirada e os dois cantos que sempre batem. A tinta sai antes do papel, então
+        o desgaste **clareia**. */
+  g.save()
+  g.globalCompositeOperation = 'overlay'
+  for (let k = 0; k < 46; k++) {
+    const lado = Math.floor(rnd() * 4), t = rnd()
+    let x, y
+    if (lado === 0) { x = t * S; y = rnd() * 5 }
+    else if (lado === 1) { x = S - rnd() * 5; y = t * S }
+    else if (lado === 2) { x = t * S; y = S - rnd() * 5 }
+    else { x = rnd() * 5; y = t * S }
+    g.globalAlpha = (.10 + rnd() * .22) * desgaste
+    g.fillStyle = '#EFE7D2'
+    g.fillRect(x, y, 1 + rnd() * 7, 1 + rnd() * 3)
+  }
+  for (const [qx, qy] of [[S, S], [0, 0]]) {
+    g.globalAlpha = .20 * desgaste
+    g.beginPath(); g.arc(qx, qy, 16 + rnd() * 10, 0, 6.2832); g.fill()
+  }
+  g.restore()
+
+  /* 5. o brilho oblíquo. O quarto tem um globo à esquerda e a capa é encerada: uma
+        faixa larga e fraca cruzando é o que impede o quadrado de ler como papel fosco
+        recortado e colado. */
+  g.save()
+  g.globalCompositeOperation = 'screen'
+  const luz = g.createLinearGradient(0, S, S, 0)
+  luz.addColorStop(0, 'rgba(255,246,224,0)')
+  luz.addColorStop(.46, 'rgba(255,246,224,.05)')
+  luz.addColorStop(.62, 'rgba(255,246,224,.085)')
+  luz.addColorStop(.80, 'rgba(255,246,224,0)')
+  g.fillStyle = luz; g.fillRect(0, 0, S, S)
+  g.restore()
+
+  /* 6. a sombra do vinco à esquerda: uma capa tem 3 mm de espessura e a lombada
+        aparece. É o que dá volume a um plano de uma face só. */
+  g.save()
+  g.globalCompositeOperation = 'multiply'
+  const vinco = g.createLinearGradient(0, 0, S * .06, 0)
+  vinco.addColorStop(0, 'rgba(12,10,11,.55)')
+  vinco.addColorStop(1, 'rgba(12,10,11,0)')
+  g.fillStyle = vinco; g.fillRect(0, 0, S * .06, S)
+  g.restore()
+}
+
+/**
+ * E — a marca. O elemento que o D procurava, achado olhando em vez de por fórmula.
+ *
+ * Ele disse do D que *"precisaria só de fato acertar o elemento"*, e acertar não sai de
+ * uma conta de deslocamento. Abri as sete capturas e olhei: **toda página tem a marca
+ * no alto à esquerda**, e as sete são distintas entre si de um jeito que nenhum recorte
+ * aleatório é — o emblema circular do Graecus, o wordmark pesado da CMP, o monograma
+ * serifado da Maiara. É o que uma capa de selo faz com o artista: isola a marca dele.
+ *
+ * O fundo é a cor média da própria captura, escurecida para o quarto, então a capa
+ * carrega **a marca e a temperatura** do site. Sem inventar nada e sem cortar palavra.
+ */
+export function marca(g, S, work, i, img) {
+  const rnd = rng(3300 + i * 67)
+  let cor = ['#5A2321', '#2E4750', '#7A6A4A', '#8A5A3C', '#3F5B4C', '#6B4463', '#8C3B2E'][i % 7]
+  if (img) {
+    const c = document.createElement('canvas'); c.width = 32; c.height = 32
+    const gg = c.getContext('2d'); gg.drawImage(img, 0, 0, 32, 32)
+    const d = gg.getImageData(0, 0, 32, 32).data
+    let r = 0, v = 0, b = 0, n = 0
+    for (let k = 0; k < d.length; k += 4) {
+      const l = (d[k] * .299 + d[k + 1] * .587 + d[k + 2] * .114) / 255
+      if (l < .10 || l > .90) continue
+      r += d[k]; v += d[k + 1]; b += d[k + 2]; n++
+    }
+    if (n) cor = `rgb(${Math.round(r / n)},${Math.round(v / n)},${Math.round(b / n)})`
+  }
+
+  g.fillStyle = INK; g.fillRect(0, 0, S, S)
+  g.fillStyle = cor; g.fillRect(0, 0, S, S)
+  g.fillStyle = 'rgba(12,10,11,.50)'; g.fillRect(0, 0, S, S)
+  grao(g, S, rnd, .26)
+
+  if (img) {
+    /* a região da marca: alto à esquerda, e as proporções vêm de olhar as sete —
+       um cabeçalho ocupa uns 12% da altura e a marca uns 26% da largura */
+    const sx = img.width * .012, sy = img.height * .004
+    const sw = img.width * .27, sh = img.height * .115
+    const alvoL = S * .70, alvoA = alvoL * (sh / sw)
+    g.save()
+    g.globalCompositeOperation = 'screen'
+    g.drawImage(img, sx, sy, sw, sh, (S - alvoL) / 2, S * .34 - alvoA / 2, alvoL, alvoA)
+    g.restore()
+  }
+
+  g.strokeStyle = 'rgba(201,190,150,.55)'; g.lineWidth = 2
+  g.beginPath(); g.moveTo(S * .10, S * .60); g.lineTo(S * .90, S * .60); g.stroke()
+  g.fillStyle = BONE
+  g.font = `400 ${Math.round(S * 0.050)}px "Azeret Mono", ui-monospace, monospace`
+  g.textAlign = 'center'
+  g.fillText(work.title.toUpperCase(), S * .5, S * .70)
+  g.fillStyle = GOLD
+  g.font = `400 ${Math.round(S * 0.033)}px "Azeret Mono", ui-monospace, monospace`
+  g.fillText(work.kind.toUpperCase(), S * .5, S * .77)
+  numero(g, S, work)
+}
+
+export const DESENHOS = { tipo, campo, selo, detalhe, marca }

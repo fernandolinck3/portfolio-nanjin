@@ -30,7 +30,7 @@
 <div id="saida"></div>
 <script type="module">
   import { WORKS } from '../../src/content/modules.ts'
-  import { DESENHOS, NOMES } from './desenhos.js'
+  import { DESENHOS, NOMES, materia } from './desenhos.js'
   import { asset } from '../asset.js'
 
   const S = 640
@@ -47,9 +47,16 @@
     im.src = asset(src)
   })))
 
-  for (const [chave, desenhar] of Object.entries(DESENHOS)) {
+  /* a fileira de controle: o mesmo desenho **sem** a camada de matéria, para a
+     diferença ser vista e não argumentada */
+  const fileiras = [
+    ...Object.entries(DESENHOS).map(([k, f]) => [k, f, true]),
+    ['detalhe', DESENHOS.detalhe, false],
+  ]
+
+  for (const [chave, desenhar, comMateria] of fileiras) {
     const sec = document.createElement('section')
-    sec.innerHTML = `<h2>${NOMES[chave]}</h2>`
+    sec.innerHTML = `<h2>${NOMES[chave]}${comMateria ? '' : ' — SEM MATÉRIA (controle)'}</h2>`
     const parede = document.createElement('div')
     parede.className = 'parede'
     const tira = document.createElement('div')
@@ -60,7 +67,9 @@
       const fig = document.createElement('figure')
       const cv = document.createElement('canvas')
       cv.width = S; cv.height = S
-      desenhar(cv.getContext('2d'), S, w, i, imagens[i])
+      const ctx = cv.getContext('2d')
+      desenhar(ctx, S, w, i, imagens[i])
+      if (comMateria) materia(ctx, S, i)
       fig.append(cv)
       const cap = document.createElement('figcaption')
       cap.textContent = `${w.no} · ${w.title}`
