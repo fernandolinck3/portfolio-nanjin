@@ -314,6 +314,31 @@ Two more from the same day, different class:
   `HEAD` request before touching the image — right against a real server, fatal there. If something
   works on Pages and not in the Artifact, look for a probe.
 
+## A fila, em 2026-09-07
+
+Ordem para quem pegar isto numa sessão nova. Os quatro primeiros são bem definidos; o resto está em
+`docs/specs/fechar-a-versao-do-quarto.md`, e a ordem de trabalho está em
+`docs/agents/como-trabalhar-neste-projeto.md`.
+
+1. **As citações literais.** O `CLAUDE.md` proíbe citar o dono do repositório em qualquer coisa
+   commitada, e a árvore tem **177 ocorrências** do padrão, das quais **156 já publicadas**, em 44
+   arquivos — comentários, ADRs, tickets e diário. Limpar a árvore é mecânico e barato; limpar o
+   histórico é reescrita com force-push, e essa decisão é dele e é a **mesma janela** que a
+   separação das notas privadas já pedia. Fazer a árvore, deixar o histórico decidido junto.
+2. **A capa do acervo.** Cinco desenhos estão em `?` → `/capa-fit/`, mais uma camada de matéria
+   (grão, retícula, anel do disco, desgaste, brilho, vinco) e uma fileira de controle sem ela. A
+   escolha é dele e se decide na tira de cem pixels. Se nenhum servir, o caminho ainda não tentado é
+   o vocabulário do próprio objeto — 1 bit, dither, a linguagem da Tela — que também é a ponte para
+   o registro `?lofi`, sobre o qual ele levantou a dúvida e não decidiu.
+3. **A vitrola modelada.** Dois GLB estão em `~/Downloads`: `50s_record_player_cabinet.glb` (11 MB,
+   console dos anos 50) e `vintage_record_player.glb` (13 MB, vitrola de corneta com pavilhão de
+   latão — a que conversa com o quarto). Ambos CC-BY, exigem crédito em `public/mobilia/CREDITS.md`.
+   **Nenhum entra como está**: o quarto inteiro são 4,5 MB. Precisa de decimação e texturas para
+   512/1024 — ferramenta de linha de comando não é dependência de runtime, então a ADR-0004 não
+   proíbe.
+4. **A pesquisa de assets e da referência basement.studio** foi encomendada em 2026-09-07 e o
+   arquivo cai em `docs/research/`. Ler antes de baixar mais modelo.
+
 ## Open
 
 **His standing brief, given 2026-08-28 and mostly not started.** It is long and specific; this is the
