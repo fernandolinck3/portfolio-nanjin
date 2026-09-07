@@ -79,6 +79,12 @@ Two consequences worth knowing before you edit:
   removes it from find-in-page, which is half of why it exists. ECLIPSE is the single
   deliberate exception, because a secret Ctrl+F hands over is not a secret.
 
+## A ordem do trabalho
+
+`docs/agents/como-trabalhar-neste-projeto.md` carrega os seis momentos — decidir, medir, modelar,
+desenhar, alcance, registrar —, o que já deu certo, o que já deu errado, e o que as quatro
+verificações **não** pegam. Este arquivo tem as armadilhas; aquele tem a ordem.
+
 ## Agent skills
 
 ### Issue tracker
