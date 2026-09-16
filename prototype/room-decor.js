@@ -450,6 +450,15 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   const PASSO = 1.16
 
   let posta = 0
+  const capasPendentes = []
+  function desenharCapas() {
+    for (const { obra, posta, cv, tex } of capasPendentes.splice(0)) {
+      const g = cv.getContext('2d')
+      const copiar = src => { g.clearRect(0, 0, cv.width, cv.height); g.drawImage(src, 0, 0); tex.needsUpdate = true }
+      const src = sleeveFor(obra, posta, () => copiar(src))
+      copiar(src)
+    }
+  }
   for (const fila of FILAS) {
     /* a prateleira: um tabuleiro e um filete na frente. O filete é o que segura a capa
        inclinada e é o que faz a peça ler como prateleira de disco em vez de tábua. */
@@ -467,9 +476,12 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
          é declarada antes de propósito: o `onload` é assíncrono e chegaria depois de
          qualquer jeito, mas uma seta que alcança para a frente um `const` da linha
          seguinte é exatamente a forma do TDZ que já matou uma cena inteira aqui */
-      let tex
-      const cv = sleeveFor(obra, posta, () => { if (tex) tex.needsUpdate = true })
-      tex = new THREE.CanvasTexture(cv)
+      /* the canvas exists now and is drawn only when the room is shown: the seven
+         sleeves were a second of main thread at every page load, for a wall the
+         default visitor never sees — see `desenharCapas` */
+      const cv = document.createElement('canvas'); cv.width = cv.height = 640
+      const tex = new THREE.CanvasTexture(cv)
+      capasPendentes.push({ obra, posta, cv, tex })
       tex.colorSpace = THREE.SRGBColorSpace
       tex.anisotropy = 8
       const capa = new THREE.Mesh(sleeveGeo, new THREE.MeshStandardMaterial({
@@ -835,7 +847,7 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   }
 
   return {
-    update, setGlobe, group, discos,
+    update, setGlobe, group, discos, desenharCapas,
     lamps: lamps.map(l => l.light),
     pronto: Promise.all([vitrolaPronta, credenzaPronta, plantaPronta, luminariaPronta]),
   }

@@ -205,6 +205,7 @@ Acceptance criteria:
 
 Progress evidence (2026-09-16):
 Device: iPhone 13 Pro, Safari, over LAN against `build:site`. User reports lag improved; faceplate texture slow to appear. Host measurement: `ornament/plate.png` (2.7 MB) was requested only after `scene.js` evaluated (GET 4.8 s → 8.8 s in the automated tab). Added `plate.webp` (q92, 486 KB), tried first, plus `<link rel="preload">` in `prototype/index.html`: download now 19 → 63 ms and reused by the loader. PNG kept as fallback. Not yet re-checked on the phone; `regenFace()` canvas cost on the phone is unmeasured.
+User then confirmed the faceplate improved, but loading still takes seconds. Host timing of `scene.js` module evaluation (markers before each top-level block, built site): 3.25 s, of which 1.66 s was the seven wall sleeves in `room-decor.js`, drawn at load although the room is off by default. Sleeves now drawn on first `setRoom(true)`; their halftone is a pattern fill (max pixel diff 4/255 against the loop). Result: 1.53 s evaluation, and the five `works/*-home.jpg` sleeve downloads no longer happen on `/`. `?trilho` still draws all seven sleeves with captures. Remaining largest blocks are each under 250 ms. Not yet re-checked on the phone.
 
 
 ### TASK-008 — Keep the auxiliary room display off the default instrument

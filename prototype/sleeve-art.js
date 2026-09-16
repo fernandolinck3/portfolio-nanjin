@@ -103,6 +103,17 @@ function lettering(g, S, work) {
   g.textBaseline = 'alphabetic'
 }
 
+let tile = null
+function reticula(g) {
+  if (!tile) {
+    tile = document.createElement('canvas'); tile.width = tile.height = 4
+    const t = tile.getContext('2d')
+    t.fillStyle = '#000'
+    t.beginPath(); t.arc(2, 2, 1.05, 0, Math.PI * 2); t.fill()
+  }
+  return g.createPattern(tile, 'repeat')
+}
+
 function materia(g, S, i) {
   const rnd = rng(5100 + i * 71)
 
@@ -120,12 +131,12 @@ function materia(g, S, i) {
   g.globalAlpha = .10
   g.globalCompositeOperation = 'multiply'
   g.translate(S / 2, S / 2); g.rotate(Math.PI / 4); g.translate(-S / 2, -S / 2)
-  g.fillStyle = '#000'
-  for (let y = -S; y < S * 2; y += 4) {
-    for (let x = -S; x < S * 2; x += 4) {
-      g.beginPath(); g.arc(x, y, 1.05, 0, Math.PI * 2); g.fill()
-    }
-  }
+  /* one 4 px tile repeated, not a quarter of a million separate arcs: the dots never
+     touch, so filling them one by one and filling the pattern once put down the same
+     pixels — and the loop was half of the whole scene's start-up on a phone */
+  g.fillStyle = reticula(g)
+  g.translate(-2, -2)
+  g.fillRect(-S, -S, S * 3, S * 3)
   g.restore()
 
   const cx = S * (.5 + (rnd() - .5) * .04), cy = S * (.5 + (rnd() - .5) * .04)

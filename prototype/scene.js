@@ -6584,6 +6584,7 @@ function setPool(p = {}) {
 let roomShown = true;
 function setRoom(on) {
   roomShown = on;
+  if (on) decor.desenharCapas();
   for (const m of roomScenery) m.visible = on;
   return { shown: on, meshes: roomScenery.length };
 }
