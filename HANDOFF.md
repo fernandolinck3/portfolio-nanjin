@@ -55,8 +55,8 @@ This file does not repeat them.
 > 1. ~~**Barra de toque**~~ **Feito em 16/09 (`6540a04`), falta ele confirmar no celular:** `syncTouch` em `scene.js`, chamado junto do `syncMirror`; `onIdle` no `focus` avisa quando o voo de saída termina. Proposta original — (`.touch` em `prototype/index.html`, visível com `hover:none` desde a abertura):
 >    ele estranhou Anterior/Próximo/Abrir/Voltar já na abertura. Proposta: nada na abertura; os
 >    três aparecem com um módulo e uma lista na tela; Voltar só quando há nível para voltar.
-> 2. **Setas ‹ › do leitor no celular** (`.work-step`, presas no rodapé, longe da imagem): proposta de
->    tirá-las no celular e trocar de imagem arrastando a foto, mais as miniaturas que já existem.
+> 2. **Recusada por ele em 16/09 — não fazer.** ~~**Setas ‹ › do leitor no celular** (`.work-step`, presas no rodapé, longe da imagem): proposta de
+>    tirá-las no celular e trocar de imagem arrastando a foto, mais as miniaturas que já existem.~~
 >
 > **Pendente sem decisão:** revisão independente da TASK-008; TASK-001 a 003 do `TASKS.md` nunca
 > começaram. Os worktrees `tenebrae-contact-task004` e `tenebrae-mobile-task005` e os backups
