@@ -13,6 +13,48 @@ formulário virou 0030 em 06/09, porque a do cenário já era citada por nome em
 `docs/realism-budget.md` is the plan for adding to the room without spending the frame.
 This file does not repeat them.
 
+> **Estado em 2026-09-16 — ler este bloco primeiro; o de 06/09 abaixo continua valendo no que não contradiz.**
+>
+> **O que aconteceu.** Em 15/09 um Codex trabalhou aqui sem commitar e parou quando os créditos
+> acabaram. Em 16/09 uma sessão do Claude Code commitou esse trabalho e continuou. O processo que
+> o Codex montou está em `AGENTS.md`, `PLAN.md`, `ARCHITECTURE.md`, `DECISIONS.md` e **`TASKS.md`**,
+> que é o registro das tarefas, com as evidências de cada uma.
+>
+> **`lyra` está 71 commits à frente de `origin/lyra`. Nada foi publicado**, e empurrar para `lyra`
+> publica o site. Os commits de 16/09: `e9fd2b5` (o trabalho do Codex), `83ccf41` (faceplate e
+> aviso de rolagem), `a1a825a` (capas da parede adiadas). Árvore limpa; `check`, 170 testes,
+> `build:site` e `verify:site` passam.
+>
+> **Feito em 16/09, testado no iPhone 13 Pro (Safari) pela rede local.** Para servir ao celular:
+> `npm run build:site && npx vite preview --config vite.site.config.ts --host --port 4817`, e no
+> celular `http://<IP do Mac>:4817/`.
+> - **Tela duplicada do CDJ (TASK-008, T-39):** o visor auxiliar só aparece com o quarto ligado
+>   (`ROOM_K > 0` em `visorDeveAparecer`). Ele disse que melhorou; o `?trilho` com visor ainda não
+>   foi conferido.
+> - **Faceplate lento:** `public/ornament/plate.webp` (486 KB, era PNG de 2,7 MB), carregado primeiro,
+>   com `<link rel="preload">` em `prototype/index.html`. O PNG ficou de reserva. Ele confirmou que
+>   melhorou.
+> - **Abertura lenta (TASK-007):** medido no Mac, o JS antes do primeiro quadro caiu de 3,25 s para
+>   1,53 s. As sete capas da parede (`room-decor.js`) eram desenhadas mesmo com o quarto desligado;
+>   agora saem em `decor.desenharCapas()`, chamado por `setRoom(true)`. A retícula de
+>   `sleeve-art.js` virou padrão. **Ainda não reconferido no celular.** O que sobra são blocos de
+>   até 250 ms cada. Método de medição (marcadores antes de cada bloco de topo, build em pasta
+>   separada, fonte restaurado com shasum) descrito em `TASKS.md`.
+> - **Leitor de projeto no celular:** botão "Role para ler ↓" (`.work-scroll` em `focus.js`, string
+>   `workScroll`), some na primeira rolagem. Testado numa página isolada a 390 px, não no site inteiro.
+>
+> **Esperando decisão dele (propostas, nada implementado):**
+> 1. **Barra de toque** (`.touch` em `prototype/index.html`, visível com `hover:none` desde a abertura):
+>    ele estranhou Anterior/Próximo/Abrir/Voltar já na abertura. Proposta: nada na abertura; os
+>    três aparecem com um módulo e uma lista na tela; Voltar só quando há nível para voltar.
+> 2. **Setas ‹ › do leitor no celular** (`.work-step`, presas no rodapé, longe da imagem): proposta de
+>    tirá-las no celular e trocar de imagem arrastando a foto, mais as miniaturas que já existem.
+>
+> **Pendente sem decisão:** revisão independente da TASK-008; TASK-001 a 003 do `TASKS.md` nunca
+> começaram. Os worktrees `tenebrae-contact-task004` e `tenebrae-mobile-task005` e os backups
+> `~/dev/backups/portfolio-*-20260915-*` são do Codex e já foram integrados. Não foram apagados.
+> O bundle de backup foi refeito em 16/09 depois do último commit.
+
 > **Estado em 2026-09-06.** Este bloco substitui o de 05/09, que dizia dezoito commits e já
 > nascia velho. Os parágrafos abaixo dele, sobre tudo estar publicado, **não valem mais.**
 >
