@@ -36,13 +36,17 @@
  */
 import { readFileSync } from 'node:fs'
 
+/* The artifact to check. `dist-site` is what CI uploads; a path argument points this at a
+   copy, which is how the failing cases get exercised without damaging the real build. */
+const DIST = process.argv[2] ?? 'dist-site'
+
 const fail = m => { console.error('verify:site — ' + m); process.exit(1) }
 
 /** The pages the build is expected to have written, and what makes each one itself. */
 const PAGES = [
-  { file: 'dist-site/index.html', name: '/', lang: 'pt-BR', canonical: 'https://nanj.in/',
+  { file: `${DIST}/index.html`, name: '/', lang: 'pt-BR', canonical: 'https://nanj.in/',
     base: null, other: '/en/', draft: false },
-  { file: 'dist-site/en/index.html', name: '/en/', lang: 'en', canonical: 'https://nanj.in/en/',
+  { file: `${DIST}/en/index.html`, name: '/en/', lang: 'en', canonical: 'https://nanj.in/en/',
     base: '../', other: '/', draft: false },
 ]
 
@@ -155,14 +159,14 @@ for (const page of PAGES) {
  * isto é uma propriedade de o build ter rodado.
  */
 const FILES = [
-  { file: 'dist-site/robots.txt', has: ['Sitemap: https://nanj.in/sitemap.xml', 'Allow: /'] },
-  { file: 'dist-site/sitemap.xml', has: [
+  { file: `${DIST}/robots.txt`, has: ['Sitemap: https://nanj.in/sitemap.xml', 'Allow: /'] },
+  { file: `${DIST}/sitemap.xml`, has: [
     'http://www.sitemaps.org/schemas/sitemap/0.9',
     '<loc>https://nanj.in/</loc>', '<loc>https://nanj.in/en/</loc>',
     'hreflang="x-default"',
   ] },
-  { file: 'dist-site/llms.txt', has: ['# Fernando Linck', '## Projetos', '## Contato'] },
-  { file: 'dist-site/en/llms.txt', has: ['# Fernando Linck', '## Projects', '## Contact'] },
+  { file: `${DIST}/llms.txt`, has: ['# Fernando Linck', '## Projetos', '## Contato'] },
+  { file: `${DIST}/en/llms.txt`, has: ['# Fernando Linck', '## Projects', '## Contact'] },
 ]
 
 for (const f of FILES) {
@@ -172,7 +176,7 @@ for (const f of FILES) {
   for (const needle of f.has) {
     if (!body.includes(needle)) fail(`${f.file} is missing ${JSON.stringify(needle)}`)
   }
-  console.log(`verify:site — ${f.file.replace('dist-site/', '')} (${body.length} bytes)`)
+  console.log(`verify:site — ${f.file.replace(`${DIST}/`, '')} (${body.length} bytes)`)
 }
 
 /**
@@ -187,7 +191,7 @@ for (const f of FILES) {
  * JPEG, PPM e TIFF. Declarar o `.svg` aqui seria oferecer a ele o único formato que
  * ele não lê, então o teste recusa os dois erros de uma vez.
  */
-const home = readFileSync('dist-site/index.html', 'utf8')
+const home = readFileSync(`${DIST}/index.html`, 'utf8')
 const icons = [...home.matchAll(/<link[^>]+rel="[^"]*\bicon\b[^"]*"[^>]*>/g)].map(m => m[0])
 if (!icons.length) fail('the home page declares no favicon at all')
 for (const tag of icons) {
@@ -196,17 +200,33 @@ for (const tag of icons) {
 }
 for (const f of ['favicon.ico', 'favicon.png']) {
   let bytes
-  try { bytes = readFileSync(`dist-site/${f}`).length }
-  catch { fail(`dist-site/${f} was not written — the search result gets an empty circle`) }
-  if (bytes < 200) fail(`dist-site/${f} is ${bytes} bytes, which is not an icon`)
+  try { bytes = readFileSync(`${DIST}/${f}`).length }
+  catch { fail(`${DIST}/${f} was not written — the search result gets an empty circle`) }
+  if (bytes < 200) fail(`${DIST}/${f} is ${bytes} bytes, which is not an icon`)
   console.log(`verify:site — ${f} (${bytes} bytes)`)
 }
 
 /* A URL de cada página tem de estar no sitemap, ou ela existe e ninguém a submete. */
-const sitemap = readFileSync('dist-site/sitemap.xml', 'utf8')
+const sitemap = readFileSync(`${DIST}/sitemap.xml`, 'utf8')
 for (const page of PAGES) {
   if (!sitemap.includes(`<loc>${page.canonical}</loc>`))
     fail(`${page.name} is built and indexable but absent from the sitemap`)
 }
+
+/**
+ * The domain file, which is the one thing here whose absence nobody would see in the build.
+ *
+ * GitHub Pages reads the custom domain from `CNAME` at the artifact root, and a deploy
+ * that arrives without it clears the domain setting silently — nanj.in stops answering
+ * and every check above still passes. The expected host is the one the canonicals
+ * already assert, so the domain is written in one place in this file.
+ */
+const DOMAIN = new URL(PAGES[0].canonical).host
+let cname
+try { cname = readFileSync(`${DIST}/CNAME`, 'utf8') }
+catch { fail(`${DIST}/CNAME was not written — deploying this clears the custom domain and ${DOMAIN} goes down`) }
+if (cname.trim() !== DOMAIN)
+  fail(`${DIST}/CNAME says "${cname.trim()}", expected "${DOMAIN}" — deploying this points the site at the wrong domain`)
+console.log(`verify:site — CNAME is ${DOMAIN}`)
 
 console.log(`verify:site — ${PAGES.length} pages, each reciprocal in hreflang and in the sitemap`)

@@ -9,10 +9,10 @@ This ledger schedules bounded execution, while [docs/tickets/README.md](docs/tic
 ### TASK-001 — Guard the domain artifact in site verification
 
 Status:
-TODO
+DONE
 
 Owner:
-unassigned
+root (Claude Code, 2026-09-16)
 
 Dependencies:
 An agreed committed baseline containing the relevant work; no dependency on room redesign.
@@ -30,6 +30,9 @@ Acceptance criteria:
 - A fresh valid `build:site` passes verification.
 - Missing and incorrect CNAME fixtures fail with a useful message; destructive checks use a temporary artifact copy.
 - Domain source and deployment behavior are unchanged; full integration checks pass.
+
+Progress evidence (2026-09-16):
+`scripts/verify-site.mjs` takes an optional artifact path (default `dist-site`, which CI still uses unchanged) and now fails when `CNAME` is missing or differs from the host of the canonical URLs (`nanj.in`). Fresh `build:site` + `verify:site` pass (`CNAME is nanj.in`). Fixtures on copies in the session scratchpad: missing file → exit 1, "CNAME was not written — deploying this clears the custom domain"; `example.com` → exit 1, "CNAME says "example.com", expected "nanj.in"". `public/CNAME` and `pages.yml` untouched. Not independently reviewed.
 
 ### TASK-002 — Verify and bound scene lifetime after GPU loss
 
