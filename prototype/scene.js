@@ -5144,6 +5144,7 @@ function setLightTo(v) {
  * anywhere; they are the keyboard's Pads and its Moon-centre.
  */
 addEventListener('keydown', e => {
+  if (halted) return;
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
@@ -5245,6 +5246,7 @@ dial('artZoom', v => v / 100, v => v.toFixed(2));
 dial('seed', v => 20260800 + v, v => String(v - 20260800));
 
 addEventListener('resize', () => {
+  if (halted) return;
   camera.aspect = W() / H(); camera.updateProjectionMatrix(); renderer.setSize(W(), H());
   /* the composer owns its own render targets and does not learn about this
      otherwise — a resized canvas over stale targets is how post ends up stretched */
@@ -6880,7 +6882,20 @@ function prewarmStep(t) {
   prewarmAt++;
 }
 
+/**
+ * Stopping, for the one owner that is allowed to ask.
+ *
+ * When the GPU goes away `boot.js` swaps in the text version, and until TASK-002 the
+ * scene behind it never found out: measured on the built site, every frame after the
+ * loss still ran (~17 ms of CPU on an M1) and queued the next one, and the keyboard
+ * still drove a Unit nobody could see. There is no rebuild on restore, so a halted
+ * scene stays halted — the loop, the key handler and the resize handler all check.
+ */
+let halted = false;
+export function halt() { halted = true; }
+
 function frame(t) {
+  if (halted) return;
   /* clamped at both ends. The cap stops a stall from teleporting everything a
      second forward; the floor stops a clock that goes *backwards* from raising
      every `Math.pow(k, dt)` ease to a negative power, which turns the fader, the

@@ -29,8 +29,8 @@ const forced = location.search.includes('flat')
 const verdict = forced ? { ok: false, reason: 'forced' } : probe3D()
 
 if (verdict.ok) {
-  await import('./scene.js')
-  await guardTheContext()
+  const scene = await import('./scene.js')
+  await guardTheContext(scene)
 } else {
   const { flatten } = await import('./flat.js')
   flatten(verdict.reason)
@@ -48,11 +48,16 @@ if (verdict.ok) {
  * quase todo mundo — não baixa o `flat.js` por causa disto. É o mesmo motivo pelo
  * qual ele já era um chunk separado.
  */
-async function guardTheContext() {
+async function guardTheContext(scene) {
   const canvas = document.querySelector('#stage canvas')
   if (!canvas) return
   const { onContextLost } = await import('./context-loss.js')
-  onContextLost(canvas, async () => {
+  /* Uma vez só: o contexto pode ser restaurado e perdido de novo, e um segundo
+     `flatten` montaria um segundo formulário de contato. A cena para **antes** do
+     texto entrar, para não gastar um quadro a mais atrás dele (TASK-002). */
+  const stop = onContextLost(canvas, async () => {
+    stop()
+    scene.halt()
     console.warn('[tenebrae] WebGL context lost — falling back to the text version')
     const { flatten } = await import('./flat.js')
     flatten('context-lost')

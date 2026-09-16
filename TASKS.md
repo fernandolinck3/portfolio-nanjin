@@ -37,10 +37,10 @@ Progress evidence (2026-09-16):
 ### TASK-002 — Verify and bound scene lifetime after GPU loss
 
 Status:
-TODO
+DONE
 
 Owner:
-unassigned
+root (Claude Code, 2026-09-16)
 
 Dependencies:
 Exclusive ownership of the scene lifecycle; a browser capable of exercising WebGL context loss; preserved room-work baseline.
@@ -59,6 +59,11 @@ Acceptance criteria:
 - If confirmed, bound the old scene's work/resources through one explicit lifecycle owner, without duplicate fallback UI.
 - Verify initial `?flat`, normal boot, repeated loss handling, keyboard/contact interactions and both locales; full integration checks pass.
 - If not reproduced, record evidence and disposition rather than introducing speculative teardown code.
+
+Progress evidence (2026-09-16):
+Reproduced on the built site (localhost preview, M1 Chrome, automated tab driven through `__unit.step`, since rAF does not fire there): after `WEBGL_lose_context.loseContext()` the text version appeared, but each frame still ran ~17 ms of CPU and re-queued itself (20 of 20 steps called `requestAnimationFrame`); the window `keydown`/`resize` handlers stayed live; `.touch` and `nav.sr` stayed on screen as dead controls, which was also true of initial `?flat`.
+Contract: `boot.js` is the single owner. On loss it unregisters its own listener (once only), calls `scene.halt()`, then `flatten`. `halt()` (exported from `scene.js`) makes `frame`, `keydown` and `resize` return early; no rebuild on restore, so halted stays halted. `flat-skin.js` hides `.touch` and `nav.sr` under `html[data-flat]`.
+After: 20 steps after loss called rAF 0 times at 0.035 ms each; restore + second loss did not add a second `.flat-write`; `.touch`/`nav.sr` computed `display:none` after loss and in `?flat`; normal `/en/` boot has `__unit`, no `data-flat`, `nav.sr` visible, no `#err`. `check`, 170 tests, `build:site`, `verify:site` pass. Not checked: the keyboard guard by an actual key after loss, and a real (non-extension) GPU loss on a phone. Not independently reviewed.
 
 ### TASK-003 — Reconcile stale repository entry and status guidance
 

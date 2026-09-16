@@ -59,6 +59,9 @@ export const FLAT_CSS = `
 
   html[data-flat] body{ overflow:auto; background:var(--well); }
   html[data-flat] #turn, html[data-flat] #frame, html[data-flat] #stage, html[data-flat] .hud{ display:none !important; }
+  /* the Unit's own controls — the touch row and the off-screen Pad buttons — act on a
+     scene that is not running here, so in the text version they would be dead buttons */
+  html[data-flat] .touch, html[data-flat] nav.sr{ display:none !important; }
 
   /* O recorte de mirror.ts é desfeito aqui e não editado lá: aquela folha é o que
      impede o espelho pré-renderizado de piscar como um muro de texto num
