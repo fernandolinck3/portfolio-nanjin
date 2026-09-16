@@ -25,7 +25,7 @@
  *
  * The first fix rewrote the markup — and the markup is not where most of those URLs
  * are. `scene.js` fetches `ornament/plate.png` and `deck-faces.js` builds
- * `./decks/<face>.png` in JavaScript, so the English page loaded, drew, and arrived
+ * `./decks/<face>.webp` in JavaScript, so the English page loaded, drew, and arrived
  * with no Plate engraving and no Deck faces. What fixes the whole class is one
  * `<base href="../">`, which is checked here — including that it comes **before** the
  * module script, because a URL is resolved when the parser reaches it.

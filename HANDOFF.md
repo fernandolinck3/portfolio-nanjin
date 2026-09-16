@@ -43,6 +43,14 @@ This file does not repeat them.
 > - **Leitor de projeto no celular:** botão "Role para ler ↓" (`.work-scroll` em `focus.js`, string
 >   `workScroll`), some na primeira rolagem. Testado numa página isolada a 390 px, não no site inteiro.
 >
+> - **Texturas chegando aos poucos no celular (16/09, depois da barra):** medido no Mac, todas as
+>   texturas, as faces dos Decks e o HDRI só eram *pedidos* aos ~2,7 s, quando `scene.js` terminava de
+>   avaliar. Agora têm `<link rel="preload">` em `prototype/index.html` e começam aos 11 ms, sem
+>   download duplicado (terminam aos ~180 ms em localhost, eram ~5,1 s). Decks viraram WebP
+>   near-lossless (1,1 MB → 571 KB). **A avaliação do módulo continua ~2 s no Mac**, espalhada: nenhum
+>   bloco passa de ~180 ms (maiores: `createAltarProps`, `createBaroque`, que monta a sala mesmo
+>   desligada). Falta ele confirmar no celular.
+
 > **Esperando decisão dele (propostas, nada implementado):**
 > 1. ~~**Barra de toque**~~ **Feito em 16/09 (`6540a04`), falta ele confirmar no celular:** `syncTouch` em `scene.js`, chamado junto do `syncMirror`; `onIdle` no `focus` avisa quando o voo de saída termina. Proposta original — (`.touch` em `prototype/index.html`, visível com `hover:none` desde a abertura):
 >    ele estranhou Anterior/Próximo/Abrir/Voltar já na abertura. Proposta: nada na abertura; os

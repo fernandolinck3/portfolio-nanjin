@@ -592,4 +592,24 @@ window.addEventListener('error',function(e){var d=document.getElementById('err')
 <!-- The faceplate is the largest thing the first frame waits for, and `scene.js` only
      asks for it once the whole module has evaluated — seconds later on a phone. -->
 <link rel="preload" as="image" href="./ornament/plate.webp" fetchpriority="high">
+<!-- The same trap for everything else the opening draws: the Deck faces, the wood, the
+     plaster, the floor and the HDRI were all requested only after `scene.js` finished
+     evaluating — about 2.7 s on an M1, several on a phone — so on the phone they arrived
+     one by one after the object was already up. Preloading lets the network run while
+     the CPU builds the scene. `crossorigin` has to match what each loader sends
+     (TextureLoader and FileLoader ask anonymously, the Deck `Image` does not), or the
+     browser fetches the file twice. -->
+<link rel="preload" as="image" href="./decks/moon.webp">
+<link rel="preload" as="image" href="./decks/sun.webp">
+<link rel="preload" as="image" href="./textures/nogueira-cor.jpg" crossorigin="anonymous">
+<link rel="preload" as="image" href="./textures/nogueira-arm.jpg" crossorigin="anonymous">
+<link rel="preload" as="image" href="./textures/nogueira-nor.jpg" crossorigin="anonymous">
+<link rel="preload" as="image" href="./textures/reboco-nor.jpg" crossorigin="anonymous">
+<link rel="preload" as="image" href="./textures/reboco-arm.jpg" crossorigin="anonymous">
+<link rel="preload" as="image" href="./textures/parquet-cor.jpg" crossorigin="anonymous">
+<link rel="preload" as="image" href="./textures/parquet-arm.jpg" crossorigin="anonymous">
+<link rel="preload" as="image" href="./textures/parquet-nor.jpg" crossorigin="anonymous">
+<link rel="preload" as="image" href="./textures/veludo-nor.jpg" crossorigin="anonymous">
+<link rel="preload" as="image" href="./textures/veludo-rug.jpg" crossorigin="anonymous">
+<link rel="preload" as="fetch" href="./hdri/teatro-1k.hdr" crossorigin="anonymous">
 <script type="module" src="./boot.js"></script>

@@ -24,7 +24,7 @@
  *
  * A primeira correção reescreveu `="./` para `="../` no HTML dessa página. Consertou
  * o script e **não consertou o objeto**: `scene.js` faz `fetch('ornament/plate.png')`
- * e `deck-faces.js` monta `./decks/<face>.png` em JavaScript, onde nenhuma reescrita
+ * e `deck-faces.js` monta `./decks/<face>.webp` em JavaScript, onde nenhuma reescrita
  * de marcação chega. A página carregava, desenhava, e vinha sem a gravura da Plate e
  * sem as faces dos Decks — *"the texturas arent loading"*.
  *

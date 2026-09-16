@@ -68,7 +68,7 @@ import * as THREE from 'three'
  * root and 404s from a subdirectory, which is a bug that exists only in a deployed
  * build and never in the dev server.
  */
-const url = name => `${import.meta.env?.BASE_URL ?? '/'}decks/${name}.png`.replace(/([^:])\/\//g, '$1/')
+const url = name => `${import.meta.env?.BASE_URL ?? '/'}decks/${name}.webp`.replace(/([^:])\/\//g, '$1/')
 
 const SIZE = 512
 
