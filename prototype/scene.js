@@ -6122,6 +6122,9 @@ const focus = createFocus({
   screen: { centre: new THREE.Vector3(0, FACE_Y, SCREEN_Z), width: OPENING.w, depth: OPENING.d },
   /* onde pousar: a mesma capa da parede, venha o clique dela ou do visor */
   alvo: () => alvoCapa,
+  /* the flight out ends here, not at the click — `focus.active` only turns false now,
+     so the mirror and the touch row are told again */
+  onIdle: () => syncMirror(),
   onProgress(t) {
     /* the room falls away; the Screen's own glow and the phosphor do not */
     for (const [l, base] of ROOM_DIM) l.intensity = base * (1 - t * 0.88);
@@ -6438,7 +6441,31 @@ const mirror = createMirror({
  * `statusLine()` and `lyraLine()` for the two lines the Screen writes. None of it is
  * recomputed here, so there is nothing for a second implementation to get wrong.
  */
-syncMirror = () => mirror.sync({
+/**
+ * The touch row shows only what can be done from here.
+ *
+ * Fernando, on the phone: the four buttons sat under the opening, where QUEM has no
+ * list and there is nothing to go back to. Prev/next/open need a list on the Screen;
+ * back needs a level to leave — the mirror's own `back` condition, read once.
+ */
+const touchRow = document.querySelector('.touch');
+const touchBtns = touchRow ? [...touchRow.querySelectorAll('[data-nav]')] : [];
+function syncTouch(back) {
+  if (!touchRow) return;
+  const list = !focus.active && !eclipse.open && itemsOf().length > 0;
+  let any = false;
+  for (const b of touchBtns) {
+    const on = b.dataset.nav === 'back' ? back : list;
+    b.hidden = !on;
+    any ||= on;
+  }
+  touchRow.hidden = !any;
+}
+
+syncMirror = () => {
+  const back = eclipse.open || focus.active || sectionOf(curPage) > 0;
+  syncTouch(back);
+  mirror.sync({
   page: curPage,
   sel: selectionOf(curPage),
   sec: sectionOf(curPage),
@@ -6446,13 +6473,14 @@ syncMirror = () => mirror.sync({
   focus: focus.active,
   eclipseOpen: eclipse.open,
   /* the same condition `moonBack` acts on: is there a level to leave? */
-  back: eclipse.open || focus.active || sectionOf(curPage) > 0,
+  back,
   /* and the same one `eclipseMarkBox()` draws the sky mark on */
   reopen: eclipse.answered && !eclipse.open,
   status: statusLine(),
   lyra: lyraLine(),
   light: `${lightName(xfVal)} · ${Math.round(xfVal * 100)}%`,
-});
+  });
+};
 syncMirror();
 
 /**

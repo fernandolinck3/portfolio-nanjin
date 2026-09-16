@@ -117,7 +117,7 @@ function uprightFillPose(camera, { centro, largura, altura, normal }) {
  * @param onProgress    0 idle -> 1 fully focused; the room dims on this
  * @param restore       called on exit, to hand the camera back to the rig
  */
-export function createFocus({ camera, mount, screen, alvo, onProgress, restore, onStep }) {
+export function createFocus({ camera, mount, screen, alvo, onProgress, restore, onStep, onIdle }) {
   /* ---------- the panel ---------- */
   const panel = document.createElement('div')
   panel.className = 'work-panel'
@@ -1046,7 +1046,7 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
       camera.position.lerpVectors(from.pos, home.pos, e)
       camera.quaternion.slerpQuaternions(from.quat, home.quat, e)
       onProgress?.(1 - e)
-      if (k >= 1) { phase = 'idle'; panel.hidden = true; current = null }
+      if (k >= 1) { phase = 'idle'; panel.hidden = true; current = null; onIdle?.() }
     }
   }
 
