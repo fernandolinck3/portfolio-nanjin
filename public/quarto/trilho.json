@@ -71,16 +71,16 @@
    "id": "porta",
    "modulo": "contact",
    "nome": "A porta",
-   "feita_de": "A porta almofadada, o console da entrada, o armario gotico ao fundo",
+   "feita_de": "A porta modelada, o console com vaso e a arandela da entrada",
    "olhar": [
-    -10.4,
-    0.2,
-    5.8
+    -10.7,
+    0.55,
+    4.4
    ],
    "camera": [
-    -4.16,
-    1.9,
-    2.32
+    -3.9,
+    2.1,
+    0.6
    ]
   },
   {
@@ -106,14 +106,14 @@
    "nome": "A lareira",
    "feita_de": "A lareira e a cornija, o sofa e a poltrona sobre o segundo tapete",
    "olhar": [
-    8.8,
-    -0.6,
-    -1.9
+    10.0,
+    -2.0,
+    -1.0
    ],
    "camera": [
-    3.52,
-    1.9,
-    -0.76
+    1.8,
+    1.8,
+    -4.3
    ],
    "por_que": "TRAJETO e uma cronologia, e uma cronologia quer uma linha — a cornija da lareira e uma linha. E a lareira e onde se reconta: sofa e poltrona virados para o fogo sao o lugar do \"onde eu trabalhei\"."
   },
@@ -124,13 +124,13 @@
    "feita_de": "A baia de pedais, os cabos, os dois monitores, e o busto no pedestal quando o layout e cheio",
    "olhar": [
     10.0,
-    -0.2,
-    -4.4
+    -1.35,
+    1.8
    ],
    "camera": [
-    4.0,
-    1.9,
-    -1.76
+    5.4,
+    1.3,
+    -1.8
    ]
   }
  ],

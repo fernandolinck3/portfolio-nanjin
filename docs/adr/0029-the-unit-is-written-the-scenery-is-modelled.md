@@ -19,8 +19,35 @@ longe e como quatro caixas concordando em ser uma de perto.
 
 **A Unidade e a arquitetura são escritas. A mobília é modelada.**
 
-Oito peças CC0 da Poly Haven em `public/mobilia/`, montadas por `prototype/room-mobilia.js`. A
-procedência e a licença ficam ao lado dos binários, em `public/mobilia/CREDITS.md`.
+As oito peças iniciais são CC0 da Poly Haven em `public/mobilia/`, montadas por
+`prototype/room-mobilia.js`. A procedência e a licença ficam ao lado dos binários, em
+`public/mobilia/CREDITS.md`; exceções posteriores são registradas no mesmo arquivo.
+
+### Emenda de 2026-09-08 — a Porta vista de perto
+
+A fronteira continua sendo **Unidade escrita, cenário modelado**, mas a Porta deixa de
+ser uma exceção procedural. A estação `porta` aproxima a câmera o bastante para a folha,
+a guarnição e a ferragem virarem o assunto do quadro; nessa distância, caixas extrudadas
+não descrevem marcenaria, só a substituem por um símbolo.
+
+Por isso, a Porta passa a usar `door_classic/door_classic.glb`, um modelo residencial de
+2,28 m trazido para 2,18 m, com materiais e peças preservados. A posição do alvo, a câmera,
+o estado fechado e a navegação não mudam nessa substituição. O código continua responsável
+pela arquitetura da sala; a peça que uma câmera próxima precisa reconhecer passa a ser
+modelada. A revisão visual posterior recua a pose e desloca o alvo dentro da mesma estação,
+como registrado abaixo.
+
+A mesma emenda substitui a arandela procedural que atravessava a Porta por
+`industrial_wall_sconce`, da Poly Haven. Ela ocupa o trecho livre da parede e carrega
+uma Pool curta, quente e ligada à Vigília.
+
+A revisão visual seguinte mostrou que o contorno dourado ainda atribuído à Porta vinha
+de dois quadros gerados por canvas e de um espelho extrudado, todos na mesma parede.
+Eles saem do trecho da entrada; a parede esquerda perde também a carta celeste
+procedural e conserva apenas o reboco fotografado. A pose da estação recua sem mudar
+sua navegação. A regra é a mesma da exceção acima: perto da câmera, arquitetura e
+fixture visíveis precisam ser modelo ou material medido, não uma aproximação que cruza
+outro objeto.
 
 ## O que isso custa, medido
 
@@ -35,6 +62,9 @@ para isso que `__unit.perf()` ganhou a linha `modelled furniture hidden`:
 | texturas | 71 | 71 |
 | luzes acesas | 12 | 12 |
 | `public/` em disco | 11 MB | 13,3 MB |
+
+Essa tabela conserva a medição da mobília inicial. Ela antecede a Pool local da Porta
+registrada na emenda acima e não deve ser lida como uma nova contagem dessa luz.
 
 Não existe teto de peso escrito neste projeto, e o orçamento de `docs/realism-budget.md` é contado em
 draw calls, luzes e megapixels — os três eixos que ADR-0019 e ADR-0021 estabeleceram. Oito malhas

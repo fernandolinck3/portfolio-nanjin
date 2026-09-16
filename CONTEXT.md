@@ -105,36 +105,34 @@ The one exception is Project 001, where the rows of the series are clickable —
 Module, never selection *of* one (ADR-0017).
 
 **Work**:
-One of the numbered things Fernando has made, counting from this Unit as 001. A Work is an image —
-a site, a poster — which is why it cannot live on the Screen and is summoned to the Vitrola instead.
+One of the numbered things Fernando has made, counting from this Unit as 001. Its sleeve lives on
+the Acervo wall; opening it flies to that same sleeve and hands the case to the DOM at full resolution.
 _Avoid_: piece, case study, portfolio item, project (Project 001 means the Unit)
 
 **Vitrola**:
-The record player on the credenza's top, in the Acervo. It is where a Work is put to be looked
-at — the piece rises over its platter, lit from below. **It is not digital**, and that is the
-point: the Unit is a CDJ, a controller with no disc, and the Acervo is its opposite. You command
-on the digital machine and the work plays on the analogue one. It replaced the **Plinth** on
-2026-09-06 (ADR-0031), which was a stone pedestal two metres away saying the same thing — a
-Station holds one place where the work happens, not two.
+The record player on the credenza's top, in the Acervo. **It is not digital**, and that is the
+point: the Unit is a CDJ, a controller with no disc, and the Acervo is its analogue opposite.
+It no longer receives a second copy of the Work during opening: that intermediate image competed
+with the sleeve the visitor had just chosen. The sleeve is the transition target; the Vitrola is
+the physical anchor that makes the Station an Acervo. Its imported disc remains static because it
+shares one mesh with the player; the white square once visible around it was the atlas background,
+not a second record, and is cut by the model material's alpha mask.
 _Avoid_: turntable (in PT-BR prose), toca-discos, deck (Deck is a Part of the Unit), pedestal
 
 **A parede de capas**:
 The wall above the credenza: seven sleeves on two shallow ledges, four over three, one per Work.
-It is the **exposição**; the sixty spines in the credenza below are the **coleção**. That
+It is the **exposição**; the closed credenza below implies the stored **coleção** without inventing
+sixty anonymous spines. That
 distinction is the whole of what the Acervo has to say, and it comes from the references he gave
 on 2026-09-06. The sleeves are square and drawn by `sleeveFor` — a sleeve, not the piece.
 _Avoid_: gallery, grid, shelf (Shelf is CRITÉRIOS' bookcase), quadros
 
-**Summoning**:
-The rite that brings a Work to the Vitrola. The visitor clicks a Work on the Screen at the Altar, the
-Trilho carries them to the Acervo, and there the room puts itself out — the Candles gutter, the
-the Vitrola takes light, the Work assembles out of motes. Turning the Sun, or clicking the Screen again,
-sends it back. **Borrowed, never kept**: the Vigil and the camera both return where they were.
-
-The camera travels because the Work cannot be seen from the Altar and the Screen cannot be read from
-the Acervo — the Screen is *behind* the camera there, not merely small. So the piece is watched where
-it stands and the case is read where the Screen is legible, and the rite is the trip between them.
-_Avoid_: modal, lightbox, detail view, popup
+**Project opening**:
+One motion shared by both controls: clicking a sleeve or choosing the same Work on the corner Screen
+flies to that sleeve, then the case arrives in the DOM. There is no intermediate poster, duplicate
+sleeve on the credenza, forced Vigil, or second animation. Closing returns the camera to the place
+from which the Work was opened.
+_Avoid_: summoning, modal, lightbox, popup
 
 **Portrait**:
 Lyra on the chapel wall, gilt-framed, with her name engraved on a plaque beneath her. A fixture, not

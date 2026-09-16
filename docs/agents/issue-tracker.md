@@ -8,7 +8,7 @@ describe **what is already there** — they are not a new scheme to migrate to.
 
 - One ticket per file: `docs/tickets/T-NN-<slug>.md`, numbered from `T-01`.
   Numbering is continuous across the whole repo, not per feature. **The next free
-  number is T-36.**
+  number is T-40.**
 - **The board is `docs/tickets/README.md`** — a dependency graph and an ordered
   table. A ticket that is not on the board does not exist. Adding a ticket means
   editing the board in the same commit.

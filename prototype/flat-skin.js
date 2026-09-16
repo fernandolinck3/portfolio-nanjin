@@ -58,14 +58,14 @@ export const FLAT_CSS = `
   }
 
   html[data-flat] body{ overflow:auto; background:var(--well); }
-  html[data-flat] #frame, html[data-flat] #stage, html[data-flat] .hud{ display:none !important; }
+  html[data-flat] #turn, html[data-flat] #frame, html[data-flat] #stage, html[data-flat] .hud{ display:none !important; }
 
   /* O recorte de mirror.ts é desfeito aqui e não editado lá: aquela folha é o que
      impede o espelho pré-renderizado de piscar como um muro de texto num
      carregamento normal, e ela precisa seguir fazendo aquilo. */
   html[data-flat] #mirror{
     position:static; width:auto; height:auto; overflow:visible; display:block;
-    max-width:820px; margin:0 auto; padding:26px 18px 100px;
+    max-width:820px; margin:0 auto; padding:26px 18px calc(100px + var(--notice-height, 0px));
     font:400 21px/1.5 VT323, ui-monospace, "Courier New", monospace;
     color:var(--ink); -webkit-font-smoothing:antialiased;
   }

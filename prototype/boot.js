@@ -11,6 +11,7 @@
  * `?debug`, `?turned` and `?film`: a flag that reveals a path nobody can otherwise
  * see.
  */
+import { observeNotices } from './viewport-ui.js'
 import { probe3D } from './capability.js'
 import { createConsent } from './consent.js'
 import { offerLanguage } from './language.js'
@@ -21,6 +22,7 @@ import { offerLanguage } from './language.js'
 /* A oferta de idioma entra como o `onDecide` do consentimento, e não ao lado dele:
    as duas são barras fixas no rodapé, e empilhadas fariam a primeira decisão do
    visitante virar duas. Uma sequência, nunca uma pilha. */
+observeNotices()
 createConsent(() => offerLanguage())
 
 const forced = location.search.includes('flat')

@@ -219,6 +219,14 @@ export function stringsFor(locale: Locale) {
       'Não foi possível enviar. Escreva direto para o endereço abaixo.',
       'It could not be sent. Write directly to the address below.',
     ),
+    contactTimeout: t(
+      'O envio demorou demais e não foi confirmado. Sua mensagem foi preservada. Você pode tentar novamente ou usar o e-mail abaixo; uma nova tentativa pode duplicar o envio.',
+      'Sending took too long and delivery is unconfirmed. Your draft is preserved. You can retry or use the email below; retrying may send a duplicate.',
+    ),
+    contactCancelled: t(
+      'Você parou de aguardar, mas o envio não foi confirmado e pode ter ocorrido. Sua mensagem foi preservada. Você pode tentar novamente ou usar o e-mail abaixo; uma nova tentativa pode duplicar o envio.',
+      'You stopped waiting, but delivery is unconfirmed and may have occurred. Your draft is preserved. You can retry or use the email below; retrying may send a duplicate.',
+    ),
     contactOffline: t(
       'Sem conexão com o envio. Escreva direto para o endereço abaixo.',
       'No connection to the sender. Write directly to the address below.',

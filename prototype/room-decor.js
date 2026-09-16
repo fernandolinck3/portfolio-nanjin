@@ -21,6 +21,7 @@
  */
 
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { medir } from './superficie.js'
 import { sleeveFor } from './works-art.js'
 
@@ -32,23 +33,8 @@ function rng(seed) {
   return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296)
 }
 
-/**
- * A baia do acervo, em números — e eles saem daqui porque duas pessoas os leem.
- *
- * `summon.js` precisa saber onde a peça pousa, e a peça pousa **na vitrola**, que fica
- * no tampo desta credenza. Antes era um plinto de pedra com coordenada própria, escrita
- * num arquivo e conferida em nenhum: a lição do `screenHit` vale para geometria igual.
- */
+/** A baia do Acervo, numa pegada única para móvel, vitrola e prateleiras. */
 const ACERVO = { W: 6.0, H: 1.45, D: 1.15, RECUO: .30, DZ: 6.4 }
-
-/** Onde o disco pousa: o centro do prato da vitrola, em coordenadas de mundo. */
-export function vitrolaPos({ floorY, sideX, wallFace }) {
-  return {
-    x: -sideX + ACERVO.RECUO + ACERVO.D / 2 + .05,
-    y: floorY + .16 + ACERVO.H + .16,
-    z: wallFace + ACERVO.DZ,
-  }
-}
 
 /* ---------- acoustic panels ---------- */
 
@@ -343,7 +329,65 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   /* ---- the left bay: the credenza of records, along the left wall ---- */
   const LEFT_D = ACERVO.D
   const left = bay(-sideX + ACERVO.RECUO + LEFT_D / 2, wallFace + ACERVO.DZ, Math.PI / 2)
-  const leftTop = credenza(left, { x: 0, z: 0, w: ACERVO.W, h: ACERVO.H, d: LEFT_D, floorY, aberta: true })
+  /* O móvel do Acervo não é mais aproximado por caixas. O tampo continua na mesma
+     altura para preservar a vitrola, as capas, a estação e suas coordenadas; a forma
+     visível chega do glTF e é ajustada dentro desta mesma pegada. */
+  const leftTop = {
+    top: floorY + .16 + ACERVO.H,
+    front: LEFT_D / 2,
+    cavidade: { base: floorY + .38, altura: ACERVO.H - .31 },
+  }
+  let pedirCredenza = null
+  let resolverCredenza
+  let podeCarregarCredenza = false
+  const credenzaPronta = new Promise(resolve => { resolverCredenza = resolve })
+  function carregarCredenza() {
+    if (pedirCredenza) return pedirCredenza
+    pedirCredenza = new GLTFLoader().loadAsync(
+      (import.meta.env?.BASE_URL || '/') + 'mobilia/modern_wooden_cabinet/modern_wooden_cabinet_1k.gltf',
+    ).then(gltf => {
+      const raiz = gltf.scene
+      raiz.name = 'acervo:credenza-modelada'
+
+      /* O modelo mede 2,4 m no mundo real e já tem portas curvas, ripado e pés de
+         metal. Ajustar cada eixo o encaixa na pegada aprovada sem acrescentar uma
+         única peça procedural nem mover os objetos que dependem do tampo. */
+      const caixa = new THREE.Box3().setFromObject(raiz)
+      const tamanho = caixa.getSize(new THREE.Vector3())
+      raiz.scale.set(
+        (ACERVO.W * .96) / tamanho.x,
+        ACERVO.H / tamanho.y,
+        (ACERVO.D * .96) / tamanho.z,
+      )
+      raiz.updateMatrixWorld(true)
+      const ajustada = new THREE.Box3().setFromObject(raiz)
+      const centro = ajustada.getCenter(new THREE.Vector3())
+      raiz.position.set(-centro.x, floorY + .16 - ajustada.min.y, -centro.z)
+
+      raiz.traverse(o => {
+        if (!o.isMesh) return
+        o.castShadow = false
+        o.receiveShadow = true
+        const materiais = Array.isArray(o.material) ? o.material : [o.material]
+        for (const material of materiais) {
+          for (const mapa of [material.map, material.normalMap, material.roughnessMap,
+            material.metalnessMap, material.aoMap]) {
+            if (mapa) mapa.anisotropy = 4
+          }
+          if (material.map) material.map.colorSpace = THREE.SRGBColorSpace
+          material.envMapIntensity = .45
+        }
+      })
+      left.add(raiz)
+      resolverCredenza(raiz)
+      return raiz
+    }).catch(erro => {
+      console.warn('A credenza modelada não carregou.', erro)
+      resolverCredenza(null)
+      return null
+    })
+    return pedirCredenza
+  }
   /**
    * A face **interna** da parede, em coordenadas da baia — e a primeira conta aqui
    * estava errada por 0,3, que é meia parede.
@@ -361,67 +405,14 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   const paredeZ = -LEFT_D / 2
 
   /**
-   * Records: thin slabs leaning in a row. Their spines are the only place in the
-   * room with arbitrary colour, which is what makes them read as somebody's
-   * collection rather than as decoration.
+   * A coleção deixa de ser sessenta lombadas procedurais.
    *
-   * E até 2026-09-06 nenhuma delas chegou a um pixel: estavam a `floorY + .78`, dentro
-   * de um corpo maciço que ia de `floorY + .16` a `floorY + 1.61`. A altura vem da
-   * cavidade agora, e não de uma constante que ninguém reconferia quando a carcaça
-   * mudava — é a mesma razão pela qual `credenza` devolve `top` em vez de o chamador
-   * recalcular.
-   *
-   * **A paleta continua sendo a antiga, e a primeira tentativa aqui errou por isso.**
-   * Abrindo a frente eu troquei os tons escuros por vivos — dourado, verde, terracota
-   * — e quarenta lombadas acesas viraram uma faixa de blocos de criança atravessando
-   * um quarto que é escuridão com poços de luz. `3A2E26` estar na lista **não** é um
-   * bug por ser a cor da madeira: um disco que quase some contra o móvel é o que faz
-   * os outros lerem como objetos separados. O que faltava era só a frente aberta.
-   *
-   * Uma cor entra, e é `8C3B2E`, para a fileira ter um ponto quente onde o globo bate.
+   * Fernando viu a faixa e não reconheceu discos — reconheceu retângulos coloridos.
+   * O móvel fechado aprovado guarda a coleção sem fingir sessenta álbuns sem nome; as
+   * sete capas reais na parede e a vitrola já dizem o que esta baia é.
    */
-  const rnd = rng(8123)
-  const spines = ['#5A2321', '#2E4750', '#7A6A4A', '#3A2E26', '#8A5A3C', '#243038', '#8C3B2E']
   const recAlt = leftTop.cavidade.altura - .10
-  const recGeom = new THREE.BoxGeometry(1, recAlt, LEFT_D - .22)
-  /* a fileira ocupa a cavidade inteira: quarenta discos a um passo fixo enchiam dois
-     terços dela, e uma estante pela metade lê como inacabada e não como espaço */
-  const DISCOS = 60
-  const util = 6.0 - .10 * 2 - .30
-  const passo = util / DISCOS
-
-  /**
-   * As obras dele ficam **na** baia, e é a diferença entre a cena dizer a verdade e não.
-   *
-   * A cenografia prometia um catálogo de sessenta lombadas para um portfólio de sete
-   * obras, e — o que é pior para um portfólio — nada ali separava as dele das de
-   * enchimento. O visitante ficava de pé dentro do arquivo sem que um único objeto da
-   * cena fosse trabalho dele, e o plinto, único lugar onde o conteúdo do Módulo existe
-   * fisicamente, ficava vazio o tempo todo em que ninguém invocasse nada.
-   *
-   * A distinção é de **silhueta antes de cor**: a esta distância uma lombada tem uns
-   * dez pixels de largura e o tom sozinho não separa nada. Elas saem da fileira — mais
-   * altas e puxadas para a frente — e é a quebra do alinhamento que o olho pega, do
-   * outro lado da sala, antes de qualquer matiz.
-   *
-   * Espalhadas, não agrupadas: sete juntas leriam como uma prateleira reservada, e o
-   * que se quer dizer é que o trabalho dele está no meio do que ele ouve.
-   */
   const discos = []
-  for (let i = 0; i < DISCOS; i++) {
-    const rec = new THREE.Mesh(recGeom, new THREE.MeshStandardMaterial({
-      color: spines[i % spines.length], roughness: .88, metalness: 0,
-    }))
-    /* 4 a 7 cm de lombada. Já é grosso para um disco — 5 mm seriam .016 aqui — e é
-       assim de propósito: mais fino que isto e a lombada some no `anisotropy` a seis
-       unidades de distância, que é o enquadramento entregue. */
-    rec.scale.x = .04 + rnd() * .03
-    /* encostados na frente, que é de onde se olha: um disco no fundo da cavidade fica
-       na sombra da própria ilharga */
-    rec.position.set(-util / 2 + passo * (i + .5), leftTop.cavidade.base + recAlt / 2, .10)
-    rec.rotation.z = (rnd() - .5) * .05
-    left.add(rec)
-  }
 
   /**
    * As obras dele vão para a **parede**, em prateleiras rasas — e a credenza volta a
@@ -449,11 +440,8 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   /**
    * As prateleiras sobem, e o número saiu de um objeto e não do olho.
    *
-   * A primeira fila estava a 30 cm do tampo, que é o suficiente para as capas da
-   * parede e **não** para o que passou a ficar no tampo: uma capa encostada tem 94 cm
-   * e atravessava a prateleira de baixo. A 1,10 ela passa com folga, e de quebra é
-   * onde a referência põe a fila mais baixa — bem acima do móvel, na altura do olho
-   * de quem está de pé, e não rente a ele.
+   * A 1,10 do tampo, a fileira mais baixa fica onde a referência a põe — bem acima
+   * do móvel, na altura do olho de quem está de pé, e não rente a ele.
    */
   const FILAS = [
     { n: 4, y: leftTop.top + 1.10 },
@@ -461,8 +449,6 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   ]
   const PASSO = 1.16
 
-  /* a textura de cada capa, para a que fica encostada no tampo não construir a sua */
-  const texPorObra = new Map()
   let posta = 0
   for (const fila of FILAS) {
     /* a prateleira: um tabuleiro e um filete na frente. O filete é o que segura a capa
@@ -484,7 +470,6 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
       let tex
       const cv = sleeveFor(obra, posta, () => { if (tex) tex.needsUpdate = true })
       tex = new THREE.CanvasTexture(cv)
-      texPorObra.set(obra.id, tex)
       tex.colorSpace = THREE.SRGBColorSpace
       tex.anisotropy = 8
       const capa = new THREE.Mesh(sleeveGeo, new THREE.MeshStandardMaterial({
@@ -506,187 +491,218 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
   /**
    * O tampo, decidido objeto por objeto contra as três referências.
    *
-   * Elas concordam em três coisas e discordam no resto, e as três que sobrevivem são
-   * as que **afirmam** alguma coisa em vez de decorar:
+   * Elas concordam na vitrola, que é o assunto, e o tampo fica livre ao redor dela.
+   * A capa duplicada saiu: a obra já existe na parede e reaparecer sobre o móvel
+   * confundia seleção com navegação.
    *
-   * - **a vitrola**, que é o assunto;
-   * - **o amplificador** ao lado dela, porque uma vitrola sem nada ligado é um
-   *   adereço — é o objeto que diz que aquilo toca;
-   * - **a capa do que está tocando**, encostada, que é o que qualquer pessoa faz com
-   *   o disco que acabou de pôr.
+   * O amplificador saiu quando entrou a vitrola de corneta. Antes ele explicava como
+   * a peça escrita tocava; agora repetia uma função que a corneta já torna visível e
+   * ainda fazia dois volumes de madeira disputarem o centro do tampo.
    *
    * O que ficou de fora e por quê: caixas de som (a sala já tem dois monitores, e
    * repetir é o que fazia a mobília ler como cenário), planta (saiu na rodada
    * passada), luminária (desceu para o chão), quadrinhos e velas (a sala já tem
    * ambas em outros lugares, e aqui competiriam com as capas).
    *
-   * A capa encostada é a única **viva**: ela mostra a obra selecionada na Tela. É o
-   * elo que faltava entre o display e a cena — o mesmo estado, duas representações,
-   * como a linha da Tela e a capa na parede já são.
    */
 
   /**
-   * A vitrola, e ela **não é digital** — foi a palavra dele.
+   * A vitrola, agora modelada — sem deixar de ser o lugar onde a obra toca.
    *
-   * A Unidade é uma CDJ: um controlador sem disco, que é o que um portfólio de front-end
-   * é. O acervo é o oposto exato, e a oposição é o motivo de o quarto existir. Comanda-se
-   * no aparelho digital e o trabalho toca no analógico.
+   * O primeiro arquivo escolhido, `50s Record Player Cabinet`, era um móvel de chão.
+   * Embuti-lo no tampo apagou justamente pernas, frente e volume — a silhueta que dizia
+   * o que ele era — e o disco escrito, maior que a profundidade restante, atravessou a
+   * caixa. Não era ajuste de escala: era a peça errada para o lugar decidido na ADR-0031.
    *
-   * Escrita e não baixada: procurei `turntable`, `record player`, `gramophone` e
-   * `vinyl` nos modelos do Poly Haven e não existe nenhum. O ADR-0029 manda modelar o
-   * cenário, e a razão dele é o capitonê de um Chesterfield — uma vitrola é caixa,
-   * prato, disco e um braço, que é precisamente a peça que o código faz bem.
+   * `Vintage record player`, o segundo arquivo de Fernando, é uma vitrola de mesa. A
+   * corneta dá uma leitura inequívoca mesmo no enquadramento distante e a base cabe no
+   * tampo sem fingir ser parte da credenza. O dourado não é um adereço novo: conversa
+   * com o filete das capas dentro da mesma Pool quente do globo.
+   *
+   * A malha baixada não separa o disco. Cobri-lo com outro cilindro produziu duas
+   * superfícies quase coincidentes, e essa pequena diferença lia como defeito antes de
+   * ler como movimento. O disco do modelo fica inteiro e estático. O fallback escrito
+   * também sai: no Acervo, objeto visível é modelo.
    */
-  const PRETO = new THREE.MeshStandardMaterial({ color: 0x171314, roughness: .55, metalness: .1 })
-  const METAL = new THREE.MeshStandardMaterial({ color: 0x8A8578, roughness: .35, metalness: .85 })
   const vit = new THREE.Group()
   vit.position.set(0, leftTop.top, .05)
   left.add(vit)
 
-  const corpo = new THREE.Mesh(new THREE.BoxGeometry(1.42, .12, 1.02), NOGUEIRA)
-  corpo.position.y = .06
-  vit.add(corpo)
-  const prato = new THREE.Mesh(new THREE.CylinderGeometry(.48, .48, .04, 32), METAL)
-  prato.position.set(-.16, .14, 0)
-  vit.add(prato)
-
-  /* o disco no prato, e o rótulo dele — o rótulo é o que faz o giro se ver. Um disco
-     preto liso girando é um disco preto parado. */
-  const disco = new THREE.Group()
-  disco.position.copy(prato.position)
-  disco.position.y += .025
-  vit.add(disco)
-  disco.add(new THREE.Mesh(new THREE.CylinderGeometry(.46, .46, .008, 32), PRETO))
-  const rot = new THREE.Mesh(new THREE.CylinderGeometry(.15, .15, .010, 24),
-    new THREE.MeshStandardMaterial({ color: 0xC9BE96, roughness: .8 }))
-  rot.position.y = .002
-  disco.add(rot)
-  /* a marca fora do centro: sem ela o rótulo é um círculo, e um círculo girando em
-     torno do próprio centro é indistinguível de um parado */
-  const mira = new THREE.Mesh(new THREE.BoxGeometry(.10, .012, .02),
-    new THREE.MeshStandardMaterial({ color: 0x8C3B2E, roughness: .9 }))
-  mira.position.set(.07, .008, 0)
-  disco.add(mira)
-
-  /* o braço: pivô atrás à direita, tubo por cima do disco, cápsula na ponta */
-  const pivo = new THREE.Mesh(new THREE.CylinderGeometry(.07, .08, .10, 16), METAL)
-  pivo.position.set(.52, .17, -.34)
-  vit.add(pivo)
-  const braco = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, .82, 12), METAL)
-  braco.rotation.set(0, 0, Math.PI / 2)
-  braco.rotation.y = -.62
-  braco.position.set(.30, .22, -.16)
-  vit.add(braco)
-  const capsula = new THREE.Mesh(new THREE.BoxGeometry(.07, .05, .05), PRETO)
-  capsula.position.set(.01, .19, .02)
-  vit.add(capsula)
-
-  /**
-   * O amplificador — ele volta, e só o metal escovado sai.
-   *
-   * Eu o troquei por uma radiola de válvula na rodada passada, e não era isso que
-   * tinha sido pedido: o pedido era **somar** objetos pequenos, e o móvel de madeira
-   * ornamentado da referência é a credenza, não esta peça. Trocar um objeto que
-   * ninguém mandou trocar é a segunda vez neste arquivo que eu resolvo um problema que
-   * não me deram.
-   *
-   * O que fica da crítica é a metade que era sobre material e não sobre a peça: um
-   * painel de aço escovado é linguagem de integrado dos anos 70. A caixa passa a ser
-   * de nogueira, a face de latão, e os botões de baquelite — a mesma peça, na paleta
-   * do quarto.
-   *
-   * Fica à direita porque o braço da vitrola sai por ali, e os dois lidos juntos leem
-   * como uma instalação em vez de duas peças postas lado a lado.
-   */
-  const amp = new THREE.Group()
-  amp.position.set(1.42, leftTop.top, .02)
-  left.add(amp)
-  const caixaAmp = new THREE.Mesh(new THREE.BoxGeometry(1.06, .26, .86), NOGUEIRA)
-  caixaAmp.position.set(0, .13, 0)
-  amp.add(caixaAmp)
-  const LATAO_FACE = new THREE.MeshStandardMaterial({ color: GILT, metalness: .82, roughness: .42 })
-  const face = new THREE.Mesh(new THREE.BoxGeometry(1.02, .20, .03), LATAO_FACE)
-  face.position.set(0, .14, .43)
-  amp.add(face)
-  const BAQUELITE = new THREE.MeshStandardMaterial({ color: 0x241C19, roughness: .55, metalness: .08 })
-  for (const bx of [-.34, -.16]) {
-    const k = new THREE.Mesh(new THREE.CylinderGeometry(.055, .055, .05, 16), BAQUELITE)
-    k.rotation.x = Math.PI / 2
-    k.position.set(bx, .14, .46)
-    amp.add(k)
-  }
-  const mostrador = new THREE.Mesh(new THREE.BoxGeometry(.34, .07, .01),
-    new THREE.MeshStandardMaterial({ color: 0xC9BE96, emissive: 0xB08D4A, emissiveIntensity: .5, roughness: .7 }))
-  mostrador.position.set(.26, .14, .45)
-  amp.add(mostrador)
-
-  /**
-   * As coisas pequenas — e elas existem porque a cena estava **robótica**.
-   *
-   * Foi a palavra dele, e é a queixa certa: três peças grandes espaçadas com folga
-   * entre elas é vitrine. O que faz um móvel parecer usado não são mais móveis, são as
-   * coisas que alguém largou em cima dele. Um pires de latão com chaves e duas cartas
-   * encostadas — nada que se possa clicar, nada que afirme, e é isso mesmo: a cena
-   * também precisa de objetos que não estão dizendo nada.
-   */
-  const LATAO = new THREE.MeshStandardMaterial({ color: GILT, metalness: .85, roughness: .38 })
-  const pires = new THREE.Mesh(new THREE.CylinderGeometry(.17, .14, .045, 20), LATAO)
-  pires.position.set(-2.42, leftTop.top + .022, .12)
-  left.add(pires)
-  const chaveMat = new THREE.MeshStandardMaterial({ color: 0x8A8578, metalness: .8, roughness: .45 })
-  for (const [cx, cz, cr] of [[-2.46, .10, .4], [-2.38, .15, -.9], [-2.42, .08, 1.9]]) {
-    const haste = new THREE.Mesh(new THREE.BoxGeometry(.015, .012, .17), chaveMat)
-    haste.position.set(cx, leftTop.top + .05, cz)
-    haste.rotation.y = cr
-    left.add(haste)
-    const olho = new THREE.Mesh(new THREE.TorusGeometry(.028, .008, 6, 12), chaveMat)
-    olho.position.set(cx - Math.sin(cr) * .09, leftTop.top + .05, cz - Math.cos(cr) * .09)
-    olho.rotation.x = Math.PI / 2
-    left.add(olho)
-  }
-  /* duas cartas encostadas na parede, uma atrás da outra e desalinhadas: empilhadas
-     retas leem como um bloco, e o desencontro é a coisa toda */
-  const PAPEL = new THREE.MeshStandardMaterial({ color: 0xCFC5AC, roughness: .95, side: THREE.DoubleSide })
-  for (const [ix, iz, ir, il] of [[-2.05, .04, -.22, .30], [-1.96, -.02, .14, .26]]) {
-    const carta = new THREE.Mesh(new THREE.PlaneGeometry(il * 1.45, il), PAPEL)
-    carta.position.set(ix, leftTop.top + il / 2 - .01, paredeZ + .22 + iz)
-    carta.rotation.set(-.22, ir, 0)
-    left.add(carta)
+  let pedirVitrola = null
+  let resolverVitrola
+  let podeCarregarVitrola = false
+  const vitrolaPronta = new Promise(resolve => { resolverVitrola = resolve })
+  function carregarVitrola() {
+    if (pedirVitrola) return pedirVitrola
+    pedirVitrola = new GLTFLoader().loadAsync(
+      (import.meta.env?.BASE_URL || '/') + 'mobilia/vintage_record_player/vintage_record_player.gltf',
+    ).then(gltf => {
+      const raiz = gltf.scene
+      raiz.name = 'acervo:vitrola-modelada'
+      raiz.scale.setScalar(.016)
+      raiz.rotation.y = -.12
+      /* O centro do disco da malha é (0, 1,64, -0,03). Depois da escala ele pousa
+         exatamente em (-0,16, 0,165, 0), a coordenada da vitrola escrita. */
+      raiz.position.set(-.16, .139, .0005)
+      raiz.traverse(o => {
+        if (!o.isMesh) return
+        o.castShadow = false
+        o.receiveShadow = true
+        const materiais = Array.isArray(o.material) ? o.material : [o.material]
+        const ajustados = materiais.map(material => {
+          const m = material.clone()
+          /* O mapa preserva a idade da peça; a resposta de luz vem do quarto. Sem os
+             mapas PBR de catálogo ela compartilha a rugosidade fosca da credenza. */
+          if (m.map) { m.map.colorSpace = THREE.SRGBColorSpace; m.map.anisotropy = 4 }
+          m.roughness = .72
+          m.metalness = .04
+          m.envMapIntensity = .45
+          return m
+        })
+        o.material = Array.isArray(o.material) ? ajustados : ajustados[0]
+      })
+      vit.add(raiz)
+      resolverVitrola(raiz)
+      return raiz
+    }).catch(erro => {
+      console.warn('A vitrola modelada não carregou.', erro)
+      resolverVitrola(null)
+      return null
+    })
+    return pedirVitrola
   }
 
+  /* A sombra é uma mancha no tampo, não mais um caster no shadow map. Descentrada
+     alguns centímetros para o lado oposto do globo, com borda larga: peso, não halo. */
+  const shadowCanvas = document.createElement('canvas')
+  shadowCanvas.width = shadowCanvas.height = 128
+  const shadowCtx = shadowCanvas.getContext('2d')
+  const shadowFade = shadowCtx.createRadialGradient(55, 69, 5, 61, 63, 61)
+  shadowFade.addColorStop(0, 'rgba(255,255,255,.88)')
+  shadowFade.addColorStop(.46, 'rgba(255,255,255,.55)')
+  shadowFade.addColorStop(1, 'rgba(255,255,255,0)')
+  shadowCtx.fillStyle = shadowFade
+  shadowCtx.fillRect(0, 0, 128, 128)
+  const shadowMap = new THREE.CanvasTexture(shadowCanvas)
+  const contactShadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.34, .78),
+    new THREE.MeshBasicMaterial({
+      map: shadowMap, color: 0x090706, transparent: true, opacity: .44,
+      depthWrite: false, side: THREE.DoubleSide,
+    }),
+  )
+  contactShadow.rotation.x = -Math.PI / 2
+  contactShadow.rotation.z = -.12
+  contactShadow.position.set(.09, .006, .035)
+  contactShadow.renderOrder = 1
+  vit.add(contactShadow)
+
   /**
-   * A capa do que está tocando — encostada no tampo, à esquerda da vitrola.
+   * Duas peças de apoio, ambas modeladas.
    *
-   * Reaproveita a textura que a parede já construiu: `texPorObra` é o mesmo canvas,
-   * então mostrar aqui não custa memória de vídeo nenhuma. Uma segunda cópia seria
-   * uma segunda lista, e a esta altura o repositório já pagou por isso três vezes.
+   * As três referências novas não pedem um tampo cheio: repetem uma vitrola dominante
+   * com vida pequena nas laterais. A suculenta traz a irregularidade orgânica sem voltar
+   * à "flor estranha" de cilindros e meios-círculos; a luminária de oficina troca o globo
+   * escrito por metal, juntas, vidro e uma direção de luz legível. A assimetria é de
+   * matéria e altura, não duas peças espelhadas.
    */
-  const encostada = new THREE.Mesh(sleeveGeo, new THREE.MeshStandardMaterial({
-    map: null, roughness: .80, metalness: 0, transparent: true, opacity: 0,
-  }))
-  encostada.scale.set(CAPA, CAPA, 1)
-  encostada.rotation.x = -.16
-  encostada.position.set(-1.62, leftTop.top + CAPA / 2 - .02, paredeZ + .30)
-  left.add(encostada)
+  function pousarPropNoTampo(raiz, { nome, altura, x, z, giro = 0, materialPronto }) {
+    raiz.name = nome
+    raiz.rotation.y = giro
+    raiz.updateMatrixWorld(true)
+    const caixa = new THREE.Box3().setFromObject(raiz)
+    const tamanho = caixa.getSize(new THREE.Vector3())
+    raiz.scale.setScalar(altura / tamanho.y)
+    raiz.updateMatrixWorld(true)
+    const ajustada = new THREE.Box3().setFromObject(raiz)
+    const centro = ajustada.getCenter(new THREE.Vector3())
+    raiz.position.set(x - centro.x, leftTop.top - ajustada.min.y, z - centro.z)
 
+    raiz.traverse(o => {
+      if (!o.isMesh) return
+      o.castShadow = false
+      o.receiveShadow = true
+      const materiais = Array.isArray(o.material) ? o.material : [o.material]
+      const ajustados = materiais.map(material => {
+        const m = material.clone()
+        for (const mapa of [m.map, m.normalMap, m.roughnessMap, m.metalnessMap,
+          m.aoMap, m.emissiveMap]) {
+          if (mapa) mapa.anisotropy = 4
+        }
+        if (m.map) m.map.colorSpace = THREE.SRGBColorSpace
+        m.envMapIntensity = .45
+        materialPronto?.(m)
+        return m
+      })
+      o.material = Array.isArray(o.material) ? ajustados : ajustados[0]
+    })
+    left.add(raiz)
+    return raiz
+  }
 
-  /**
-   * A planta saiu.
-   *
-   * Era um vaso de cilindro e nove meios-círculos como folhas, herdada de quando esta
-   * baia era "um estúdio" genérico. Numa parede de capas com uma vitrola embaixo ela
-   * não é o objeto macio que justifica a exceção — é a peça pior feita do enquadramento,
-   * e ele a viu na primeira olhada: *"uma flor estranha"*. Nada substitui: o assunto da
-   * estação agora tem dono, e um objeto a mais em cima do móvel disputa com a vitrola.
-   */
+  const luzAcervo = {
+    light: new THREE.PointLight(0xF3C070, 0, 9, 2),
+    glowMaterials: [],
+    multiplier: .30,
+  }
+  luzAcervo.light.position.set(1.35, leftTop.top + .67, .04)
+  left.add(luzAcervo.light)
+  lamps.push(luzAcervo)
 
-  /* no chão, passada a ponta da credenza: é onde as três referências põem a luz da
-     parede de discos, e é o que tira o segundo objeto brilhante de cima do móvel */
-  lamps.push(globeLamp(left, ACERVO.W / 2 + .55, floorY, -.10, 2.30))
+  let pedirPlanta = null
+  let resolverPlanta
+  const plantaPronta = new Promise(resolve => { resolverPlanta = resolve })
+  function carregarPlanta() {
+    if (pedirPlanta) return pedirPlanta
+    pedirPlanta = new GLTFLoader().loadAsync(
+      (import.meta.env?.BASE_URL || '/') + 'mobilia/potted_plant_04/potted_plant_04_1k.gltf',
+    ).then(gltf => {
+      const raiz = pousarPropNoTampo(gltf.scene, {
+        nome: 'acervo:suculenta-modelada', altura: .68, x: -2.16, z: .02, giro: .34,
+      })
+      resolverPlanta(raiz)
+      return raiz
+    }).catch(erro => {
+      console.warn('A suculenta modelada não carregou.', erro)
+      resolverPlanta(null)
+      return null
+    })
+    return pedirPlanta
+  }
 
-  /* ---- the right bay: the pedal cabinet, along the right wall ---- */
+  let pedirLuminaria = null
+  let resolverLuminaria
+  const luminariaPronta = new Promise(resolve => { resolverLuminaria = resolve })
+  function carregarLuminaria() {
+    if (pedirLuminaria) return pedirLuminaria
+    pedirLuminaria = new GLTFLoader().loadAsync(
+      (import.meta.env?.BASE_URL || '/') + 'mobilia/industrial_pipe_lamp/industrial_pipe_lamp_1k.gltf',
+    ).then(gltf => {
+      const raiz = pousarPropNoTampo(gltf.scene, {
+        nome: 'acervo:luminaria-modelada', altura: .88, x: 1.35, z: .03, giro: -.52,
+        materialPronto: material => {
+          if (!material.emissiveMap && material.emissive?.getHex() === 0) return
+          material.emissiveIntensity = .05
+          luzAcervo.glowMaterials.push(material)
+        },
+      })
+      resolverLuminaria(raiz)
+      return raiz
+    }).catch(erro => {
+      console.warn('A luminária modelada não carregou.', erro)
+      resolverLuminaria(null)
+      return null
+    })
+    return pedirLuminaria
+  }
+
+  /* ---- the right bay: a workbench, clear of the fireplace sightline ---- */
   const RIGHT_D = 1.10
-  const right = bay(sideX - 0.30 - RIGHT_D / 2, wallFace + 7.2, -Math.PI / 2)
+  /* A antiga baia dividia o mesmo plano da lareira. O relógio e cinco pedais ficavam
+     na frente do fogo nas duas estações e os objetos de trabalho viravam ruído. Ela
+     avança para a metade da frente da parede: continua encostada, mas passa a ser um
+     lugar próprio, com circulação entre bancada e estar. */
+  const right = bay(sideX - 0.30 - RIGHT_D / 2, wallFace + 12.6, -Math.PI / 2)
   const rightTop = credenza(right, { x: 0, z: 0, w: 4.2, h: 1.30, d: RIGHT_D, floorY })
   const pedalCols = [0x8A2E12, 0x2E4750, 0x6B5A2A, 0x24303A, 0x5A2321]
   const pedalGeom = new THREE.BoxGeometry(.42, .16, .58)
@@ -768,6 +784,7 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
    */
   let globeI = 5.2
   let lastK = 1
+  let podeCarregarProps = false
   /**
    * `roomK` — how much room there is to light, 0..1.
    *
@@ -782,59 +799,44 @@ export function createRoomDecor(room, { floorY, wallFace, sideX, obras = [] }) {
    * that these lamps have **one** writer. `setRoomAmount` dimming them and `applyVigil`
    * turning them straight back on was the third instance of that bug in one session.
    */
-  /**
-   * O prato gira a 33⅓ — 3,49 rad/s, que é o número e não uma velocidade escolhida.
-   *
-   * O `dt` sai do relógio e não do laço porque `update` foi escrita com dois
-   * argumentos e os dois são estado, não tempo. Assim um quadro perdido não vira giro
-   * acumulado, e o disco para junto com o quarto: `roomK === 0` é quarto desligado, e
-   * um `rotation.y` avançando para ninguém é trabalho pago por nada.
-   */
-  let ultimoGiro = 0
-  function girar(roomK) {
-    const agora = performance.now() / 1000
-    const dt = ultimoGiro ? Math.min(.1, agora - ultimoGiro) : 0
-    ultimoGiro = agora
-    if (roomK > 0) disco.rotation.y += 3.49 * dt
-  }
-
   function update(vigil, roomK = 1) {
-    girar(roomK)
+    if (podeCarregarCredenza && roomK > 0) carregarCredenza()
+    if (podeCarregarVitrola && roomK > 0) carregarVitrola()
+    if (podeCarregarProps && roomK > 0) {
+      carregarPlanta()
+      carregarLuminaria()
+    }
     const k = Math.max(0, Math.min(1, 1 - vigil / .55))
     const e = k * k * (3 - 2 * k) * Math.max(0, Math.min(1, roomK))
     lastK = e
     for (const l of lamps) {
-      l.light.intensity = e * globeI
+      l.light.intensity = e * globeI * (l.multiplier ?? 1)
       /* out means out of the shader, not multiplied by zero — see `dim()` */
       l.light.visible = l.light.intensity > 0.0005
-      l.globe.material.emissiveIntensity = .06 + e * 1.44
+      if (l.globe) l.globe.material.emissiveIntensity = .06 + e * 1.44
+      for (const material of l.glowMaterials || []) material.emissiveIntensity = .05 + e * 2.15
     }
   }
   update(0)
+  /* A chamada acima inicializa as lâmpadas antes de `scene.js` entregar o estado real
+     da sala. Ela não é uma visita ao quarto e portanto não pode disparar o download. */
+  podeCarregarVitrola = true
+  podeCarregarCredenza = true
+  podeCarregarProps = true
 
   /* `__unit.setLight({ globe })` — the fitted value needs eyes on it like the rest. */
   function setGlobe(i) {
     globeI = i
-    for (const l of lamps) { l.light.intensity = lastK * globeI; l.light.visible = l.light.intensity > 0.0005 }
+    for (const l of lamps) {
+      l.light.intensity = lastK * globeI * (l.multiplier ?? 1)
+      l.light.visible = l.light.intensity > 0.0005
+    }
     return globeI
   }
 
-  /* `lamps` so scene.js can put the globes out when the room itself is hidden —
-     a light that illuminates nothing invisible still costs every lit fragment. */
-  /**
-   * Qual capa está encostada no tampo. `null` apaga.
-   *
-   * Chamada do laço com um guarda de igualdade: trocar de Módulo ou de linha na Tela
-   * troca a capa aqui, e é assim que o quarto sabe o que o display está mostrando.
-   */
-  function destacar(obraId) {
-    const tex = obraId ? texPorObra.get(obraId) : null
-    encostada.material.map = tex || null
-    encostada.material.opacity = tex ? 1 : 0
-    encostada.material.needsUpdate = true
-    encostada.visible = !!tex
+  return {
+    update, setGlobe, group, discos,
+    lamps: lamps.map(l => l.light),
+    pronto: Promise.all([vitrolaPronta, credenzaPronta, plantaPronta, luminariaPronta]),
   }
-  destacar(null)
-
-  return { update, setGlobe, destacar, group, discos, lamps: lamps.map(l => l.light) }
 }

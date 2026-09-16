@@ -112,7 +112,7 @@ function uprightFillPose(camera, { centro, largura, altura, normal }) {
 
 /**
  * @param camera        the scene camera
- * @param mount         element to put the panel in (the stage)
+ * @param mount         element to put the panel in (the rotated frame)
  * @param screen        { centre: Vector3, width, depth } of the Screen in world space
  * @param onProgress    0 idle -> 1 fully focused; the room dims on this
  * @param restore       called on exit, to hand the camera back to the rig
@@ -237,10 +237,10 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
    * targets above the home indicator.
    */
   style.textContent = `
-    /* fixed, not absolute: the stage is not a positioned ancestor, so inset:0 was
-       resolving somewhere unhelpful and the panel came out a few hundred pixels
-       wide in the middle of the frame */
-    .work-panel { position:fixed; inset:0; z-index:20; display:grid; place-items:center;
+    /* A sibling of scene controls inside the rotated frame: its own stacking
+       level must cover the HUD instead of being trapped inside the stage. */
+    .work-panel { position:fixed; inset:0;
+      right:var(--notice-right, 0px); bottom:var(--notice-bottom, 0px); z-index:20; display:grid; place-items:center;
       opacity:0; pointer-events:none; transition:opacity .28s ease;
       background:linear-gradient(180deg, rgba(6,5,5,.62), rgba(6,5,5,.88));
       -webkit-backdrop-filter:blur(14px) saturate(.75);
@@ -257,7 +257,7 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
          to this W — the exact width at which the prose reaches its own limit and every
          further pixel would land as dead space beside it rather than on the picture.
          Measured at 1420 first: the column came out 524, forty short. */
-      width:min(1520px, 92vw); height:min(824px, 84vh);
+      width:min(1520px, calc(var(--usable-width, 100vw) * .92)); height:min(824px, calc(var(--usable-height, 100vh) * .84));
       display:grid; gap:20px 44px;
       /* minmax(0, …), not a bare fr: a track's automatic minimum is its content's
          min-content size, and the stretched plate carries an aspect ratio, so it
@@ -292,7 +292,7 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
 
     @media (min-width: 861px) {
       .work-panel[data-media="0"] .work-frame {
-        width:min(900px, 92vw);
+        width:min(900px, calc(var(--usable-width, 100vw) * .92));
         grid-template-columns:minmax(0, 1fr) 22px;
         grid-template-areas:
           "back  back"
@@ -463,7 +463,7 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
        375 rather than impressive at 900. --nw carries that number from the image.
      */
     .work-panel[data-zoom="1"] .work-frame {
-      width:min(2400px, 96vw); height:92vh;
+      width:min(2400px, calc(var(--usable-width, 100vw) * .96)); height:calc(var(--usable-height, 100vh) * .92);
       grid-template-columns:minmax(0, 1fr);
       grid-template-rows:auto minmax(0, 1fr);
       grid-template-areas: "back" "media"; }
@@ -482,7 +482,7 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
        800px the 3fr/2fr split leaves the case about thirty characters wide, which is
        a column of fragments before it is a layout. */
     @media (max-width: 860px) {
-      .work-frame { width:100vw; height:100vh; height:100dvh; gap:18px 0;
+      .work-frame { width:var(--usable-width, 100vw); height:var(--usable-height, 100dvh); gap:18px 0;
         grid-template-columns:minmax(0, 1fr);
         grid-template-rows:auto auto auto auto;
         grid-template-areas: "back" "media" "head" "text";
@@ -499,20 +499,20 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
          the row compress the picture to a third of its size, so a portrait capture came
          out 146px wide with the strip crushed under it. */
       .work-plate { align-self:start; min-height:auto; }
-      .work-shot { max-height:50vh; }
-      .work-plate[data-many="1"] .work-shot { max-height:50vh; }
+      .work-shot { max-height:calc(var(--usable-height, 100vh) * .5); }
+      .work-plate[data-many="1"] .work-shot { max-height:calc(var(--usable-height, 100vh) * .5); }
       .work-text { overflow:visible; padding-right:0; }
       .work-rail { display:none; }
       .work-hint { display:none; }
       .work-panel[data-zoom="1"] .work-frame {
-        width:100vw; height:100dvh;
+        width:var(--usable-width, 100vw); height:var(--usable-height, 100dvh);
         grid-template-rows:auto minmax(0, 1fr);
         grid-template-areas: "back" "media"; }
       .work-panel[data-zoom="1"] .work-shot { max-height:none; }
       .work-panel[data-zoom="1"] .work-plate { align-self:stretch; min-height:0; }
       /* off the edges of the image and onto real targets: 46px, above the home bar */
       .work-panel[data-shots="1"] .work-step { display:grid; }
-      .work-step { position:fixed; top:auto; transform:none; z-index:4;
+      .work-step { position:absolute; top:auto; transform:none; z-index:4;
         bottom:calc(16px + env(safe-area-inset-bottom));
         width:46px; height:46px; padding:0; font-size:26px;
         place-items:center; color:#C9C2B0;

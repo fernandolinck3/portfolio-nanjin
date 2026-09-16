@@ -1,17 +1,17 @@
 import * as THREE from 'three'
+import { canvasPoint } from './viewport-ui.js'
 /* The copy is not in this file. ADR-0002: the DOM is truth and the Screen renders it,
    so both consumers read the same source. See src/content/modules.ts. */
 import { MODULES } from '../src/content/modules.ts'
 import { candle, RAMPS } from './light.js'
 import { WORKS } from '../src/content/modules.ts'
-import { createSummoning } from './summon.js'
 import { createPortrait } from './portrait.js'
 import { createDisplay } from './display.js'
 import { printLayer, engravedLayer } from './plate-art.js'
 import { track, trackSettled } from './track.js'
 import { padMaps, faderSlot, faderCap } from './control-faces.js';
 import { deckMaps, deckGlow } from './deck-faces.js'
-import { createRoomDecor, vitrolaPos } from './room-decor.js'
+import { createRoomDecor } from './room-decor.js'
 import { createBaroque } from './room-baroque.js'
 import { chamaTex, brilhoTex, chamaGeo } from './chama.js';
 import { medir } from './superficie.js'
@@ -28,7 +28,7 @@ import {
   buffer as screenBuffer, render as renderScreen, SCREEN_W, SCREEN_H, setBoot,
   setModule as setScreenModule, setVigil as setScreenVigil,
   setCrossfade as setScreenCrossfade, setFace as setScreenFace,
-  setHoverWork, setPlinthWork, workRowAt,
+  setHoverWork, workRowAt,
   setFlash, setHint, selectionOf, sectionOf, setSelection, setSection, resetPlace,
   statusLine, lyraLine,
   backBox, claimBox, claimURL, eclipseMarkBox, setEclipseFound,
@@ -1384,10 +1384,6 @@ screenTex.anisotropy = 8;
 let curPage = 0, hoverWork = -1;
 let xfVal = 1 - Math.max(0, Math.min(100, +(new URLSearchParams(location.search).get('vigil') || 0))) / 100;
 
-/* Declared up here, not down with the rest of the rite, because `drawScreen` runs
-   once at module load to fill the texture and reads this. */
-let rite = { phase: 'idle', work: -1, k: 0, restore: 0, subiu: false };
-
 /**
  * The Screen is drawn by `screen/render.js` — the same renderer the workbench
  * shows, at 320x180, so the two can no longer disagree about what the Screen is.
@@ -2259,21 +2255,7 @@ function updateFader(dt) {
    * out. Left is night, so left is Vigil 1.
    */
   const wantVigil = 1 - xfVal;
-  /**
-   * O rito toma a Vigília emprestada, e este é o dono dela.
-   *
-   * `rite.phase !== 'idle'` é a única exceção, e ela existe porque este bloco
-   * **reescreve `vigil` a partir do crossfader em todo quadro em que os dois
-   * discordam** — que é exatamente o que o rito faz de propósito. Sem a guarda, a
-   * Invocação punha o quarto na noite e o quadro seguinte o trazia de volta, e o
-   * resultado medido era uma Vigília teimosamente em 0 com a peça já de pé.
-   *
-   * Não é o rito escapando do dono: o fader **não se mexe**, então quando o rito
-   * acaba este bloco volta a valer e traz a Vigília de volta para onde a mão do
-   * visitante deixou. Emprestada, nunca guardada, e o dono continua sendo o mesmo
-   * (ADR-0009).
-   */
-  if (rite.phase === 'idle' && Math.abs(wantVigil - vigil) > 1e-4) {
+  if (Math.abs(wantVigil - vigil) > 1e-4) {
     setVigil(wantVigil);
     if (active === 'fader') flashLcd('LUZ · ' + lightName(xfVal) + ' · ' + Math.round(xfVal * 100) + '%', 900);
   }
@@ -3019,6 +3001,21 @@ const panelMat = new THREE.MeshStandardMaterial({
 panelMat.map.repeat.set(DEPTH / LADRILHO, WALL_H / LADRILHO);
 reboco(panelMat, DEPTH / GRAO, WALL_H / GRAO);
 
+/**
+ * A parede esquerda sem carta celeste.
+ *
+ * Ela ja carrega dois assuntos inteiros: as capas do Acervo e a entrada. Repetir por
+ * baixo deles o sol, a lua e as estrelas do canvas nao acrescentava atmosfera — na
+ * Porta, um sol de dois metros aparecia cortado atras da arandela e os dois quadros
+ * gerados pareciam fazer parte da guarnicao. A parede direita conserva o desenho; a
+ * esquerda passa a ser reboco escuro real, usando os mesmos mapas medidos e nenhuma
+ * nova geometria.
+ */
+const leftWallMat = new THREE.MeshStandardMaterial({
+  color: 0x211E1B, roughness: .95, metalness: 0,
+});
+reboco(leftWallMat, DEPTH / GRAO, WALL_H / GRAO);
+
 /* O fundo: `ExtrudeGeometry`, UV em unidade de mundo — o `repeat` é o inverso do
    ladrilho, e não o número de ladrilhos. */
 const fundoMat = new THREE.MeshStandardMaterial({
@@ -3137,7 +3134,10 @@ wall.position.z = WALL_Z; room.add(wall);
  * that, and carries its big gilt sun on the left wall for the same reason.
  */
 for (const sx of [-SIDE_X, SIDE_X]) {
-  const w = new THREE.Mesh(new THREE.BoxGeometry(.6, WALL_H, DEPTH), panelMat);
+  const w = new THREE.Mesh(
+    new THREE.BoxGeometry(.6, WALL_H, DEPTH),
+    sx < 0 ? leftWallMat : panelMat,
+  );
   w.position.set(sx, FLOOR_Y + WALL_H / 2, WALL_Z + DEPTH / 2); room.add(w);
 }
 
@@ -3385,16 +3385,8 @@ const wallWash = new THREE.DirectionalLight(0xC8B79A, .07);
 wallWash.position.set(0, 5, 6); wallWash.target.position.set(0, 2, WALL_Z);
 room.add(wallWash, wallWash.target);
 
-/* ---------- the summoning ----------
-   A Work is an image and the Screen is a 590px inset — it cannot carry one. So a
-   Work leaves the Unit and stands on a plinth, and the Screen becomes its plaque.
-   The plinth is empty until the visitor calls something to it. */
-/* a face interna da parede do fundo, e ela tem dois leitores: a decoração e o pouso
-   da peça invocada. Um número, um dono. */
+/* a face interna da parede do fundo, compartilhada pela decoração do quarto */
 const WALL_FACE = WALL_Z + 0.7;
-/* onde a peça pousa: o prato da vitrola, que quem sabe posicionar é `room-decor.js` */
-const POUSO = vitrolaPos({ floorY: FLOOR_Y, sideX: SIDE_X, wallFace: WALL_FACE });
-const summoning = createSummoning(scene, WORKS, { pouso: POUSO });
 
 /* ---------- the portrait ----------
    Lyra, gilt-framed on the wall left of the window, with her plaque under her.
@@ -3437,13 +3429,13 @@ const PIC0 = pictureLight.intensity;
 const decor = createRoomDecor(room, { floorY: FLOOR_Y, wallFace: WALL_FACE, sideX: SIDE_X, obras: WORKS });
 
 /**
- * The baroque fittings — cornice, ceiling rose, chandelier, sconces, mirror, drapery,
+ * The baroque fittings — cornice, ceiling rose, chandelier, sconces, drapery,
  * a bust and a stack of books. See `room-baroque.js`.
  *
- * Sixteen flames on the chandelier, twelve on the sconces, and **not one new light**.
- * Everything that glows is emissive, which is the rule `docs/realism-budget.md` writes
- * down and the one the basement's bunker scene arrives at independently. Geometry is
- * paid for once; a light is paid for by every lit pixel, every frame, forever.
+ * Sixteen flames on the chandelier and eight on the procedural sconces remain
+ * emissive. The modelled Porta sconce is the deliberate exception: one short Pool,
+ * limited to the entrance group and hidden with the room. Geometry is paid for once;
+ * a light is paid for by every lit pixel, every frame, forever.
  *
  * `?layout=` picks between three arrangements — `cheio`, `sobrio`, `vazio` — so the
  * room can be judged as a set of options rather than as one guess.
@@ -3455,7 +3447,7 @@ const baroque = createBaroque(room, {
 });
 
 /**
- * A mobília modelada — oito peças CC0 da Poly Haven. Ver `room-mobilia.js` e ADR-0029.
+ * A mobília modelada e as duas peças da Porta. Ver `room-mobilia.js` e ADR-0029.
  *
  * **Não baixa nada aqui.** `ROOM_K` começa em 0 — o quarto está desligado para quem
  * chega em `nanj.in` e só acende no `?sala` ou na bancada — então quem dispara os oito
@@ -3471,7 +3463,6 @@ const baroque = createBaroque(room, {
 const mobilia = createMobilia(room, { floorY: FLOOR_Y, layout: LAYOUT });
 
 /* canvas type is drawn once at load, before the webfonts land */
-document.fonts?.ready?.then(() => summoning.refresh());
 
 /* turned legs, so the table reads as furniture once the camera comes up */
 const legProfile = [
@@ -3697,6 +3688,7 @@ function applyVigil() {
 
   /* the studio's own lamps go out first, before the Candles */
   decor.update(vigil, ROOM_K);
+  mobilia.update(vigil, ROOM_K);
 
   /* the decks turn the day. Sun up, and it is afternoon outside; Moon up, and it is night. */
   nightSky.material.opacity = vigil;
@@ -3721,7 +3713,7 @@ function applyVigil() {
   /**
    * The room's flames go out with the Altar's.
    *
-   * Thirty-two of them, on the chandelier and the sconces, and they are emissive
+   * Twenty-four of them, on the chandelier and the sconces, and they are emissive
    * rather than lights — so walking them down is one uniform each and no shader
    * recompile. A room whose chandelier stays lit while the three Candles gutter is
    * not the same room, and the Vigil would stop meaning anything.
@@ -4258,15 +4250,14 @@ function openRow(row) {
  * Abrir uma obra — o único caminho, venha o pedido de onde vier.
  *
  * A Tela e a baia do acervo pedem a mesma coisa e não podem responder diferente: são as
- * duas metades de um objeto só. `summonWork` vem **antes** do voo porque `focus.enter`
- * lê `summoning.quadro()` para saber onde pousar, e o quadro depende da obra aplicada —
- * pôster é retrato, site é paisagem, e a altura muda com isso.
+ * duas metades de um objeto só. As duas enquadram a capa correspondente na parede;
+ * não existe uma segunda peça surgindo sobre a vitrola durante o voo.
  */
 /**
  * O alvo do zoom quando a obra foi aberta por uma capa da parede.
  *
- * Fica em `null` para tudo que vem da Tela: ali o alvo é a peça na vitrola, que é o
- * que o rito monta. Clicando uma capa, o assunto é **a capa** — foi o que ele pediu
+ * A Tela resolve a obra para a mesma capa física usada pelo clique direto. Assim o
+ * assunto é sempre **a capa** — foi o que ele pediu
  * ao ver a primeira versão: *"não precisa vir ao lado a câmera, pode ser do mesmo
  * jeito que quando o usuário ficava no projeto dentro do módulo, esse zoom"*.
  */
@@ -4281,10 +4272,14 @@ function quadroDaCapa(malha) {
 
 function abrirObra(w, de, capa) {
   if (!w) return false;
-  alvoCapa = capa ? quadroDaCapa(capa) : null;
+  /* Wall sleeves are targets only while the room is enabled. The ordinary
+     instrument must not fly toward scenery that is hidden in its current mode. */
+  const capaDaParede = ROOM_K > 0
+    ? capa || decor.discos?.find(d => d.userData.obra === w.id)
+    : null;
+  alvoCapa = capaDaParede ? quadroDaCapa(capaDaParede) : null;
   flashLcd(`ABRIR · ${w.title}`);
   track('work_open', { work: w.id, from: de });
-  summonWork(WORKS.indexOf(w));
   focus.enter(w);
   syncMirror();
   return true;
@@ -4309,7 +4304,7 @@ function tocarAcervo(hit) {
   return abrirObra(w, 'acervo', hit.object);
 }
 
-/** As lombadas das obras dele, e só elas — as de enchimento não respondem. */
+/** As sete capas das obras dele, e só elas, respondem. */
 function pickAcervo(e) {
   if (ROOM_K === 0 || !decor.discos?.length) return null;
   const r = frameRect(), p = pt(e);
@@ -5547,7 +5542,7 @@ function castOnly(...roots) {
   }
 }
 groundShadows(scene);
-castOnly(unit, altar, summoning.group);
+castOnly(unit, altar);
 
 /**
  * The renderer, on the debug handle.
@@ -6049,95 +6044,6 @@ window.__unit = {
   get xf() { return xfVal; },
 };
 
-/* ---------- the rite ----------
- *
- * Clicking a Work on the Screen does not just switch a texture on. The room
- * performs the rite: the Candles gutter out on their own, the plinth takes light,
- * and the Work assembles out of it. Then the Screen stops being a list and becomes
- * the Work's plaque — the image is legible because it is big, the words are
- * legible because they stayed on the Screen, and neither does the other's job.
- *
- * The Vigil is borrowed, not taken. `restore` remembers where the visitor had it
- * and the banishment hands it back, because the Decks own the Vigil (ADR-0009) and
- * a moment that keeps what it took would be stealing the instrument.
- *
- * Coming back has two doors, and both mean the same thing in the fiction:
- *   — click the Screen again, which is where the visitor already is
- *   — touch the Sun, because bringing the light up is what dispels her work
- */
-const smooth = k => k * k * (3 - 2 * k);
-
-/**
- * ## O rito tinha um relógio próprio e nenhum gatilho
- *
- * Constatado 2026-09-06, medindo: `summonWork` e `banish` **nunca eram chamados de
- * lugar nenhum**. O aparato inteiro estava construído — a peça, a luz de baixo, os
- * quarenta e quatro motes, a curva de subida e descida — e `stepRite` rodava a cada
- * quadro esperando uma fase que nada punha nele. Do quadro entregue: a peça
- * invisível, a luz apagada, a Vigília em 0.
- *
- * Não foi esquecimento. `focus.js` diz no cabeçalho que **reverte a ADR-0017**, e a
- * razão é boa e medida: uma obra é a fotografia de um pôster, e a Tela é uma janela
- * de 320x180 esticada umas 4,7 vezes, o que é mingau. Então o clique numa obra foi
- * religado ao `focus`, que voa a câmera e entrega o conteúdo ao DOM em resolução
- * cheia. Só que as duas coisas nunca estiveram em conflito: uma é **onde o conteúdo
- * mora** (DOM, e continua), a outra é **o que o quarto faz enquanto se chega lá**.
- *
- * Agora o voo do `focus` é o relógio do rito. Uma curva só, que é o que ela sempre
- * quis ser — `onProgress` já apagava o quarto, e agora também levanta a peça e
- * caminha a Vigília. Sem segunda linha de tempo para sincronizar, e a volta é a mesma
- * curva ao contrário de graça.
- *
- * Movimento reduzido não precisa de caso especial aqui: `focus` já tem o seu.
- */
-function summonWork(i) {
-  if (rite.phase !== 'idle') return;
-  rite = { phase: 'held', work: i, k: 0, restore: vigil, subiu: false };
-  summoning.applyWork(i);
-  setPlinthWork(i);
-  setHoverWork(-1); hoverWork = -1;
-  drawScreen();
-}
-
-/**
- * A Vigília segue o voo, e é a única coisa que este passo ainda faz.
- *
- * Emprestada, nunca guardada: `restore` é onde o visitante a deixou, e quando o voo
- * volta a zero ela volta para lá sozinha, porque `k` volta a zero.
- */
-function stepRite() {
-  if (rite.phase === 'idle') return;
-  setVigil(rite.restore + (1 - rite.restore) * smooth(rite.k));
-}
-
-/**
- * O voo entrega a sua própria progressão, e ela é a do rito.
- *
- * Chamada pelo `onProgress` do `focus`, que já vem suavizado. Quando ela chega a
- * zero o rito acabou, e é aqui que a Vigília e o visor voltam ao que eram — não no
- * `banish`, porque não existe um instante em que o rito "acaba" além deste.
- */
-function driveRite(t) {
-  if (rite.phase === 'idle') return;
-  /**
-   * A marca de maré alta existe porque **o primeiro quadro da ida é idêntico ao
-   * último da volta**: nos dois `onProgress` entrega ~0. Sem ela o rito se desfazia
-   * no instante em que nascia — a peça não aparecia, a luz não acendia e a Vigília
-   * não saía de 0, que foi exatamente o que a primeira medição mostrou.
-   *
-   * A alternativa era o `focus` dizer a direção, e isso é pior: seria a fase do voo
-   * atravessando a fronteira só para este arquivo inferir o que ele já sabe.
-   */
-  if (t > 0.02) rite.subiu = true;
-  rite.k = t;
-  if (!rite.subiu || t > 0.002) return;
-  const restore = rite.restore;
-  rite = { phase: 'idle', work: -1, k: 0, restore, subiu: false };
-  setVigil(restore);
-  setPlinthWork(-1);
-  drawScreen();
-}
-
 /**
  * A light at intensity 0 is not a light that is off. It is a light that costs
  * exactly as much as one that is on.
@@ -6148,9 +6054,9 @@ function driveRite(t) {
  * surface. Nothing checks whether the intensity happens to be zero, and nothing
  * checks whether the light is anywhere near the fragment.
  *
- * This scene keeps three lights parked at 0 most of the time — the Moon Deck's
- * lamp before the Vigil turns, the phosphor rake until the last Candle dies, and
- * the summoning light while the Plinth is empty. Measured here, those three alone
+ * This scene keeps lights parked at 0 some of the time — the Moon Deck's lamp
+ * before the Vigil turns and the phosphor rake until the last Candle dies. Measured
+ * here, these lights alone
  * were **a third of the entire frame**: 108ms with them, 72ms with them hidden,
  * and not one pixel different on screen.
  *
@@ -6184,22 +6090,10 @@ const post = createPost(renderer, scene, camera, {
  * when the panel arrives. The Vigil is *not* touched: the visitor's own setting is
  * still theirs when they come back out.
  */
-/**
- * As luzes que caem quando uma obra sobe — e as duas que não caem.
- *
- * `rake` já estava de fora. A **luz do plinto** tem de estar também, e por um motivo
- * exatamente oposto ao das outras: ela é a única que *acende* durante o rito. Estando
- * na lista, `onProgress` a reescrevia para `base * (1 - t)` com `base` igual a zero —
- * e como `focus.update` roda depois de `summoning.update` no quadro, quem escrevia
- * por último era o apagador. Medido: a peça subia, assentava, e o plinto ficava com
- * intensidade 0 do começo ao fim.
- */
+/** As luzes do quarto caem durante o voo; o phosphor `rake` continua sendo a exceção. */
 const ROOM_DIM = [];
 scene.traverse(n => {
   if (!n.isLight || n === rake) return;
-  let p = n, doPlinto = false;
-  while (p) { if (p === summoning.group) { doPlinto = true; break } p = p.parent }
-  if (doPlinto) return;
   ROOM_DIM.push([n, n.intensity]);
 });
 /**
@@ -6224,16 +6118,14 @@ const contact = createContact({
 
 const focus = createFocus({
   camera,
-  mount: document.getElementById('stage'),
+  mount: document.getElementById('frame'),
   screen: { centre: new THREE.Vector3(0, FACE_Y, SCREEN_Z), width: OPENING.w, depth: OPENING.d },
-  /* onde pousar: a peça no plinto, e a Tela se não houver obra aplicada */
-  alvo: () => alvoCapa || (rite.phase === 'idle' ? null : summoning.quadro()),
+  /* onde pousar: a mesma capa da parede, venha o clique dela ou do visor */
+  alvo: () => alvoCapa,
   onProgress(t) {
     /* the room falls away; the Screen's own glow and the phosphor do not */
     for (const [l, base] of ROOM_DIM) l.intensity = base * (1 - t * 0.88);
     post.set({ vignette: 0.70 + t * 0.5 });
-    /* e a mesma progressão levanta a peça e caminha a Vigília — ver `driveRite` */
-    driveRite(t);
   },
   /**
    * Prev/next while a Work is up, so browsing does not mean flying out and back in
@@ -6243,14 +6135,6 @@ const focus = createFocus({
     if (typeof d !== 'number') return
     const i = WORKS.indexOf(focus.work)
     const n = ((i < 0 ? 0 : i) + d + WORKS.length) % WORKS.length
-    /* a peça no plinto anda com o painel. `summonWork` não serve aqui: ele recusa
-       quando o rito já está de pé, que é exatamente o caso — o rito continua, é a
-       obra que muda. */
-    if (rite.phase !== 'idle') {
-      rite.work = n;
-      summoning.applyWork(n);
-      setPlinthWork(n);
-    }
     focus.show(WORKS[n])
   },
   restore() {
@@ -6349,7 +6233,7 @@ if (visorCv) { visorCv.width = SCREEN_W; visorCv.height = SCREEN_H; }
  */
 if (visorEl) {
   const q = new URLSearchParams(location.search).get('visor');
-  visorEl.dataset.forma = ['tela', 'oculo', 'relogio', 'vigia'].includes(q) ? q : 'relogio';
+  visorEl.dataset.forma = ['tela', 'oculo', 'relogio', 'vigia'].includes(q) ? q : 'tela';
 }
 let visorLigado = false;
 let visorSai = 0;
@@ -6383,6 +6267,8 @@ function larguraDaTela() {
   return Math.abs(_telaD.x - _telaE.x) * .5 * W();
 }
 function visorDeveAparecer() {
+  // The auxiliary display belongs to room exploration, not the instrument view.
+  if (ROOM_K === 0) return false;
   /* o `focus` fica de fora seja qual for o número: ele já enquadra a Tela apertado e
      dirige a câmera ele mesmo, e uma cópia dela no canto ao lado dela grande é
      conteúdo duplicado no mesmo quadro */
@@ -6413,31 +6299,6 @@ function visorDeveAparecer() {
  *
  * Não é ajuda, tooltip nem onboarding — é a saída de uma sala, que todo lugar tem.
  */
-/**
- * A capa encostada no tampo mostra o que a Tela está mostrando.
- *
- * É o elo entre o display e a cena, e é a resposta à pergunta que ele fez — *"a
- * relação entre o display da CDJ, os módulos e a cena"*. A linha selecionada em
- * PROJETOS e a capa encostada na credenza são **o mesmo estado**, em duas
- * representações, como a linha e a capa na parede já eram.
- *
- * Fora de PROJETOS não há capa: o tampo fica com a vitrola e o amplificador, e o
- * quarto para de afirmar uma obra que ninguém escolheu.
- */
-let capaEncostada = null;
-function pintarCapaEncostada() {
-  if (!decor?.destacar) return;
-  let id = null;
-  const i = MODULES.findIndex(m => m.id === 'projects');
-  if (i >= 0 && curPage === i) {
-    const it = itemsOf()[selectionOf(i)];
-    if (it?.act?.kind === 'work') id = it.act.value;
-  }
-  if (id === capaEncostada) return;
-  capaEncostada = id;
-  decor.destacar(id);
-}
-
 const voltarEl = document.getElementById('voltar-quarto');
 function pintarVoltar() {
   if (!voltarEl) return;
@@ -6485,12 +6346,7 @@ voltarEl?.addEventListener('click', () => {
 function ligarVisorComoControle() {
   if (!visorCv) return;
   const pontoNoVisor = e => {
-    const r = visorCv.getBoundingClientRect();
-    if (!r.width || !r.height) return null;
-    return [
-      ((e.clientX - r.left) / r.width) * SCREEN_W,
-      ((e.clientY - r.top) / r.height) * SCREEN_H,
-    ];
+    return canvasPoint(e, visorCv.getBoundingClientRect(), SCREEN_W, SCREEN_H, turned());
   };
   visorCv.addEventListener('pointerdown', e => {
     if (!visorLigado || focus.active) return;
@@ -6754,6 +6610,20 @@ mobilia.pronto.then(() => {
     o.visible = roomShown;
   });
 });
+/* A vitrola e a credenza também chegam só quando o quarto acende. Elas moram em
+   `decor`, mas precisam entrar nas mesmas duas listas dos móveis tardios: Pool e
+   visibilidade da sala. */
+decor.pronto.then(raizes => {
+  for (const raiz of raizes) {
+    if (!raiz) continue;
+    poolMaterials(raiz);
+    raiz.traverse(o => {
+      if (!o.isMesh) return;
+      roomScenery.push(o);
+      o.visible = roomShown;
+    });
+  }
+});
 /* A moldura do retrato chega pelo mesmo caminho e tem o mesmo problema: a varredura
    de `roomScenery` acima já rodou quando ela pousa, e uma moldura que não apaga com o
    quarto fica acesa sozinha na parede quando `setRoom(false)` esvazia a sala. */
@@ -6772,16 +6642,17 @@ portrait.pronto.then(raiz => {
  * `setRoom` deliberately hides meshes and not the Group, so the lights survive —
  * which was right when the room was still there and is waste now that it is not.
  * `wallWash` lit the far wall. The two globe lamps lit the bays. The picture light
- * lit Lyra's frame. All four are now illuminating nothing the camera can see, and
+ * lit Lyra's frame. The Porta sconce lights only its entrance group. All five are
+ * illuminating nothing the camera can see when the room is absent, and
  * three.js has no idea: every visible light is compiled into the shader and
  * evaluated by **every lit fragment**, whatever it happens to be pointed at
  * (ADR-0019).
  *
- * Four of twelve, for no visible change at all. What stays is what actually falls
+ * Five room-only fixtures, for no visible change at all. What stays is what falls
  * on the Unit and the desk: the key, the moon, the three Candles, the Deck lamps
  * and the phosphor.
  */
-const roomOnlyLights = [wallWash, pictureLight, ...decor.lamps ?? []];
+const roomOnlyLights = [wallWash, pictureLight, ...decor.lamps ?? [], ...mobilia.lights];
 function setRoomLights(on) {
   for (const l of roomOnlyLights) if (l) l.visible = on;
 }
@@ -6806,14 +6677,15 @@ function setRoomAmount(k) {
    * **This function does not touch a single light**, and that is the fix rather than an
    * omission.
    *
-   * All four room fixtures — `wallWash`, `pictureLight` and the two globes — already
-   * have curves in `applyVigil`, because they answer to the Vigil as well as to the
-   * room. So the version that dimmed them here undid itself one line later, when it
+   * All five room fixtures — `wallWash`, `pictureLight`, the two globes and the Porta
+   * Pool — already have curves in `applyVigil` or their local updater, because they
+   * answer to the Vigil as well as to the room. So the version that dimmed them here
+   * undid itself one line later, when it
    * called `applyVigil` to update the environment: the room went dark and came back on
    * inside the same call, and the only visible symptom was a light count that would not
    * drop.
    *
-   * `ROOM_K` is the whole mechanism. Each of the four multiplies its own Vigil curve by
+   * `ROOM_K` is the whole mechanism. Each fixture multiplies its own Vigil curve by
    * it, where that curve is already written, and nothing is written twice. Third
    * instance of this bug in one session — the environment, the picture light, and these
    * — which is enough to call it the shape of the file rather than an accident.
@@ -7091,7 +6963,6 @@ function frame(t) {
     const w = (.55 + c.live * .45) * (1 + (1 - f) * .55);
     c.flame.scale.set(w, 2.1 * (.6 + c.live * .4) * (.72 + f * .34), w);
   });
-  stepRite();
   /**
    * The Screen is never static — the raven flies, the Cast types, she breathes —
    * but it does not have to move at 60fps, and it was the most expensive thing in
@@ -7114,7 +6985,6 @@ function frame(t) {
        60 quando ele só muda a 24 é dois terços de blit jogados fora */
     pintarVisor();
     pintarVoltar();
-    pintarCapaEncostada();
     screenClock = 0;
   }
   /* The mirror follows the Screen's own clock. `drawScreen()` is the deliberate
@@ -7123,7 +6993,6 @@ function frame(t) {
      announces, and a mirror that lags the Screen is the drift this was built to
      prevent. It is a string compare when nothing has moved. */
   syncMirror();
-  summoning.update(smooth(rite.k), t / 1000);
   /**
    * Sair de perto fecha a consulta, e o guarda fica aqui de propósito.
    *
@@ -7336,16 +7205,9 @@ function mostrarEstacoes() {
 estRow?.querySelectorAll('[data-est]').forEach(b => {
   b.addEventListener('click', () => {
     if (!trilho.pronto) { flashLcd('TRILHO NÃO CARREGADO · use ?trilho', 1600); return; }
-    /**
-     * Sair é dispensar.
-     *
-     * Uma obra de pé e o visitante pedindo outra estação são duas mãos na câmera. A
-     * saída não é travar o trilho: travar a câmera é exatamente o que faz uma coisa
-     * ser modal, e a lista `_Avoid_` do termo Summoning no `CONTEXT.md` proíbe isso
-     * em tantas palavras. Então o pedido é atendido e o rito se desfaz no caminho —
-     * um gesto, dois trabalhos, e nada fica largado aceso do outro lado da sala.
-     */
-    if (rite.phase !== 'idle') focus.exit();
+    /* Uma obra aberta e outra estação pedida são duas mãos na câmera. O pedido da
+       estação vence e fecha o case antes do Trilho assumir. */
+    if (focus.active) focus.exit();
     const n = +b.dataset.est;
     if (n > trilho.quantas) return;
     if (n <= 0) { trilho.irPara(n); mostrarEstacoes(); return; }

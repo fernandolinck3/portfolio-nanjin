@@ -76,6 +76,10 @@ T-04 is the merge point and should not start while track B is mid-flight.
 | T-33 | [A mobília se reagrupa](T-33-the-furniture-regroups.md) | B | T-32 | **done** — quatro grupos, coordenadas medidas |
 | T-34 | [O quarto vira a navegação](T-34-the-room-becomes-the-navigation.md) | B | T-30 | **meio feito** — 1, 2, 3 e 6 em `?trilho`; 4 e 5 atrás do T-30. Desde 05/09 as estações também *fazem* coisas: ver a seção abaixo |
 | T-35 | [O objeto faz som](T-35-the-object-makes-a-sound.md) | B | T-30 | **construído e revertido** — `a7850e2`, um `git revert` de volta |
+| T-36 | [Contact reliability](T-36-contact-reliability.md) | A | — | done locally — TASK-004; independent PASS, 166 tests, mocked browser checks; not published |
+| T-37 | [Mobile usability](T-37-mobile-usability.md) | A | T-36 | done locally — TASK-005; independent PASS, 170 tests, mobile browser checks; not published |
+| T-38 | [Room boundary and mobile performance](T-38-room-boundary-and-mobile-performance.md) | A | — | room boundary fixed locally; phone lag awaiting reproduction |
+| T-39 | [Default display duplication](T-39-default-display-duplication.md) | A | — | in progress — TASK-008; room-only auxiliary display |
 
 ## O que foi construído depois do board (05–06/09)
 

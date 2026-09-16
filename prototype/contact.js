@@ -60,10 +60,13 @@ const ACCESS_KEY = 'a93f545a-cd2d-41e8-8331-f62dc1bb3aad'
 
 /** Long enough that a person reads the confirmation, short enough not to strand them. */
 const DONE_MS = 4200
+const REQUEST_MS = 15000
 
 export function createContact({ mount, onOpen, onClose, track }) {
   let opener = null
-  let sending = false
+  let request = null
+  let hideTimer = null
+  let doneTimer = null
 
   const panel = document.createElement('div')
   panel.className = 'ct-panel'
@@ -72,20 +75,22 @@ export function createContact({ mount, onOpen, onClose, track }) {
   panel.setAttribute('aria-modal', 'true')
   panel.setAttribute('aria-labelledby', 'ct-title')
   panel.hidden = true
+  panel.inert = true
 
   const style = document.createElement('style')
   /* No backtick may appear between here and the closing quote, comments included:
      this is a template literal, and one backtick ends it. It has broken the build
      three times, each time pointing at an unrelated line. */
   style.textContent = `
-    .ct-panel { position:fixed; inset:0; z-index:75; display:grid; place-items:center;
+    .ct-panel { position:fixed; inset:0; bottom:var(--notice-height, 0px); z-index:75; display:grid; place-items:center;
       opacity:0; pointer-events:none; transition:opacity .22s ease;
       background:rgba(6,5,4,.82); backdrop-filter:blur(14px) saturate(.75);
       font:400 14px/1.7 "Azeret Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
       color:#C9C2B0; }
+    .ct-panel[hidden] { display:none; }
     .ct-panel[data-open="1"] { opacity:1; pointer-events:auto; }
 
-    .ct-frame { width:min(560px, 92vw); max-height:88vh; overflow:auto; position:relative;
+    .ct-frame { width:min(560px, 92vw); max-height:calc(88dvh - var(--notice-height, 0px)); overflow:auto; position:relative;
       background:rgba(12,10,9,.94); border:1px solid #332C22; padding:34px 34px 30px; }
 
     .ct-frame h2 { font:400 30px/1.05 "Grenze Gotisch", "Pirata One", Georgia, serif;
@@ -187,28 +192,52 @@ export function createContact({ mount, onOpen, onClose, track }) {
     status.dataset.tone = tone
   }
 
-  /**
-   * Keystrokes stop here.
-   *
-   * The Unit listens for 1-6, the arrows, Home and End on the document, so a visitor
-   * typing "Trabalho" into a field would otherwise walk the Modules while writing.
-   * Escape is the one key allowed through, and it is handled rather than forwarded.
-   */
+  const fields = [...form.querySelectorAll('.ct-field input, .ct-field textarea')]
+  const focusables = () => [...form.querySelectorAll('input:not([tabindex="-1"]), textarea, button, a[href]')]
+    .filter(el => !el.disabled)
+
+  function containFocus(e) {
+    if (!panel.contains(e.target)) focusables()[0]?.focus()
+  }
+
+  function setPending(pending) {
+    if (pending && document.activeElement === send) panel.querySelector('.ct-cancel').focus()
+    send.disabled = pending
+    // Readonly keeps the draft accessible and focus stable, but prevents edits being
+    // erased when the submitted snapshot is confirmed. Back remains available.
+    fields.forEach(field => { field.readOnly = pending })
+    form.setAttribute('aria-busy', String(pending))
+  }
+
+  function clearDone() {
+    clearTimeout(doneTimer)
+    doneTimer = null
+  }
+
+  form.addEventListener('input', clearDone)
   panel.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { e.stopPropagation(); if (!sending) close(); return }
     e.stopPropagation()
+    if (e.key === 'Escape') { e.preventDefault(); close(); return }
+    if (e.key !== 'Tab') return
+    const items = focusables()
+    const first = items[0]
+    const last = items.at(-1)
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault(); last?.focus()
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault(); first?.focus()
+    }
   })
 
-  panel.querySelector('.ct-cancel').addEventListener('click', () => { if (!sending) close() })
-  panel.addEventListener('click', e => { if (e.target === panel && !sending) close() })
+  panel.querySelector('.ct-cancel').addEventListener('click', close)
+  panel.addEventListener('click', e => { if (e.target === panel) close() })
 
   form.addEventListener('submit', async e => {
     e.preventDefault()
-    if (sending) return
+    if (request || panel.dataset.open !== '1') return
+    clearDone()
 
     const data = Object.fromEntries(new FormData(form))
-    /* validate here rather than leaning on the browser: novalidate is set so the
-       message lands in the object's own voice instead of a native bubble */
     if (!data.name?.trim() || !data.email?.trim() || !data.message?.trim()) {
       say(UI.contactIncomplete, 'bad'); return
     }
@@ -216,45 +245,68 @@ export function createContact({ mount, onOpen, onClose, track }) {
       say(UI.contactBadEmail, 'bad'); return
     }
 
-    sending = true
-    send.disabled = true
+    const current = { controller: new AbortController(), cancel: null }
+    request = current
+    setPending(true)
     say(UI.contactSending, 'work')
 
+    // Race the complete exchange, including the body, so even a stalled body or
+    // an implementation ignoring abort cannot keep the form pending indefinitely.
+    const interrupted = new Promise((_, reject) => {
+      current.cancel = reason => {
+        current.controller.abort()
+        reject(new Error(reason))
+      }
+    })
+    const deadline = setTimeout(() => current.cancel('timeout'), REQUEST_MS)
     try {
-      const res = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({
-          access_key: ACCESS_KEY,
-          subject: 'nanj.in — ' + data.name,
-          from_name: 'nanj.in',
-          ...data,
-        }),
-      })
-      const body = await res.json().catch(() => null)
+      const exchange = async () => {
+        const res = await fetch(ENDPOINT, {
+          method: 'POST',
+          signal: current.controller.signal,
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            access_key: ACCESS_KEY,
+            subject: 'nanj.in — ' + data.name,
+            from_name: 'nanj.in',
+            ...data,
+          }),
+        })
+        const body = await res.json().catch(() => null)
+        return { res, body }
+      }
+      const { res, body } = await Promise.race([exchange(), interrupted])
+      if (request !== current) return
       if (res.ok && body?.success) {
         say(UI.contactSent, 'ok')
         track?.('contact_sent', { route: 'form' })
         form.reset()
-        setTimeout(() => { if (panel.dataset.open === '1') close() }, DONE_MS)
+        doneTimer = setTimeout(close, DONE_MS)
       } else {
-        /* the API answered and said no: quote nothing, offer the route that works */
         say(UI.contactRefused, 'bad')
         track?.('contact_failed', { route: 'form', status: String(res.status) })
       }
-    } catch {
-      /* offline, blocked, DNS — indistinguishable from here and identical to the visitor */
-      say(UI.contactOffline, 'bad')
-      track?.('contact_failed', { route: 'form', status: 'network' })
+    } catch (error) {
+      if (request !== current) return
+      const timedOut = error.message === 'timeout'
+      say(timedOut ? UI.contactTimeout : UI.contactOffline, 'bad')
+      track?.('contact_failed', { route: 'form', status: timedOut ? 'timeout' : 'network' })
     } finally {
-      sending = false
-      send.disabled = false
+      clearTimeout(deadline)
+      if (request === current) {
+        request = null
+        setPending(false)
+      }
     }
   })
 
   function open() {
+    if (panel.dataset.open === '1') return
+    clearTimeout(hideTimer)
+    clearDone()
     opener = document.activeElement
     panel.hidden = false
+    panel.inert = false
     /**
      * A forced reflow, not a rAF.
      *
@@ -267,18 +319,29 @@ export function createContact({ mount, onOpen, onClose, track }) {
      */
     void panel.offsetWidth
     panel.dataset.open = '1'
-    say('', 'work')
+    document.addEventListener('focusin', containFocus)
     onOpen?.()
     form.querySelector('input[name="name"]')?.focus()
   }
 
   function close() {
+    if (panel.dataset.open !== '1') return
+    clearDone()
+    if (request) {
+      const pending = request
+      request = null
+      pending.cancel('cancelled')
+      setPending(false)
+      // Aborting stops waiting; it cannot retract mail already accepted remotely.
+      say(UI.contactCancelled, 'bad')
+    }
     panel.dataset.open = '0'
+    panel.inert = true
+    document.removeEventListener('focusin', containFocus)
     onClose?.()
-    /* the opener is a canvas control; returning focus is what makes Escape survivable */
     if (opener && document.contains(opener)) opener.focus()
     opener = null
-    setTimeout(() => { if (panel.dataset.open === '0') panel.hidden = true }, 240)
+    hideTimer = setTimeout(() => { panel.hidden = true }, 240)
   }
 
   return { open, close, get isOpen() { return panel.dataset.open === '1' } }

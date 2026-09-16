@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>Capa fit — as quatro</title>
+<title>Capa fit — a marca inteira</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700&family=Azeret+Mono:wght@400;500&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
@@ -11,26 +11,27 @@
      border-bottom:1px solid #1E1B18}
   p.nota{padding:12px 18px;margin:0;max-width:78ch;color:#6E6559;border-bottom:1px solid #1E1B18}
   section{padding:18px}
-  h2{font-size:11px;letter-spacing:.2em;color:#C9BE96;font-weight:500;margin:0 0 10px}
+  h2{font-size:12px;letter-spacing:.2em;color:#C9BE96;font-weight:500;margin:0 0 10px}
   .parede{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;max-width:1500px}
   figure{margin:0}
   canvas{width:100%;display:block;background:#000;image-rendering:auto}
-  figcaption{padding:5px 1px;letter-spacing:.1em;color:#4E4841;font-size:10px}
+  figcaption{padding:5px 1px;letter-spacing:.1em;color:#4E4841;font-size:9px}
   /* a prova real: a mesma capa no tamanho que ela tem na parede do acervo */
   .cem{display:flex;gap:8px;align-items:flex-end;margin-top:12px}
   .cem canvas{width:100px;height:100px}
   .rotulo{color:#4E4841;letter-spacing:.14em}
 </style>
-<h1>CAPA FIT — as quatro, e as sete de cada</h1>
+<h1>CAPA FIT — A MARCA INTEIRA</h1>
 <p class="nota">
-  Cada fileira é um desenho aplicado às sete obras. A tira de baixo é a mesma capa a
+  Uma matéria e uma tinta para as sete; a assinatura completa de cada cliente sempre
+  que ela sobreviver à distância. A tira de baixo é a mesma capa a
   <strong>cem pixels</strong>, que é o tamanho dela na parede do acervo no enquadramento da
-  estação — é ali que a escolha se decide, não no grande.
+  estação. Ícone sozinho é fallback, não o sistema.
 </p>
 <div id="saida"></div>
 <script type="module">
   import { WORKS } from '../../src/content/modules.ts'
-  import { DESENHOS, NOMES, materia } from './desenhos.js'
+  import { drawSleeve } from '../sleeve-art.js'
   import { asset } from '../asset.js'
 
   const S = 640
@@ -47,16 +48,11 @@
     im.src = asset(src)
   })))
 
-  /* a fileira de controle: o mesmo desenho **sem** a camada de matéria, para a
-     diferença ser vista e não argumentada */
-  const fileiras = [
-    ...Object.entries(DESENHOS).map(([k, f]) => [k, f, true]),
-    ['detalhe', DESENHOS.detalhe, false],
-  ]
+  const fileiras = [['APROVADA · A MARCA INTEIRA', drawSleeve]]
 
-  for (const [chave, desenhar, comMateria] of fileiras) {
+  for (const [nome, desenhar] of fileiras) {
     const sec = document.createElement('section')
-    sec.innerHTML = `<h2>${NOMES[chave]}${comMateria ? '' : ' — SEM MATÉRIA (controle)'}</h2>`
+    sec.innerHTML = `<h2>${nome}</h2>`
     const parede = document.createElement('div')
     parede.className = 'parede'
     const tira = document.createElement('div')
@@ -69,7 +65,6 @@
       cv.width = S; cv.height = S
       const ctx = cv.getContext('2d')
       desenhar(ctx, S, w, i, imagens[i])
-      if (comMateria) materia(ctx, S, i)
       fig.append(cv)
       const cap = document.createElement('figcaption')
       cap.textContent = `${w.no} · ${w.title}`

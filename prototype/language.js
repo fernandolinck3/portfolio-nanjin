@@ -39,7 +39,7 @@ const KEY = 'tenebrae.lang.asked'
 const CSS = `
   .lg-bar { position:relative; width:100%; z-index:79;
     display:flex; gap:18px; align-items:center; justify-content:center; flex-wrap:wrap;
-    padding:14px 20px calc(14px + env(safe-area-inset-bottom));
+    padding:14px 20px;
     background:rgba(8,7,6,.94); border-top:1px solid #2A241C;
     backdrop-filter:blur(10px) saturate(.8);
     font:400 12px/1.6 "Azeret Mono", ui-monospace, SFMono-Regular, Menlo, monospace;

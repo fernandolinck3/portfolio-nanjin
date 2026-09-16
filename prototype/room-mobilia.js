@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 /**
@@ -15,11 +16,11 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
  *
  * Então: **a Unidade é escrita, o cenário é modelado.** Ver `docs/adr/0029`.
  *
- * Os arquivos vêm da Poly Haven sob CC0, ficam em `public/mobilia/` com a procedência
- * ao lado deles, e somam 2,3 MB — contra os 11 MB que `public/` já carrega em HDRI,
- * texturas, arte de deck e Works. Não existe teto de peso escrito neste projeto; o
- * orçamento de `docs/realism-budget.md` é de draw calls, luzes e megapixels, e oito
- * malhas estáticas com um mapa de cor cada não mexem em nenhum dos três.
+ * Os arquivos ficam em `public/mobilia/` com procedência e licença ao lado deles. A
+ * maior parte vem da Poly Haven sob CC0; a Porta é a exceção registrada, vinda do
+ * Blendkit sob Royalty Free. Não existe teto de peso escrito neste projeto; o
+ * orçamento de `docs/realism-budget.md` é de draw calls, luzes e megapixels, e estas
+ * malhas são estáticas e baixadas somente quando o quarto acende.
  *
  * ## Por que `MeshStandardMaterial` e não o bake nos vértices
  *
@@ -273,14 +274,18 @@ const MOBILIA = [
      toa. */
   /* o estar: sofá e cadeira virados para o Altar, com o tapete entre eles */
   { arq: 'Sofa_01/Sofa_01_1k.gltf', m: .86, pos: [-5.2, 4.8], ry: 2.316, cor: 0x7E5A38 },
-  /* o canto da lareira, na parede direita em (+11,5 · −1): o sofá de lado e a
-     poltrona fechando o L, os dois olhando para o fogo */
-  { arq: 'sofa_03/sofa_03_1k.gltf', m: .92, pos: [6.6, .4], ry: 1.849, cor: 0x8E6A5E },
+  /* O estar da lareira ocupa o recuo em frente ao fogo, sem cruzar a linha entre a
+     câmera e a oficina. O sofá faz a borda longa do grupo; a poltrona fica no lado
+     da janela, ambos voltados para a boca da lareira em (+11,4 · −1). */
+  { arq: 'sofa_03/sofa_03_1k.gltf', m: .92, pos: [6.5, .85], ry: 2.126, cor: 0x8E6A5E },
   /* o canto de leitura, ao pé da estante em (+11 · +3,6) — a cadeira vira as
      costas para ela e olha para dentro do quarto, que é como se lê sentado */
   { arq: 'GreenChair_01/GreenChair_01_1k.gltf', m: .95, pos: [8.6, 6.0], ry: -2.18, cor: 0x8C9A82 },
 
-  { arq: 'ArmChair_01/ArmChair_01_1k.gltf', m: 1.05, pos: [8.4, -5.0], ry: 0.659, cor: 0x8E6C50 },
+  /* A segunda poltrona não cabe nas duas vistas sem virar uma parede de estofado.
+     O sofá já fecha o estar; esta volta ao arranjo vazio até existir um enquadramento
+     que a comporte sem cobrir fogo ou bancada. */
+  { arq: 'ArmChair_01/ArmChair_01_1k.gltf', m: 1.05, pos: [4.9, -.2], ry: 1.694, cor: 0x8E6C50, layout: 'vazio' },
 
   /* A cadeira do Altar, e ela **volta para 1,02 m**.
 
@@ -299,7 +304,27 @@ const MOBILIA = [
      parede esquerda — porque um console é onde se larga o que se traz, e um console
      no meio de uma parede cega é um móvel sem função. Continua encostado: a este é o
      único grupo do quarto que tem razão para estar na parede. */
-  { arq: 'ClassicConsole_01/ClassicConsole_01_1k.gltf', m: .82, pos: [-10.5, 6.8], ry: Math.PI / 2, cor: 0xB89772 },
+  { arq: 'ClassicConsole_01/ClassicConsole_01_1k.gltf', m: .76, pos: [-10.5, 8.35], ry: Math.PI / 2, cor: 0xA98D70 },
+
+  /* A Porta e a excecao deliberada a fronteira antiga entre arquitetura escrita e
+     mobiliario modelado. A camera chega perto demais para uma folha de caixas: este
+     modelo ja traz marcenaria, guarnicao e ferragem em escala residencial (2,28 m na
+     fonte). Fica fechado e exatamente no alvo anterior; muda o acabamento, nao a
+     estacao nem a navegacao. */
+  {
+    arq: 'door_classic/door_classic.glb', m: 2.18, pos: [-11.31, 4.88],
+    ry: Math.PI / 2, cor: 0x6D625A, metalCor: 0x684722,
+    rug: .82, env: .20, specular: .08, normal: false, original: true,
+    layouts: ['cheio', 'sobrio'],
+  },
+
+  /* Uma unica arandela modelada ocupa o pequeno vao entre o console e a guarnicao.
+     Ela substitui a grade procedural que atravessava a porta; e a peca vintage de
+     latao/cobre da Poly Haven, nao uma nova forma escrita para imita-la. */
+  {
+    arq: 'industrial_wall_sconce/industrial_wall_sconce_1k.gltf', m: .32,
+    pos: [-11.23, 7.72], y: .64, ry: Math.PI / 2, env: .45, original: true, layout: 'cheio',
+  },
   { arq: 'Shelf_01/Shelf_01_1k.gltf', m: 1.75, pos: [11.0, 3.6], ry: -Math.PI / 2, cor: 0x8C6C4A, livros: 5171 },
 
   /* O armário vai para o canto do fundo à esquerda, e é o único lugar da sala onde
@@ -334,14 +359,15 @@ const MOBILIA = [
    * mira a lareira: o `trilho.json` diz que o ponto e o centroide do grupo, e o grupo e
    * o sofa e a poltrona sobre o tapete. A cornija esta na estacao; nao esta na foto.
    *
-   * O que esta no meio do quadro, medido, e o topo da credenza da direita — `y = -1,49`
-   * projetando em `(680, 380)` de 1706 por 800. Um relogio de prateleira numa credenza
-   * de discos e a mesma peca no mesmo tipo de lugar, com a diferenca de que se ve.
+   * O que estava no meio do quadro era o topo da bancada da direita. Isso virou um
+   * erro de leitura: o relógio escondia a própria boca do fogo e fazia a estação
+   * parecer a foto de uma mesa de pedais. Ele sai do eixo da lareira; a cronologia
+   * continua no módulo e o foco físico volta a ser o grupo de estar.
    *
    * Ver `montar` — `y` troca o chao por outro plano de apoio.
    */
   {
-    arq: 'mantel_clock_01/mantel_clock_01_1k.gltf', m: .38, pos: [10.6, -2.55],
+    arq: 'mantel_clock_01/mantel_clock_01_1k.gltf', m: .38, pos: [-10.0, -7.28],
     y: -1.49, ry: -Math.PI / 2, cor: 0x8E7A5E, layout: 'cheio',
   },
 
@@ -355,10 +381,13 @@ const MOBILIA = [
    * o quarto inteiro feito do mesmo material.
    */
   {
-    arq: 'antique_ceramic_vase_01/antique_ceramic_vase_01_1k.gltf', m: .34,
-    pos: [-10.2, 6.4], y: -.33, ry: .7, cor: 0x9A8E7E, layout: 'cheio',
+    arq: 'antique_ceramic_vase_01/antique_ceramic_vase_01_1k.gltf', m: .30,
+    pos: [-10.2, 8.12], y: -.52, ry: .7, cor: 0x8D847A, layout: 'cheio',
   },
 
+  /* A oficina não usa uma escultura como assunto. O busto continua disponível no
+     arranjo vazio, onde o pedestal vira o gesto decorativo da sala; nos arranjos de
+     trabalho ele tirava atenção da bancada e da própria Unidade. */
   {
     arq: 'marble_bust_01/marble_bust_01_1k.gltf', m: .52, pos: [10.1, -6.88],
     /* O tint desce para 0x8E8478 e nao e correcao de cor, e de composicao. O mapa da
@@ -366,7 +395,7 @@ const MOBILIA = [
        clara do quadro na estacao da oficina e puxava o olho para longe da baia de
        pedais, que e o assunto de HABILIDADES. Marmore num quarto a luz de vela pega
        luz, mas nao ganha do que o modulo esta contando. */
-    y: -.51, ry: -Math.PI / 2, cor: 0x8E8478, layout: 'cheio',
+    y: -.51, ry: -Math.PI / 2, cor: 0x8E8478, layout: 'vazio',
   },
 ]
 
@@ -377,8 +406,24 @@ export function createMobilia(room, { floorY, layout = 'cheio' }) {
   room.add(group)
 
   const loader = new GLTFLoader()
+  const draco = new DRACOLoader()
+  draco.setDecoderPath(ASSET('draco/'))
+  loader.setDRACOLoader(draco)
   const halos = new THREE.Group()
   group.add(halos)
+
+  /* A arandela e um modelo, mas uma luminaria sem Pool e apenas uma silhueta na
+     parede. A luz nao cria geometria visivel: sai um pouco da cupula, alcança apenas
+     console, reboco e guarnicao, e morre cedo com a Vigilia como os outros fixtures. */
+  const portaLight = layout === 'cheio'
+    ? new THREE.PointLight(0xE8A765, 0, 5.2, 2)
+    : null
+  const lights = portaLight ? [portaLight] : []
+  if (portaLight) {
+    portaLight.name = 'porta:arandela-pool'
+    portaLight.position.set(-10.18, 1.30, 7.72)
+    group.add(portaLight)
+  }
 
   const pecas = []
   let solta = null
@@ -405,7 +450,8 @@ export function createMobilia(room, { floorY, layout = 'cheio' }) {
        respostas sobre *ornamento*, e um quarto sem onde sentar não é um arranjo mais
        sóbrio. O busto é a exceção porque ele **é** ornamento — estava sob
        `layout === 'cheio'` em `room-baroque.js` e continua onde estava. */
-    const lista = MOBILIA.filter(i => !i.layout || i.layout === layout)
+    const lista = MOBILIA.filter(i =>
+      (!i.layout && !i.layouts) || i.layout === layout || i.layouts?.includes(layout))
     let pendentes = lista.length
     const conta = () => { if (--pendentes === 0) solta(pecas) }
     for (const item of lista) {
@@ -454,17 +500,40 @@ export function createMobilia(room, { floorY, layout = 'cheio' }) {
        * substituir; sem mapa fica 0,86, como antes.
        */
       const antigo = o.material
-      const temRug = !!antigo?.roughnessMap
-      o.material = new THREE.MeshStandardMaterial({
-        map: antigo?.map || null,
-        normalMap: antigo?.normalMap || null,
-        roughnessMap: antigo?.roughnessMap || null,
-        color: item.cor,
-        roughness: temRug ? 1 : .86,
-        metalness: 0,
-      })
-      o.material.normalScale.set(.7, .7)
-      antigo?.dispose?.()
+      if (item.original) {
+        /* Conserva os materiais que distinguem madeira, metal, vidro e tecido dentro
+           da peca. O tint e multiplicativo e a rugosidade e um piso: a Porta continua
+           sendo cerejeira e latao, mas nao chega com o brilho de um render de catalogo. */
+        /* A Porta separa madeira e ferragem pelo que o arquivo de origem ja separa:
+           a madeira tem mapa, a ferragem nao. Tingir ambas com o mesmo marrom foi o
+           que transformou a macaneta de latao em um buraco preto. */
+        if (item.metalCor && !antigo.map) {
+          antigo.color.setHex(item.metalCor)
+          if (antigo.metalness != null) antigo.metalness = .62
+        } else if (item.cor) antigo.color.multiply(new THREE.Color(item.cor))
+        if (item.normal === false && antigo.map) {
+          antigo.normalMap = null
+          antigo.needsUpdate = true
+        }
+        if (item.rug != null && antigo.roughness != null) antigo.roughness = Math.max(antigo.roughness, item.rug)
+        if (item.env != null && antigo.envMapIntensity != null) antigo.envMapIntensity = item.env
+        if (antigo.specularIntensity != null) {
+          antigo.specularIntensity = Math.min(antigo.specularIntensity, item.specular ?? .55)
+        }
+        if (item.specular != null && antigo.specularColor) antigo.specularColor.setScalar(.12)
+      } else {
+        const temRug = !!antigo?.roughnessMap
+        o.material = new THREE.MeshStandardMaterial({
+          map: antigo?.map || null,
+          normalMap: antigo?.normalMap || null,
+          roughnessMap: antigo?.roughnessMap || null,
+          color: item.cor,
+          roughness: temRug ? 1 : .86,
+          metalness: 0,
+        })
+        o.material.normalScale.set(.7, .7)
+        antigo?.dispose?.()
+      }
       /* `groundShadows` roda uma vez no topo de `scene.js`, muito antes destes
          carregamentos terminarem. A política é a mesma dele, escrita aqui à mão:
          recebe sombra, não lança — quem lança é só a Unidade e o que está no Altar. */
@@ -499,5 +568,13 @@ export function createMobilia(room, { floorY, layout = 'cheio' }) {
     halos.add(h)
   }
 
-  return { group, pronto, carregar }
+  function update(vigil, roomK) {
+    if (!portaLight) return
+    const day = Math.max(0, Math.min(1, 1 - vigil / .58))
+    const ease = day * day * (3 - 2 * day)
+    portaLight.intensity = 1.45 * ease * roomK
+    portaLight.visible = portaLight.intensity > .001
+  }
+
+  return { group, pronto, carregar, lights, update }
 }

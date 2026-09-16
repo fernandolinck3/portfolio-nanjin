@@ -171,14 +171,25 @@
    * The notice stays as a banner rather than a wall: turning the phone is still
    * better, it is just no longer required.
    */
-  #frame{position:fixed;inset:0}
+  #frame{position:fixed;inset:0;
+    --frame-width:100vw;--frame-height:100vh;
+    --notice-right:0px;--notice-bottom:var(--notice-height, 0px);
+    --usable-width:calc(var(--frame-width) - var(--notice-right));
+    --usable-height:calc(var(--frame-height) - var(--notice-bottom));
+    --visor-width:calc(var(--usable-width) * .42);
+    --control-bottom:max(22px, var(--touch-height, 0px) + 12px);
+    --visor-space:calc(var(--usable-height) - var(--control-bottom) - 22px)}
   @media (orientation: portrait) and (pointer: coarse){
-    #frame{width:100vh;height:100vw;transform:translate(100vw,0) rotate(90deg);
+    #frame{--frame-width:100vh;--frame-height:100vw;
+      --notice-right:var(--notice-height, 0px);--notice-bottom:0px;
+      width:100vh;height:100vw;transform:translate(100vw,0) rotate(90deg);
       transform-origin:0 0}
     #turn{display:flex}
   }
   /* the same thing on demand, so the rotated path can be checked without a phone */
-  body[data-turned] #frame{width:100vh;height:100vw;
+  body[data-turned] #frame{--frame-width:100vh;--frame-height:100vw;
+      --notice-right:var(--notice-height, 0px);--notice-bottom:0px;
+      width:100vh;height:100vw;
     transform:translate(100vw,0) rotate(90deg);transform-origin:0 0}
   body[data-turned] #turn{display:flex}
   /**
@@ -203,6 +214,7 @@
     display:none;align-items:center;gap:10px;padding:8px 14px;
     background:rgba(10,9,8,.82);border:1px solid #3A3A38;color:#8A8880;
     font-family:"Azeret Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.16em}
+  @media (orientation: portrait) and (pointer: coarse){ #avisos #turn{display:flex} }
   #turn svg{stroke:#8A7A54;fill:none;stroke-width:1.5;flex:0 0 auto}
 
   /* Browser chrome eats a third of a phone screen and a strip of every desktop
@@ -396,8 +408,20 @@
   #visor[data-forma=vigia] canvas{width:80%;border-radius:2px;
     box-shadow:0 0 0 1px #0A0908, 0 0 26px #7ED6B02E inset}
 
-  @media (max-width:720px){
-    #visor[data-forma]{width:auto;left:12px;right:12px;max-width:none;aspect-ratio:auto}
+  /* DOM controls reserve the measured notice stack, in frame coordinates.
+     Camera and renderer keep the original full-viewport composition. */
+  body[data-debug] #frame{--control-bottom:max(64px, var(--touch-height, 0px) + 12px)}
+  .touch,.hud{right:var(--notice-right);bottom:var(--notice-bottom)}
+  #full{right:calc(16px + var(--notice-right) + env(safe-area-inset-right))}
+  #visor[data-forma]{left:auto;right:calc(22px + var(--notice-right));
+    width:min(452px, var(--visor-width));max-width:none}
+  #visor[data-forma=tela]{width:min(452px, var(--visor-width),
+    calc((var(--visor-space) - 30px) * 16 / 9 + 30px))}
+  #visor,#voltar-quarto,body[data-debug] #visor,body[data-debug] #voltar-quarto{
+    bottom:calc(var(--notice-bottom) + var(--control-bottom))}
+  #voltar-quarto{min-height:44px;max-width:calc(var(--usable-width) - 44px)}
+  @media (max-width:720px) and (pointer:fine){
+    body:not([data-turned]) #frame{--visor-width:calc(var(--usable-width) - 44px)}
     #visor[data-forma=vigia]::before{display:none}
   }
   /* A linha das estações, e ela toma a faixa inteira.

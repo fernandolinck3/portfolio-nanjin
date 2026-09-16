@@ -4,7 +4,7 @@ import { chamaTex, chamaGeo } from './chama.js'
 
 /**
  * The baroque fittings of the room — cornice, ceiling rose, chandelier, sconces,
- * mirror, drapery, a bust and the books.
+ * drapery, a bust and the books.
  *
  * Why a separate file: `scene.js` is five thousand lines and the Unit is what it is
  * about. These are furnishings, they are read once and adjusted by eye, and none of
@@ -14,7 +14,7 @@ import { chamaTex, chamaGeo } from './chama.js'
  *
  * *Geometry is free; light is not.* ADR-0019 priced fifteen lights at 87% of the
  * frame and 150 draw calls at nothing an M1 notices. So this file adds a chandelier
- * with sixteen flames, six sconces, a cornice and a bust — and **not one light**.
+ * with sixteen flames, four sconces, a cornice and a bust — and **not one light**.
  * Everything that glows is emissive geometry, which is the rule
  * `docs/realism-budget.md` already states and the same answer the basement's bunker
  * scene arrives at: six meshes with a material called LIGHT and no point lights at all.
@@ -159,13 +159,6 @@ export function createBaroque(room, {
     transparent: true, blending: THREE.AdditiveBlending,
     depthWrite: false, side: THREE.DoubleSide,
   })
-  /* A mirror without a reflection: dark glass that takes the environment map and
-     almost nothing else. A real reflection needs a second render of the whole scene,
-     which is the one thing this room cannot buy. */
-  const GLASS = new THREE.MeshStandardMaterial({
-    color: 0x1A1D22, metalness: .9, roughness: .12,
-  })
-
   /* ---------- the cornice, where wall meets ceiling ---------- */
 
   /**
@@ -311,6 +304,9 @@ export function createBaroque(room, {
       : []
   for (const sx of [-1, 1]) {
     for (const sz of sconceZ) {
+      /* A primeira arandela da esquerda pousava sobre a capa 007; a última atravessava
+         a Porta. A parede de capas fica livre e a Porta recebe uma arandela modelada. */
+      if (layout === 'cheio' && sx < 0 && (sz === sconceZ[0] || sz === sconceZ[2])) continue
       const s = new THREE.Group()
       s.position.set(sx * (sideX - .34), floorY + 4.1, wallZ + sz)
       s.rotation.y = sx > 0 ? -Math.PI / 2 : Math.PI / 2
@@ -347,58 +343,9 @@ export function createBaroque(room, {
     }
   }
 
-  /* ---------- the mirror ---------- */
-
-  /**
-   * A tall gilt mirror on the left wall, with dark glass instead of a reflection.
-   *
-   * A real mirror is a second render of the whole scene from a second camera, which
-   * is the one expense this room genuinely cannot carry. Dark glass with a low
-   * roughness takes the environment map and the chandelier's emissive, which at this
-   * distance is what a mirror in a dim room actually shows.
-   */
-  if (layout !== 'vazio') {
-    const mirror = new THREE.Group()
-    /**
-     * O espelho desce a parede — ele estava em cima da baia de discos.
-     *
-     * Medido em 2026-09-06: 2,9 x 5,0 centrado em `z = -2,68`, ocupando de -4,13 a
-     * -1,23. A credenza vai de -7,40 a -1,40 e a estação do acervo olha para -4,40 —
-     * ou seja, a borda do espelho caía **no ponto exato para onde a estação olha**, e
-     * sobravam 3,3 das 6 unidades de parede para as capas.
-     *
-     * É a mesma classe do quinto painel acústico, que estava por cima do retrato, e a
-     * regra que resolveu aquele resolve este: ninguém pendura duas coisas no mesmo
-     * lugar da parede. Só que aqui o espelho não sai, **anda** — `z = +0,80`, entre a
-     * ponta da credenza (-1,40) e a pilha (+3,20), a caminho da porta. Que é onde um
-     * espelho de corpo inteiro fica numa casa de verdade: perto da saída.
-     */
-    mirror.position.set(-sideX + .38, floorY + 3.6, wallZ + depth * .586)
-    mirror.rotation.y = Math.PI / 2
-    group.add(mirror)
-
-    const frame = new THREE.Mesh(
-      new THREE.ExtrudeGeometry(
-        (() => {
-          const s = roundedShape(2.9, 5.0, .5)
-          s.holes.push(new THREE.Path(roundedShape(2.45, 4.55, .42).getPoints(40)))
-          return s
-        })(),
-        { depth: .22, bevelEnabled: true, bevelThickness: .05, bevelSize: .05, bevelSegments: 2 }),
-      GILT)
-    mirror.add(frame)
-
-    const glass = new THREE.Mesh(new THREE.PlaneGeometry(2.45, 4.55), GLASS)
-    glass.position.z = .04
-    mirror.add(glass)
-
-    /* a crest over the frame, which is the detail that dates it */
-    const crest = new THREE.Mesh(lathe([
-      [0, 0], [.42, .04], [.30, .16], [.46, .26], [.22, .40], [.10, .54], [0, .58],
-    ], 20), GILT)
-    crest.position.set(0, 2.6, .10)
-    mirror.add(crest)
-  }
+  /* O espelho escrito saiu da entrada. De frente ele era vidro escuro sem reflexo;
+     cortado pela pose da Porta, virava apenas uma moldura dourada sem objeto. A
+     referencia aprovada pede parede livre entre a guarnicao e a Tela. */
 
   /* ---------- drapery at the window ---------- */
 
@@ -485,7 +432,7 @@ export function createBaroque(room, {
   /* ---------- paintings ---------- */
 
   /**
-   * Four dark canvases in gilt frames, and the canvases are deliberately unreadable.
+   * Two dark canvases in gilt frames, and the canvases are deliberately unreadable.
    *
    * A painting on a wall in a dim room is a warm rectangle with a shape in it, and any
    * attempt at a *subject* generated by arithmetic lands somewhere between wallpaper
@@ -528,9 +475,11 @@ export function createBaroque(room, {
   }
 
   if (layout !== 'vazio') {
+    /* A parede esquerda e funcional: Acervo primeiro, entrada depois. Os dois quadros
+       gerados que ficavam em z 2,36 e 5,72 atravessavam a guarnicao da Porta e
+       apareciam como filetes dourados sem origem. A referencia aprovada deixa essa
+       parede quieta; os quadros permanecem apenas no outro lado do quarto. */
     const walls = layout === 'cheio' ? [
-      { sx: -1, z: depth * .66, w: 2.2, h: 2.8, y: 3.4, seed: 7 },
-      { sx: -1, z: depth * .82, w: 1.7, h: 2.1, y: 3.1, seed: 19 },
       { sx: 1, z: depth * .40, w: 2.5, h: 3.2, y: 3.5, seed: 33 },
       { sx: 1, z: depth * .64, w: 1.8, h: 2.3, y: 3.2, seed: 51 },
     ] : [
@@ -709,89 +658,9 @@ export function createBaroque(room, {
     fp.add(over)
   }
 
-  /* ---------- the door ---------- */
-
-  /**
-   * A panelled door on the left wall — a room with no way out is a set.
-   *
-   * Closed, and closed on purpose: an open door needs somewhere to lead, and the one
-   * thing worse than no exit is an exit onto nothing. Six raised panels, a gilt
-   * architrave, and a handle. It is furniture-grade joinery described by two boxes and
-   * a moulding run, which is the whole argument of this file.
-   */
-  if (layout !== 'vazio') {
-    const door = new THREE.Group()
-    door.position.set(-sideX + .16, floorY, wallZ + depth * .78)
-    door.rotation.y = Math.PI / 2
-    group.add(door)
-
-    const leaf = new THREE.Mesh(new THREE.BoxGeometry(3.4, 6.6, .18), WOOD)
-    leaf.position.set(0, 3.3, 0)
-    door.add(leaf)
-
-    /**
-     * Os seis caixotes, e o ouro sai de dentro deles.
-     *
-     * Eram almofadas **inteiras** em `GILT_DARK`: seis retângulos dourados numa folha
-     * de madeira, que não é como uma porta é feita em lugar nenhum. Uma almofada é da
-     * mesma madeira da folha — é a mesma tábua, rebaixada — e o dourado, quando existe,
-     * é o **filete** que corre em volta dela. Trocar os dois de lugar é a diferença
-     * entre marcenaria e um adesivo.
-     *
-     * O filete é uma almofada um pouco maior por baixo, meio centímetro atrás: o
-     * dourado aparece só na borda que sobra, que é exatamente o que um filete é.
-     */
-    for (let r = 0; r < 3; r++) {
-      for (const c of [-1, 1]) {
-        const y = 1.15 + r * 2.05
-        /* Fino e apagado, e as duas coisas foram medidas na tela e nao decididas na
-           folha. A 1,42 por 1,82 com chanfro de 0,03 o filete lia como uma moldura
-           laranja grossa em volta de cada almofada — o ouro voltava a ser o assunto,
-           que era o defeito que ele veio consertar. Metade da sobra e um dourado
-           proprio, mais escuro que o `GILT_DARK` do resto: numa sala a luz de vela um
-           filete de ouro **encosta** na luz, ele nao a devolve. */
-        const filete = new THREE.Mesh(
-          new THREE.ExtrudeGeometry(roundedShape(1.36, 1.76, .10),
-            { depth: .04, bevelEnabled: true, bevelThickness: .015, bevelSize: .015, bevelSegments: 2 }),
-          FILETE)
-        filete.position.set(c * .78, y, .10)
-        door.add(filete)
-        const panel = new THREE.Mesh(
-          new THREE.ExtrudeGeometry(roundedShape(1.3, 1.7, .10),
-            { depth: .06, bevelEnabled: true, bevelThickness: .04, bevelSize: .04, bevelSegments: 2 }),
-          WOOD)
-        panel.position.set(c * .78, y, .11)
-        door.add(panel)
-      }
-    }
-    const knob = new THREE.Mesh(lathe([
-      [0, 0], [.10, 0], [.16, .07], [.13, .16], [.05, .20], [0, .20],
-    ], 14), GILT)
-    knob.rotation.x = -Math.PI / 2
-    knob.position.set(1.35, 3.1, .16)
-    door.add(knob)
-
-    /**
-     * A guarnição, e ela agora dá a volta.
-     *
-     * Havia **uma** corrida, no batente esquerdo. Uma porta com moldura de um lado só
-     * não lê como porta mal-acabada, lê como uma tábua encostada na parede — e era
-     * metade do motivo de a estação CONTATO parecer um cenário. Dois batentes e a
-     * verga fecham o vão, que é o que uma guarnição é: o quadro em volta do buraco.
-     */
-    const PERFIL = [[0, 0], [.26, 0], [.26, .12], [.14, .18], [.16, .30], [0, .34]]
-    for (const c of [-1, 1]) {
-      const jamba = moulding(PERFIL, 7.0, PLASTER)
-      jamba.rotation.z = -Math.PI / 2
-      jamba.rotation.y = c > 0 ? -Math.PI / 2 : Math.PI / 2
-      jamba.position.set(c * 2.0, 0, .10)
-      door.add(jamba)
-    }
-    const verga = moulding(PERFIL, 4.4, PLASTER)
-    verga.rotation.y = Math.PI / 2
-    verga.position.set(-2.2, 6.85, .10)
-    door.add(verga)
-  }
+  /* A folha, a guarnicao e a ferragem da Porta agora sao uma unica peca modelada,
+     carregada em `room-mobilia.js`. Esta camada conserva somente a arquitetura; uma
+     marcenaria vista tao de perto nao volta a ser aproximada com caixas. */
 
   /* ---------- books, because a room needs something that was used ---------- */
 
