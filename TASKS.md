@@ -203,6 +203,9 @@ Acceptance criteria:
 - Test ranked, measurable causes before changing production quality defaults.
 - Verify improvement on that phone and preserve appearance/interaction; no claim of success from host-only results.
 
+Progress evidence (2026-09-16):
+Device: iPhone 13 Pro, Safari, over LAN against `build:site`. User reports lag improved; faceplate texture slow to appear. Host measurement: `ornament/plate.png` (2.7 MB) was requested only after `scene.js` evaluated (GET 4.8 s → 8.8 s in the automated tab). Added `plate.webp` (q92, 486 KB), tried first, plus `<link rel="preload">` in `prototype/index.html`: download now 19 → 63 ms and reused by the loader. PNG kept as fallback. Not yet re-checked on the phone; `regenFace()` canvas cost on the phone is unmeasured.
+
 
 ### TASK-008 — Keep the auxiliary room display off the default instrument
 

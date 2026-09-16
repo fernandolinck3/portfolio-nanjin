@@ -588,4 +588,7 @@ window.addEventListener('error',function(e){var d=document.getElementById('err')
   Vire o celular para uma tela maior
 </p>
 </div>
+<!-- The faceplate is the largest thing the first frame waits for, and `scene.js` only
+     asks for it once the whole module has evaluated — seconds later on a phone. -->
+<link rel="preload" as="image" href="./ornament/plate.webp" fetchpriority="high">
 <script type="module" src="./boot.js"></script>

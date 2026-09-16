@@ -161,7 +161,8 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
     </div>
     <button class="work-step" data-d="-1" type="button" aria-label="${UI.workPrevImage}">&lsaquo;</button>
     <button class="work-step" data-d="1" type="button" aria-label="${UI.workNextImage}">&rsaquo;</button>
-    <p class="work-hint">${UI.workHint}</p>`
+    <p class="work-hint">${UI.workHint}</p>
+    <button class="work-scroll" type="button" hidden>${UI.workScroll}&nbsp; &darr;</button>`
   panel.setAttribute('aria-labelledby', 'work-title')
   mount.appendChild(panel)
 
@@ -441,6 +442,11 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
     .work-step:hover, .work-step:focus-visible { color:#C9C2B0; }
     .work-step[data-d="-1"] { left:8px; }
     .work-step[data-d="1"] { right:8px; }
+    .work-scroll { display:none; position:absolute; z-index:4; left:18px;
+      bottom:calc(16px + env(safe-area-inset-bottom)); height:46px; padding:0 16px;
+      font:inherit; font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+      color:#C9C2B0; background:rgba(10,9,8,.78); border:1px solid #4A4136; cursor:pointer;
+      box-shadow:0 -28px 36px 10px rgba(10,9,8,.55); }
     .work-hint { position:absolute; bottom:24px; left:0; right:0; text-align:center;
       color:#5C5346; font-size:10px; letter-spacing:.2em; margin:0; pointer-events:none; }
 
@@ -519,6 +525,11 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
         background:rgba(10,9,8,.78); border:1px solid #4A4136; }
       .work-step[data-d="-1"] { left:auto; right:76px; }
       .work-step[data-d="1"] { right:18px; }
+      /* On a phone the picture fills the first screen and the case starts below the
+         fold, with no scrollbar and no rail to say so. The cue says it once, and goes
+         the moment the reader scrolls. */
+      .work-scroll:not([hidden]) { display:block; }
+      .work-panel[data-zoom="1"] .work-scroll { display:none; }
     }`
   document.head.appendChild(style)
 
@@ -739,6 +750,8 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
        and the reader is at the top of a *different* case, not partway down this one */
     panel.querySelector('.work-text').scrollTop = 0
     buildRail()
+    frameEl.scrollTop = 0
+    updateScrollCue()
   }
 
   /**
@@ -810,10 +823,24 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
       String(at + 1).padStart(2, '0') + '/' + String(headTops.length).padStart(2, '0')
   }
 
+  /** The phone's "there is more below", shown only while nothing has been scrolled yet. */
+  const frameEl = panel.querySelector('.work-frame')
+  const scrollCue = panel.querySelector('.work-scroll')
+  function updateScrollCue() {
+    const oneColumn = matchMedia('(max-width: 860px)').matches
+    const overflows = frameEl.scrollHeight - frameEl.clientHeight > 4
+    scrollCue.hidden = !(oneColumn && overflows && frameEl.scrollTop < 40)
+  }
+  frameEl.addEventListener('scroll', updateScrollCue, { passive: true })
+  scrollCue.addEventListener('click', e => {
+    e.stopPropagation()
+    const head = panel.querySelector('.work-head')
+    frameEl.scrollTo({ top: Math.max(0, head.offsetTop - 72), behavior: SMOOTH ? 'smooth' : 'auto' })
+  })
   const SMOOTH = !matchMedia('(prefers-reduced-motion: reduce)').matches
   panel.querySelector('.work-text').addEventListener('scroll', markRail, { passive: true })
   /* a resize changes the wrap, which changes every offset the rail was built from */
-  addEventListener('resize', () => { if (phase !== 'idle') buildRail() })
+  addEventListener('resize', () => { if (phase !== 'idle') { buildRail(); updateScrollCue() } })
 
   /** Swap the Work without moving the camera — for prev/next while already in. */
   function show(work) {
@@ -923,6 +950,7 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
     if (plateEl.dataset.shot === '1') setZoom(!zoomed())
   })
   panel.querySelector('.work-shot').addEventListener('load', setNatural)
+  panel.querySelector('.work-shot').addEventListener('load', () => updateScrollCue())
   /**
    * The arrows move through the pictures, not through the projects.
    *

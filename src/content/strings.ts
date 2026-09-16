@@ -111,6 +111,7 @@ export function stringsFor(locale: Locale) {
 
     workBack: t('← VOLTAR', '← BACK'),
     workSections: t('Seções do case', 'Case sections'),
+    workScroll: t('Role para ler', 'Scroll to read'),
     workImages: t('Imagens do projeto', 'Project images'),
     workPrevImage: t('Imagem anterior', 'Previous image'),
     workNextImage: t('Próxima imagem', 'Next image'),

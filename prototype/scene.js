@@ -5431,7 +5431,7 @@ let plateResolve
 const plateReady = new Promise(r => { plateResolve = r })
 
 const artLoaded = (async () => {
-  for (const f of ['ornament/plate.png', 'ornament/plate.jpg', 'ornament/plate.svg']) {
+  for (const f of ['ornament/plate.webp', 'ornament/plate.png', 'ornament/plate.jpg', 'ornament/plate.svg']) {
     try {
       const res = await fetch(f, { method: 'HEAD' });
       if (!res.ok) continue;
