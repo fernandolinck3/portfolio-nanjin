@@ -49,7 +49,7 @@ This file does not repeat them.
 >   download duplicado (terminam aos ~180 ms em localhost, eram ~5,1 s). Decks viraram WebP
 >   near-lossless (1,1 MB → 571 KB). **A avaliação do módulo continua ~2 s no Mac**, espalhada: nenhum
 >   bloco passa de ~180 ms (maiores: `createAltarProps`, `createBaroque`, que monta a sala mesmo
->   desligada). Falta ele confirmar no celular.
+>   desligada). No celular ele achou "ainda um pouco lento" e decidiu seguir em frente; o próximo passo, se voltar, é montar a sala só no `setRoom(true)`.
 
 > **Esperando decisão dele (propostas, nada implementado):**
 > 1. ~~**Barra de toque**~~ **Feito em 16/09 (`6540a04`), falta ele confirmar no celular:** `syncTouch` em `scene.js`, chamado junto do `syncMirror`; `onIdle` no `focus` avisa quando o voo de saída termina. Proposta original — (`.touch` em `prototype/index.html`, visível com `hover:none` desde a abertura):
