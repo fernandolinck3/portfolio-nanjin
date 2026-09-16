@@ -68,10 +68,10 @@ After: 20 steps after loss called rAF 0 times at 0.035 ms each; restore + second
 ### TASK-003 — Reconcile stale repository entry and status guidance
 
 Status:
-TODO
+DONE
 
 Owner:
-unassigned
+root (Claude Code, 2026-09-16)
 
 Dependencies:
 Orchestrator/documentation ownership; verify current Git/config/source before editing historical guidance.
@@ -91,6 +91,14 @@ Acceptance criteria:
 - Existing tickets/ADRs remain linked; no copied competing backlog or product implementation change.
 
 Use the same fields for future tasks. Include evidence in Scope, explicit dependency IDs where applicable, bounded file ownership and observable acceptance criteria. Record blockers and required resolution under Dependencies; do not silently broaden Scope when implementation discovers more work.
+
+Progress evidence (2026-09-16):
+Inspected: `git remote -v` (public `origin`), `origin/lyra` = `f607fe9` (2026-09-03), `package.json` scripts (`dev`/`build`/`test` target `src/`), `.github/workflows/pages.yml` (push to `lyra` deploys).
+- `HANDOFF.md`: header date 16/09; states what is live (`f607fe9`) and gives the command to count the gap instead of a number; new "How to read this file" (only the dated blocks at the top are current, sections below are history as of their date; `TASKS.md` is the queue) and "Commands" (shipping vs dormant scripts, pointer to the `AGENTS.md` table); the 02/09 "committed and deployed" and the "site is live" lines now carry their dates; the 16/09 block no longer hard-codes a commit count.
+- `docs/agents/issue-tracker.md`: "no remote" replaced by the inspected remote/deploy facts; PRs stay off.
+- `docs/tickets/README.md`: pointer to `TASKS.md` as the active queue; T-14 row marked done. `T-14-publish-the-repo.md`: dated note above the kept historical status.
+No scripts, configs or product files changed; ADRs and ticket links untouched. Not independently reviewed.
+
 
 ## Milestone — Dependable Contact before room expansion
 
