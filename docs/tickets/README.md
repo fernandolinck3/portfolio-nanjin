@@ -1,5 +1,8 @@
 # Tickets
 
+> **Since 2026-09-15 the active queue is [`TASKS.md`](../../TASKS.md)**, with evidence per task. This
+> board is kept as the design record — the `State` column below was last true on its own date.
+
 Split out of `SPEC.md`. T-15 to T-17 came later, out of a code review on 2026-08-29 — they are
 **findings pinned to work that is already planned**, not new work. Each names what absorbs it, so
 whoever picks that work up meets the finding instead of rediscovering it. One ticket is one `/implement` run with fresh context — each states its own

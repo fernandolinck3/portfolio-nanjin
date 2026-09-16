@@ -59,4 +59,8 @@ flat `T-NN` files.
 
 ## PRs as a request surface
 
-Off. This repo has no remote — publishing it is T-14, and still Fernando's call.
+Off. The repo **has** a public remote (`origin`, github.com/fernandolinck3/portfolio-nanjin) since
+T-14, and `origin/lyra` is what GitHub Pages deploys — so a push to `lyra` publishes the site, and
+when to publish is Fernando's call. Tickets stay local Markdown; there are no PRs or GitHub issues.
+Since 2026-09-15 the active task queue is the root `TASKS.md`; this board is the design record the
+tasks link back to.

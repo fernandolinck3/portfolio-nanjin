@@ -1,7 +1,10 @@
 # Handoff — Fernando Linck portfolio ("Tenebrae")
 
-**Date:** 2026-09-06 · **Repo:** `~/dev/fernando-portfolio` · **Branch:** `lyra`
-**Remote:** https://github.com/fernandolinck3/portfolio-nanjin · **Live:** https://nanj.in
+**Date:** 2026-09-16 · **Repo:** `~/dev/fernando-portfolio` · **Branch:** `lyra`
+**Remote:** https://github.com/fernandolinck3/portfolio-nanjin (public) · **Live:** https://nanj.in
+**What is live is `f607fe9` (03/09), not local `lyra`.** A push to `lyra` publishes; nothing else does.
+Count the gap yourself with `git rev-list --count origin/lyra..lyra` — every count written in this file
+went stale within a day.
 **Language:** Fernando writes EN and PT-BR, often in one message; the *product* is PT-BR.
 Reply in whichever he used last (last was mixed, leaning PT-BR).
 
@@ -13,6 +16,17 @@ formulário virou 0030 em 06/09, porque a do cenário já era citada por nome em
 `docs/realism-budget.md` is the plan for adding to the room without spending the frame.
 This file does not repeat them.
 
+**How to read this file.** Only the dated blocks at the top describe the present, newest first.
+Every section below them is history as of its own date — where it says *committed*, *deployed* or
+*clean*, it was true that day and is not a claim about now. **The task queue is `TASKS.md`** (since
+15/09, with evidence per task); `docs/tickets/` is the older design board and still holds the
+reasoning the tasks link to.
+
+**Commands.** The shipping site is `prototype/` via `vite.site.config.ts`: `npm run prototype`
+(dev, port 5174), `npm run check`, `npx vitest run`, `npm run typecheck`, `npm run build:site`,
+`npm run verify:site`. `npm run dev` and `npm run build` build the dormant React shell in `src/` and
+prove nothing about the site; `npm test` passes with zero tests. `AGENTS.md` has the full table.
+
 > **Estado em 2026-09-16 — ler este bloco primeiro; o de 06/09 abaixo continua valendo no que não contradiz.**
 >
 > **O que aconteceu.** Em 15/09 um Codex trabalhou aqui sem commitar e parou quando os créditos
@@ -20,8 +34,8 @@ This file does not repeat them.
 > o Codex montou está em `AGENTS.md`, `PLAN.md`, `ARCHITECTURE.md`, `DECISIONS.md` e **`TASKS.md`**,
 > que é o registro das tarefas, com as evidências de cada uma.
 >
-> **`lyra` está 71 commits à frente de `origin/lyra`. Nada foi publicado**, e empurrar para `lyra`
-> publica o site. Os commits de 16/09: `e9fd2b5` (o trabalho do Codex), `83ccf41` (faceplate e
+> **Nada de 16/09 foi publicado**, e empurrar para `lyra` publica o site (a distância, ver o topo
+> deste arquivo). Os commits de 16/09: `e9fd2b5` (o trabalho do Codex), `83ccf41` (faceplate e
 > aviso de rolagem), `a1a825a` (capas da parede adiadas). Árvore limpa; `check`, 170 testes,
 > `build:site` e `verify:site` passam.
 >
@@ -49,7 +63,7 @@ This file does not repeat them.
 >   download duplicado (terminam aos ~180 ms em localhost, eram ~5,1 s). Decks viraram WebP
 >   near-lossless (1,1 MB → 571 KB). **A avaliação do módulo continua ~2 s no Mac**, espalhada: nenhum
 >   bloco passa de ~180 ms (maiores: `createAltarProps`, `createBaroque`, que monta a sala mesmo
->   desligada). No celular ele achou "ainda um pouco lento" e decidiu seguir em frente; o próximo passo, se voltar, é montar a sala só no `setRoom(true)`.
+>   desligada). No celular melhorou mas ainda ficou lento para ele, que preferiu seguir em frente; o próximo passo, se voltar, é montar a sala só no `setRoom(true)`.
 
 > **Esperando decisão dele (propostas, nada implementado):**
 > 1. ~~**Barra de toque**~~ **Feito em 16/09 (`6540a04`), falta ele confirmar no celular:** `syncTouch` em `scene.js`, chamado junto do `syncMirror`; `onIdle` no `focus` avisa quando o voo de saída termina. Proposta original — (`.touch` em `prototype/index.html`, visível com `hover:none` desde a abertura):
@@ -96,7 +110,7 @@ This file does not repeat them.
 `origin/lyra` is level with local.~~ **Verdade em 28/08 e falso desde 03/09** — ver o bloco acima.
 O que continua verdade: nada está esperando uma decisão para *poder* ser construído.
 
-**The site is live on his own domain, over HTTPS.**
+**The site is live on his own domain, over HTTPS** — serving the 03/09 build, see the top.
 
 > **https://nanj.in**
 
@@ -133,7 +147,7 @@ is cheap and nobody loads a commit body into context. Do not write it in both pl
 
 ## Where this was left on 2026-09-02, and how to pick it up
 
-**Everything below is committed and deployed.** `origin/lyra` is the live branch; a push to it
+**Everything below was committed and deployed on 02/09** — not since 03/09. `origin/lyra` is the live branch; a push to it
 builds, tests and deploys to `nanj.in` in about a minute. The working tree is clean and the main
 checkout is current — the `explode.js` lines an older session left uncommitted went in as `276c561`.
 
