@@ -44,7 +44,7 @@ This file does not repeat them.
 >   `workScroll`), some na primeira rolagem. Testado numa página isolada a 390 px, não no site inteiro.
 >
 > **Esperando decisão dele (propostas, nada implementado):**
-> 1. **Barra de toque** (`.touch` em `prototype/index.html`, visível com `hover:none` desde a abertura):
+> 1. ~~**Barra de toque**~~ **Feito em 16/09 (`6540a04`), falta ele confirmar no celular:** `syncTouch` em `scene.js`, chamado junto do `syncMirror`; `onIdle` no `focus` avisa quando o voo de saída termina. Proposta original — (`.touch` em `prototype/index.html`, visível com `hover:none` desde a abertura):
 >    ele estranhou Anterior/Próximo/Abrir/Voltar já na abertura. Proposta: nada na abertura; os
 >    três aparecem com um módulo e uma lista na tela; Voltar só quando há nível para voltar.
 > 2. **Setas ‹ › do leitor no celular** (`.work-step`, presas no rodapé, longe da imagem): proposta de
