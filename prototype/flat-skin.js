@@ -58,7 +58,7 @@ export const FLAT_CSS = `
   }
 
   html[data-flat] body{ overflow:auto; background:var(--well); }
-  html[data-flat] #turn, html[data-flat] #frame, html[data-flat] #stage, html[data-flat] .hud{ display:none !important; }
+  html[data-flat] #frame, html[data-flat] #stage, html[data-flat] .hud{ display:none !important; }
   /* the Unit's own controls — the touch row and the off-screen Pad buttons — act on a
      scene that is not running here, so in the text version they would be dead buttons */
   html[data-flat] .touch, html[data-flat] nav.sr{ display:none !important; }

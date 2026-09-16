@@ -105,7 +105,6 @@ export function stringsFor(locale: Locale) {
     provisorio: t('PROVISÓRIO', 'PLACEHOLDER'),
 
     /** Um convite, não uma exigência: a página funciona virada, só fica menor. */
-    turnPhone: t('Vire o celular para uma tela maior', 'Turn your phone for a larger screen'),
 
     /* ---- o overlay de projeto -------------------------------------------- */
 

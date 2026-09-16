@@ -184,38 +184,32 @@
       --notice-right:var(--notice-height, 0px);--notice-bottom:0px;
       width:100vh;height:100vw;transform:translate(100vw,0) rotate(90deg);
       transform-origin:0 0}
-    #turn{display:flex}
   }
   /* the same thing on demand, so the rotated path can be checked without a phone */
   body[data-turned] #frame{--frame-width:100vh;--frame-height:100vw;
       --notice-right:var(--notice-height, 0px);--notice-bottom:0px;
       width:100vh;height:100vw;
     transform:translate(100vw,0) rotate(90deg);transform-origin:0 0}
-  body[data-turned] #turn{display:flex}
   /**
    * The notices stack, and they live outside the frame.
    *
-   * Three can be on screen at once — turn the phone, the other language, and the
-   * consent gate — and all three were pinned to the bottom edge independently, so
-   * they covered each other: `.cs-bar` at z-index 80 over `.lg-bar` at 79, both at
-   * `bottom:0`.
+   * Two can be on screen at once — the other language and the consent gate — and
+   * both were pinned to the bottom edge independently, so they covered each other:
+   * `.cs-bar` at z-index 80 over `.lg-bar` at 79, both at `bottom:0`.
    *
-   * Worse, `#turn` sat **inside `#frame`**, which a portrait phone rotates ninety
-   * degrees. A transformed element is the containing block for everything absolute
-   * inside it, so the notice asking you to turn the phone was itself turned. The rule
-   * the contact form already established covers every one of these: **the Unit is
-   * what is turned; a person reading is not.**
+   * They live outside `#frame` because a portrait phone rotates it ninety degrees,
+   * and a transformed element is the containing block for everything absolute inside
+   * it. The rule the contact form already established covers every one of these:
+   * **the Unit is what is turned; a person reading is not.**
+   *
+   * A third notice, asking a portrait phone to turn, lived here until 2026-09-16. It
+   * never went away and the rotated Unit already works in portrait, so it read as a
+   * warning that something was wrong; it was removed rather than softened.
    */
   #avisos{position:fixed;left:0;right:0;bottom:0;z-index:80;
     display:flex;flex-direction:column;align-items:center;
     padding-bottom:env(safe-area-inset-bottom);pointer-events:none}
   #avisos > *{pointer-events:auto}
-  #turn{z-index:55;margin:0 0 14px;
-    display:none;align-items:center;gap:10px;padding:8px 14px;
-    background:rgba(10,9,8,.82);border:1px solid #3A3A38;color:#8A8880;
-    font-family:"Azeret Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.16em}
-  @media (orientation: portrait) and (pointer: coarse){ #avisos #turn{display:flex} }
-  #turn svg{stroke:#8A7A54;fill:none;stroke-width:1.5;flex:0 0 auto}
 
   /* Browser chrome eats a third of a phone screen and a strip of every desktop
      window — *"a parte do navegador ta deixando tudo mt pequeno."* Safari has no
@@ -581,13 +575,6 @@ window.addEventListener('error',function(e){var d=document.getElementById('err')
      scope, so whether this machine can draw the Unit has to be decided one step
      earlier. See prototype/capability.js. -->
 <div id="avisos">
-<p id="turn" role="status">
-  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-    <rect x="8" y="2" width="8" height="14" rx="1.5"/>
-    <path d="M5 19 a9 9 0 0 0 14 0"/><path d="M5 19 l-2 -3 M5 19 l3 -1.5"/>
-  </svg>
-  Vire o celular para uma tela maior
-</p>
 </div>
 <!-- The faceplate is the largest thing the first frame waits for, and `scene.js` only
      asks for it once the whole module has evaluated — seconds later on a phone. -->

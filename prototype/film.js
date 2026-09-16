@@ -81,7 +81,7 @@ export function runFilm(unit, canvas) {
   canvas.style.height = '600px'
   unit.setFilmSize(SIZE.w, SIZE.h)
 
-  document.querySelectorAll('.hud, .touch, .sr, #full, #turn').forEach(e => { e.style.display = 'none' })
+  document.querySelectorAll('.hud, .touch, .sr, #full').forEach(e => { e.style.display = 'none' })
   document.body.style.background = '#000'
 
   const stream = canvas.captureStream(FPS)

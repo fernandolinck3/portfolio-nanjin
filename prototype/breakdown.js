@@ -49,7 +49,7 @@ export async function runBreakdown(unit, canvas, THREE) {
   if (stage) stage.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center'
   canvas.style.width = '400px'
   canvas.style.height = '500px'
-  document.querySelectorAll('.hud, .touch, .sr, #full, #turn').forEach(e => { e.style.display = 'none' })
+  document.querySelectorAll('.hud, .touch, .sr, #full').forEach(e => { e.style.display = 'none' })
   document.body.style.background = '#000'
 
   unit.setFilmSize(SIZE.w, SIZE.h)

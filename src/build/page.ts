@@ -104,7 +104,7 @@ function hreflangHTML(): string {
 const CHROME: readonly (keyof Strings)[] = [
   'touchPrev', 'touchNext', 'touchOpen', 'touchBack',
   'touchPrevLabel', 'touchNextLabel', 'touchOpenLabel', 'touchBackLabel',
-  'touchRowLabel', 'turnPhone',
+  'touchRowLabel',
 ]
 
 function swapChrome(html: string, locale: Locale): string {
