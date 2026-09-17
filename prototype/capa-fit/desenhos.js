@@ -361,7 +361,7 @@ export function materia(g, S, i, { anel = true, desgaste = 1 } = {}) {
 /**
  * E — a marca. O elemento que o D procurava, achado olhando em vez de por fórmula.
  *
- * Ele disse do D que *"precisaria só de fato acertar o elemento"*, e acertar não sai de
+ * Ele disse do D que que faltava só acertar o elemento, e acertar não sai de
  * uma conta de deslocamento. Abri as sete capturas e olhei: **toda página tem a marca
  * no alto à esquerda**, e as sete são distintas entre si de um jeito que nenhum recorte
  * aleatório é — o emblema circular do Graecus, o wordmark pesado da CMP, o monograma

@@ -49,8 +49,7 @@ const LOOP = OUT + HOLD + BACK
  * The first cut used the object's usual raked view, which on this rig is close to
  * overhead. Layers separating *vertically* then travel straight at the eye, and
  * moving toward a camera reads as **getting bigger**, not as coming apart:
- * *"ficou meio confuso pelo POV topdown, não dá pra entender que os objetos tão
- * separando."*
+ * from overhead the layers did not read as separating at all.
  *
  * `tilt` runs backwards here — 70 is a low camera, not a high one — and at that angle
  * `placeCamera` aims well above the pivot on its own, so `pan.y` pulls the target back

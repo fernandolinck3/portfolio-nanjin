@@ -372,9 +372,8 @@ function grimoireStatus() {
    * `29 COLS` is gone from the corner.
    *
    * It was the Screen reporting its own measurements — useful while the layout was
-   * being fitted, and noise once it was. Fernando wanted the corner for the status
-   * line: *"tem um texto no canto inferior direito dizendo 29 cols — ele pode ser
-   * removido para a mensagem de estado ficar ali."*
+   * being fitted, and noise once it was. The corner was wanted for the status
+   * line, so the 29-cols readout there could go.
    *
    * The overflow warning stays, because that one is not a measurement, it is the
    * Screen saying a Module does not fit — the only place that is ever reported.
@@ -425,8 +424,7 @@ function standingLine(m) {
  * On an index page the standing line says nothing the page does not. It read
  * `PROJETO 01/03 · PORTFÓLIO` under a list whose first row was already marked with a
  * filled dot and spelled out — and in PROJETOS the list is three rows deep, so the
- * line landed **on top of the third project**: *"em projetos, o texto inferior
- * esquerdo tapa os projetos. Remova-o."*
+ * line landed **on top of the third project**: in PROJETOS the lower-left text covered the projects and had to go.
  *
  * It stays everywhere it carries something: on a case page, where it is the only
  * thing reporting which page of how many; on a Module with no list; and whenever a
@@ -503,8 +501,7 @@ function perchOf(st) {
  * Where the raven is allowed to land — **the header rule, never the text.**
  *
  * `st.by + 24` put it a line and a half *into* the body, so it sat on the copy and
- * the reader had a bird in the paragraph: *"the raven should never fly to the text.
- * he can fly to the line that separates the title from the content."*
+ * the reader had a bird in the paragraph: the raven must never fly onto the text; the rule between title and content is fair game.
  *
  * That line is real and fixed: `grimoireChrome` strikes it at y = 44, and every
  * Module hangs its body under it. The bird perches a few pixels above it, on the
@@ -640,10 +637,8 @@ const castP = () => clamp01(since() / CAST_MS)
  * O realce de quem está sob o ponteiro.
  *
  * Era `rgba(255,255,255,.05)` sobre um fundo quase preto — cerca de um por cento de
- * luminância, que é a mesma armadilha do *"the hover is slow"*: não era lentidão, era
- * uma resposta que ninguém enxerga. Fernando, em 2026-09-02: *"a interface não está
- * clara de se utilizar, tanto em feedbacks sensoriais como pelos feedbacks no
- * display."*
+ * luminância, que é a mesma armadilha do hover feels slow: não era lentidão, era
+ * uma resposta que ninguém enxerga. Em 2026-09-02 a queixa foi que a interface não estava clara de usar, nem nos retornos sensoriais nem nos do display.
  *
  * O valor foi escolhido olhando a textura de 960x540 exportada da Placa, não no
  * escuro: abaixo de .10 a faixa some no dither do LCD, e acima de .18 ela compete com
@@ -795,7 +790,7 @@ function drawList(items, sel, x0, y, bodyW, typed) {
 /**
  * A numbered index, all of it on screen at once.
  *
- * *"Nenhum item pode parecer cortado ou oculto."* Five criteria at 14px with a lead
+ * No item may look cut off or hidden. Five criteria at 14px with a lead
  * above them do not fit, so the number does the work the bullet used to: it is the
  * cursor *and* the count, and the rows tighten to 12 because a numeral reads at that
  * size where a sentence does not.
@@ -849,8 +844,7 @@ function drawGrid(items, sel, x0, y, bodyW, typed) {
  *
  * Side by side was the first cut and it failed twice over: splitting a 202px column
  * in half left 94px a node, which cuts a word like CRONOLOGIA, and taking the full
- * panel to fix that put LYRA behind a scrim where she vanished. *"A Lyra não aparece
- * e os quadrados não têm leitura."*
+ * panel to fix that put LYRA behind a scrim where she vanished. Lyra did not show and the squares did not read.
  *
  * Stacked, each block gets the whole column and the rule runs down the left edge
  * through both — still a map rather than a queue, still readable, and she keeps her
@@ -900,7 +894,7 @@ function grimoire(m, t) {
    * Needed *here*, above the figure, because a page draws a scrim over her and her
    * speech bubble is the one thing a scrim cannot save: bubble text at 12% behind
    * body text at 100% is two paragraphs in the same place, which is exactly the
-   * complaint that started this — *"a lyra atrás tá dificultando a leitura."* She
+   * complaint that started this — Lyra behind the text was getting in the way of reading. She
    * still holds the page; she just stops talking over it. What she has to say is
    * about the index anyway, which is one turn of the SUN away.
    */
@@ -980,9 +974,7 @@ function grimoire(m, t) {
    * One Module, two kinds of page — and **nothing scrolls** (ADR-0024, amended).
    *
    * Scrolling was tried for one round and gave the reader a 98px window onto a
-   * column, which is a worse cramped than the one it replaced: *"não estou gostando
-   * de como o texto está ficando dentro do painel, ele tá em um espaço muito
-   * enclausurado."* A small screen does not want a long column moved through a slot.
+   * column, which is a worse cramped than the one it replaced: the text felt cramped, closed in by the panel. A small screen does not want a long column moved through a slot.
    * It wants **fewer words, laid out properly, one page at a time.**
    *
    *   page 0    the lead and the item list — the index, and where the Moon works
@@ -1111,8 +1103,7 @@ function grimoire(m, t) {
     /**
      * `dim` sits on the floor of the body, not under the last thing drawn.
      *
-     * It is where a place and a language belong — *"localização e idioma ficam no
-     * rodapé"* — and hanging it off the previous block made it move whenever the
+     * It is where a place and a language belong — place and language belong in the footer — and hanging it off the previous block made it move whenever the
      * block above changed height, which is how it ended up wedged against a list.
      */
     const dimAll = []
@@ -1122,7 +1113,7 @@ function grimoire(m, t) {
     /**
      * And the invitation to turn the SUN.
      *
-     * *"Não fica claro que o usuário pode scrollar pra ler os textos."* It was not
+     * It was not clear the visitor could scroll to read the text. It was not
      * clear because nothing said so: the page marks appear only once you are already
      * on a page, which is after the discovery has been made. A selected item that has
      * something behind it says so, on the row itself.
@@ -1138,15 +1129,14 @@ function grimoire(m, t) {
     /**
      * A page of the case — **the whole panel, not the column left over.**
      *
-     * *"Não estou gostando de como o texto está ficando dentro do painel, ele tá em
-     * um espaço muito enclausurado."* He was right, and the cause was structural: the
+     * The text felt cramped, closed in by the panel. He was right, and the cause was structural: the
      * body has always been the strip beside LYRA, ~200px of a 320px screen, because
      * every Module until now drew a list next to her. A page of prose in that strip
      * wraps every sentence twice and stacks into a brick.
      *
      * So a page takes the full width and hangs from the header rule. She is still
      * there — this is her book — but she goes **behind a scrim**, which is the lesson
-     * from PROJETOS: *"a lyra atrás tá dificultando a leitura."* Drawing her behind
+     * from PROJETOS: Lyra behind the text was getting in the way of reading. Drawing her behind
      * text without one is what made that unreadable; with one, the full width is
      * available and she is still visibly holding the page.
      */
@@ -1158,8 +1148,7 @@ function grimoire(m, t) {
      * The way back, drawn where the reader is.
      *
      * Turning the SUN back past the first page has always been the way out, and that
-     * is a thing you have to already know. *"Ter um botão claro de voltar dentro do
-     * contexto do módulo."* So the page carries one: top left, on the heading's own
+     * is a thing you have to already know. The ask: a clear back button inside the Module's own context. So the page carries one: top left, on the heading's own
      * rule, clickable where it is drawn.
      */
     g.font = '8px Silkscreen, monospace'
@@ -1466,8 +1455,7 @@ export const backBox = () => back_
  * Has the seventh state been opened at least once this session?
  *
  * It is what turns the header's sky mark into a door, and it is why the light stops
- * being the key: *"quando a pessoa ativa o eclipse uma vez, mudar o crossfader não
- * deve ativar a tela novamente."*
+ * being the key: once someone has triggered the eclipse, moving the crossfader should not bring that screen back.
  */
 let eclipseFound = false
 export function setEclipseFound(v) { eclipseFound = !!v }
@@ -1519,8 +1507,7 @@ export function setEclipseUnlocked(v) { eclipseUnlocked = !!v }
 /**
  * When the seventh state started arriving, so it can arrive *over time*.
  *
- * It used to be a flag and a hard cut — *"a tela de eclipse deve ser progressiva, só
- * tá dando um hard switch agora."* The state is the payoff for having walked the
+ * It used to be a flag and a hard cut — the eclipse screen should arrive progressively instead of hard-switching. The state is the payoff for having walked the
  * whole object; landing it in a single frame spends it before the eye has caught up.
  */
 let eclipseAt = 0
@@ -1641,7 +1628,7 @@ function drawEclipse(g, t, W, H, INK, MID, DIM, GOLD, BG) {
    *
    * It was 8px Silkscreen in `DIM` on black for everything but two lines — three
    * levels of grey at label size, over a constellation, on a 320x180 panel that is
-   * then upscaled and scanned. *"O texto não tá bem legível."*
+   * then upscaled and scanned. The text was hard to read.
    *
    * So there is one gold eyebrow, the statement at the Screen's real body size in
    * `BODY`, and the inert control in `MID` rather than `DIM` — `DIM` is for things
@@ -1810,8 +1797,7 @@ export const bootLevel = () => boot
  * without an opening to wait for. That default was also a window: between this
  * module evaluating and `scene.js` calling `setBoot(0)` a few hundred lines later,
  * `boot` was 1, and anything that painted in between showed the Module before the
- * power-on. Fernando saw it twice: *"o primeiro módulo aparece brevemente antes da
- * tela de loading."*
+ * power-on. It was seen twice: the first Module flashed before the loading screen.
  *
  * Closing the window by moving the call earlier only makes it smaller. Starting at
  * 0 removes it: there is no instant at which this file believes the Screen is on
@@ -1874,8 +1860,7 @@ function powerOn(t) {
   /**
    * **The panel is up from the first frame, not from `typeIn`.**
    *
-   * This is the flash Fernando reported three times: *"o primeiro módulo aparece
-   * brevemente antes da tela de loading."* Two guesses at it were wrong — the
+   * This is the flash reported three times: the first Module appearing briefly before the loading screen. Two guesses at it were wrong — the
    * default value of `boot`, then the order of the setter — and both were wrong in
    * the same way, because the module was never being shown *instead of* the boot.
    * It was being shown **through** it.

@@ -26,7 +26,7 @@
  * o script e **não consertou o objeto**: `scene.js` faz `fetch('ornament/plate.png')`
  * e `deck-faces.js` monta `./decks/<face>.webp` em JavaScript, onde nenhuma reescrita
  * de marcação chega. A página carregava, desenhava, e vinha sem a gravura da Plate e
- * sem as faces dos Decks — *"the texturas arent loading"*.
+ * sem as faces dos Decks — as texturas não carregavam.
  *
  * Reescrever marcação só alcança marcação. `<base href="../">` alcança tudo: o
  * script, o `fetch`, a `<img>` que alguém criar amanhã. É o mecanismo que existe

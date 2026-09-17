@@ -269,7 +269,7 @@ export function stringsFor(locale: Locale) {
      * — a barra só nasce para quem prefere a outra língua, e essa pessoa lê as duas —
      * mas o resultado era uma página em inglês com uma frase solta em português.
      *
-     * *"a barra tem que estar sempre no idioma que o resto do portfólio está"*, e ele
+     * A barra tem de estar sempre na língua do resto do portfólio, e ele
      * está certo: coerência da página vale mais do que otimizar para o caso alvo,
      * ainda mais quando o caso alvo entende as duas de qualquer jeito. Uma frase fora
      * da língua lê como defeito para todo mundo que não é o alvo — inclusive para um

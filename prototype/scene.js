@@ -942,7 +942,7 @@ function ornamentMask(w, h) {
      * that it should read as printed on metal that has texture rather than as a flat
      * sticker. What it actually produced was every edge in the painting bevelled and
      * every mass standing proud of its background — a mountain range in embossed
-     * tin. Fernando: *"remove the bevel and depthness of the faceplat painting."*
+     * tin. The ask was to remove the bevel and depth from the faceplate painting.
      *
      * He is right, and the reference agrees: on the Old Blood pedal the artwork is
      * **screen-printed**, dead flat, and the only things with edges you can feel are
@@ -1236,8 +1236,7 @@ function faceMaps() {
    * The painting glows in the dark, faintly.
    *
    * `E` carried the Print alone — labels on black — so at full Vigil the Pad names
-   * were legible and **the artwork was not there at all**. Fernando: *"the vigil
-   * night is wayy too dark ... the design doesnt appear at all."* Correct, and the
+   * were legible and **the artwork was not there at all**. The Vigil night was far too dark and the design disappeared entirely. Correct, and the
    * missing piece is not more room light: a brighter room would flatten the
    * tenebrism back out and light the Altar with it. What was actually wrong is that
    * only *some* of the Plate was phosphorescent.
@@ -1753,8 +1752,7 @@ screenGlass.position.set(0, FACE_Y + .006, SCREEN_Z); unit.add(screenGlass);
 const GLOW_LAYER = 3;
 /* Range 4.2, up from 3.0. The Decks sit 2.2 units out and were technically inside
    the old radius and practically at nothing — the light reached them the way a candle
-   reaches the far wall. *"O brilho da tela deve gerar na CDJ um pouco, afinal tem uma
-   luz sendo exposta na vigília da lua."* The Screen is the brightest thing on the
+   reaches the far wall. The Screen's glow should reach the CDJ a little, since there is a light on under the Moon's vigil. The Screen is the brightest thing on the
    object at night; the platters should know it. */
 const glow = new THREE.PointLight(0x7FD9B0, 1.9, 4.2, 2);
 glow.position.set(0, .95, SCREEN_Z);
@@ -1778,7 +1776,7 @@ for (const m of [face, chassis, bezel]) m.layers.enable(GLOW_LAYER);
  * and quite large enough to see as *shading*: it bends the normal a couple of
  * degrees across the face, so the light rakes rather than landing flat.
  */
-/* 0.006 -> 0.0025, with the chamfer softened to match: *"two much bevel and depth."*
+/* 0.006 -> 0.0025, with the chamfer softened to match: judged too much bevel and depth.
    The dish is meant to be invisible as a shape and only just perceptible as shading;
    at 0.6% it had become a shape. */
 const DISH = 0.0025;
@@ -1853,8 +1851,7 @@ function deck(x, kind) {
    *
    * A `CylinderGeometry` cap is one plane with one normal, so every part of it takes
    * the light identically — which is precisely what makes a wheel read as a printed
-   * disc rather than a machined part, however good the texture on it is. Fernando:
-   * *"they don't feel too flat or just a baked texture."*
+   * disc rather than a machined part, however good the texture on it is. The ask was for wheels that feel neither flat nor like a baked texture.
    *
    * `latheDeck` gives it a profile instead: a chamfer round the outer edge, a step
    * down to the field, and a shallow dish across the face. The chamfer is the part
@@ -2088,7 +2085,7 @@ cap.position.set(capX(xfVal), .35, FADER.z); cap.userData.ctl = 'fader'; unit.ad
 /**
  * The cap's contact shadow, which the shadow map cannot give it.
  *
- * *"O crossfader parece não gerar sombra."* It does cast — `castOnly` sets it, and
+ * The crossfader seemed to cast no shadow. It does cast — `castOnly` sets it, and
  * the key light throws a short one to the side. What is missing is the **contact**:
  * the dark hairline where an object meets the surface it stands on, which is what the
  * eye actually reads as "this is resting there" rather than "this is floating".
@@ -2133,8 +2130,7 @@ const capShade = (() => {
  */
 /* 0.18 wide, down from 0.34. The trough's half-length is 0.65 and the cap's travel
    reaches 0.56, so a strip 0.17 to each side ran 0.08 **past the end of the slot** —
-   a lit bar sticking out of the fader at both extremes: *"o crossfader quando tá das
-   pontas tá adicionando um stroke que aparece ali no espaço do crossfader."* At 0.18
+   a lit bar sticking out of the fader at both extremes: at either end of its travel the fader showed a stray stroke across its slot. At 0.18
    it lands flush with the trough at full throw, and the read is unchanged: what the
    eye sees is a glow that travels with the handle. */
 const capGlow = new THREE.Mesh(slab(.18, .055, .010, .027),
@@ -2149,9 +2145,7 @@ capGlow.position.set(capX(xfVal), .346, FADER.z); unit.add(capGlow);
  *
  * `glow` already grew with the Vigil — 2.4 up to 7.6 — but only the Plate, Chassis
  * and rim had opted into its layer, so all that extra light landed on three
- * surfaces and the rest of the Unit went black with the room. Fernando: *"on vigil
- * things are too dark. i feel the display could have some light (projecting to the
- * cdj)."* He is describing the light that was already there, aimed at almost
+ * surfaces and the rest of the Unit went black with the room. Under Vigil everything was too dark, and the display could throw some light onto the CDJ. He is describing the light that was already there, aimed at almost
  * nothing.
  *
  * Opting the Decks, Pads and Crossfader in costs no new light — `glow` is one point
@@ -3800,10 +3794,10 @@ let active = null, px = 0, py = 0, startVal = 0, jogAcc = 0, jogAt = { x: 0, y: 
  * every list on the object went end to end in one gesture: PROJETOS 0→2, CRITÉRIOS
  * 0→4, HABILIDADES 0→3. That is not a wheel that navigates badly, it is a wheel that
  * navigates *instantly*, and it reads as broken because you can never land on the
- * item you meant — *"as jogs não estão navegando direito."*
+ * item you meant — the jogs were reported as not navigating properly.
  *
  * At 0.50 a 260-pixel drag across the rim is two steps and a full turn is twelve —
- * *"progressivamente aos poucos"* without asking for a wind. It can be this small
+ * gradual, step by step without asking for a wind. It can be this small
  * only because `deckTurn` clamps the grip radius: under the old angle-to-centre
  * reading the same drag was worth anything from one step to three depending on where
  * the hand landed, and no single number could be right for all of them.
@@ -3841,13 +3835,13 @@ const notchOf = kind =>
  * showed `turn - PULL * carry`, so between notches it lagged and then caught up.
  * That is how a real detent feels under a finger and it is not how it *looks* on a
  * screen, where the only thing visible is the platter failing to keep up with the
- * cursor — *"remove the snaps please its looking laggy."* The pointer is the hand
+ * cursor — the snapping was read as lag and asked to be removed. The pointer is the hand
  * here; anything that lags it is lag.
  *
  * **The coast is visual only.** A thrown wheel keeps turning, because a heavy
- * platter does — that is the *"pequena inércia"* — but it no longer spends detents
+ * platter does — that is the small inertia that was asked for — but it no longer spends detents
  * while it does. Selecting on momentum is how a small flick walked to the end of a
- * list and stopped there, which is most of *"as jogs não estão navegando direito."*
+ * list and stopped there, which is most of the report that the jogs were not navigating properly.
  * The hand chooses; the mass only carries the picture. That keeps the part of
  * ADR-0026 that mattered — no uncontrolled selection — and drops the part that was
  * costing the reader their place.
@@ -4000,8 +3994,7 @@ let lastPick = null;
  * There were two lists of the same thing. `pointerdown` knew four targets: the claim,
  * the back, the eclipse mark and the rows. `pointermove` — which sets the cursor and
  * the hover — knew only the rows. So three controls were clickable and invisible to
- * the pointer, and Fernando found the first of them: *"no módulo de eclipse, o abrir
- * o instagram está sem cursor pointer pra mostrar que é click."*
+ * the pointer, and the first to be noticed was the ECLIPSE Instagram link, which had no pointer cursor to say it was clickable.
  *
  * The bug is not the missing branch, it is that a control had to be registered twice
  * to work. Two lists drift; one cannot. Anything added here is clickable and
@@ -4137,8 +4130,7 @@ function moveSelection(step) {
   /**
    * **The end of the list has to say so.**
    *
-   * This was a bare `return`, and it is most of *"eu giro e nao muda nada no
-   * display."* Turning the MOON at the top of a list moved the platter, spent a
+   * This was a bare `return`, and it is most of the report that turning the wheel changed nothing on the display. Turning the MOON at the top of a list moved the platter, spent a
    * detent, and changed nothing on screen — which is indistinguishable from a broken
    * wheel, and the direction is not obvious in advance: the same drag to the right
    * turns the platter one way above the centre and the other way below it, exactly
@@ -4176,10 +4168,8 @@ function moveSection(step) {
    * With nothing to page through, the SUN chooses too.
    *
    * PROJETOS keeps its cases in the overlay rather than on the Screen, so its items
-   * have no pages — and the SUN there was inert, which is half of *"as jogs não estão
-   * navegando direito."* A dead wheel next to a live one reads as broken, and there
-   * is an obvious thing for it to be doing: *"mantenha ambas possibilitando ao
-   * usuário dar switch nos projetos individuais."* So both wheels move the cursor,
+   * have no pages — and the SUN there was inert, which is half of the report that the jogs were not navigating properly. A dead wheel next to a live one reads as broken, and there
+   * is an obvious thing for it to be doing: the ask was for both wheels to let the visitor switch between individual projects. So both wheels move the cursor,
    * and the SUN only becomes a pager where there are pages.
    */
   const n = pageRange();
@@ -4202,8 +4192,7 @@ const pad2 = n => String(n).padStart(2, '0');
 /**
  * Turn a page — the one place all three inputs meet.
  *
- * The brief asked for three ways to move through a case: *"scroll normal do usuário,
- * scroll das wheels girando c mouse e usar scroll c mouse em cima do jog também."*
+ * The brief asked for three ways to move through a case: ordinary page scroll, turning the wheels with the mouse, and the mouse wheel over a jog.
  * They are the same intent arriving from different hardware, so they are the same
  * function and cannot drift from each other. What changed under them is only *what a
  * notch moves*: it used to be 46px of a clipped column and is now a whole page
@@ -4230,7 +4219,7 @@ const lightName = v => (v < .28 ? 'NOITE' : v > .72 ? 'DIA' : 'CREPÚSCULO');
  * A click on a name **opens** it. It used to select and then flash the position,
  * which is what a click on a named thing least resembles. Where the item is a route
  * or a Work it opens that; where it is a criterion or a group of tools it opens its
- * page — *"quando o user clica em um deles, abrir a outra página."* Landing the
+ * page — a click on one of them should open its page. Landing the
  * cursor first keeps the MOON in step with what the visitor just did.
  *
  * It lives in a function because it now has **two** callers: a pointer on the Screen,
@@ -4258,8 +4247,7 @@ function openRow(row) {
  *
  * A Tela resolve a obra para a mesma capa física usada pelo clique direto. Assim o
  * assunto é sempre **a capa** — foi o que ele pediu
- * ao ver a primeira versão: *"não precisa vir ao lado a câmera, pode ser do mesmo
- * jeito que quando o usuário ficava no projeto dentro do módulo, esse zoom"*.
+ * ao ver a primeira versão: a câmera não precisava ir ao lado; bastava o mesmo zoom de quando se abria um projeto dentro do módulo..
  */
 let alvoCapa = null;
 
@@ -4289,9 +4277,7 @@ function abrirObra(w, de, capa) {
  * Clicar uma capa na parede do acervo — e ela **abre**, de onde quer que se clique.
  *
  * A primeira versão tinha três estados, como o retrato: longe leva, na estação chega
- * perto, perto abre. Ele viu funcionando e cortou: *"não precisa vir ao lado a câmera,
- * pode ser do mesmo jeito que quando o usuário ficava no projeto dentro do módulo, e
- * abrir a página, esse zoom"*.
+ * perto, perto abre. Ele viu funcionando e cortou: a câmera não precisava ir ao lado; bastava o mesmo zoom de quando se abria um projeto dentro do módulo, abrindo a página..
  *
  * Ele está certo, e a razão é que a etapa que eu estava protegendo não existe aqui. No
  * retrato aproximar-se é o conteúdo — a pose fechada é onde o oráculo responde. Numa
@@ -4386,7 +4372,7 @@ function moonBack() {
    * It used to have to step the cursor **off** the seventh detent as well, because
    * the detent that opened it was the same position Back landed on — so closing it
    * left the cursor somewhere that reopened it, and there appeared to be no way out:
-   * *"não consigo voltar da eclipse."* The detent is gone (the light is the key now),
+   * there was no getting back out of ECLIPSE. The detent is gone (the light is the key now),
    * which takes the trap with it.
    */
   if (eclipse.open) {
@@ -4424,9 +4410,7 @@ function moonBack() {
  * Seven lamps under the panel, and the seventh is in the middle.
  *
  * The unlock had no *object* — the state existed and nothing on the Plate said so.
- * Fernando: *"eu sinto que falta algum indicador. talvez se tivéssemos 7 ledzinhos
- * embaixo do painel que acendessem e se mantessem quando o usuário navega nos
- * módulos."*
+ * The ask was for an indicator: seven small lamps under the panel that light up and stay lit as the visitor walks the Modules.
  *
  * Six of them are the Modules, in slot order, and they **latch**: once lit they stay
  * lit, because the thing being counted is *having been somewhere*, and a lamp that
@@ -4476,9 +4460,7 @@ function starGeom(outer, inner, h, points = 4) {
  * Where the row sits, and why it moved.
  *
  * It was at `z: 1.46` — in front of the fader, at the very lip of the Plate, which
- * is the one place on the object nobody looks at while reading. *"Sobre os ledzinhos
- * da eclipse, eles podem ser levemente menores, em formatinho de estrela pra combinar
- * e ficar abaixo do display e acima dos botões."*
+ * is the one place on the object nobody looks at while reading. The follow-up asked for the ECLIPSE lamps to be slightly smaller, star-shaped to match, and placed below the display and above the buttons.
  *
  * The band between the two is narrower than it looks: the Screen's rim ends near
  * `z = 0.09` and the Pad *labels* — not the Pads — start around `z = 0.30`, so the
@@ -4494,7 +4476,7 @@ const ledMeshes = [];
   /**
    * A cut stone, not a sticker.
    *
-   * *"As estrelas parecem 2d demais, dê algum bevel ou desenho 3d nelas."* They were:
+   * The stars looked too 2D and needed a bevel or some 3D form. They were:
    * a 12mm extrusion with a 2.5mm chamfer reads as a flat shape with a softened edge,
    * and at this size the eye only ever saw the top face.
    *
@@ -4528,8 +4510,7 @@ const ledOf = i => (i < 3 ? i : i + 1);
 /**
  * The row is never just on or off — it is **looking**.
  *
- * A latched lamp that only sits there is a status light. Fernando asked for
- * *"algum flavor como a luz do meio pesquisando ou algo que dê sensação de tchum"*,
+ * A latched lamp that only sits there is a status light. The ask was for some flavour — the middle light searching, something with a sense of arrival —,
  * and the row is the one part of the object that has nothing to do between presses.
  *
  * Two motions, and they say different things:
@@ -4639,8 +4620,8 @@ function markSeen(i) {
  * The light is the key, once the six lamps are lit.
  *
  * The old trigger was a seventh detent past the end of the MOON's list — a position
- * with nothing under it, that you had to already know was there. Fernando could not
- * find it: *"não consegui fazer o eclipse funcionar."* A control nobody can discover
+ * with nothing under it, that you had to already know was there. Nobody
+ * testing it could find it. A control nobody can discover
  * is not a secret, it is a bug with a story attached.
  *
  * So the six lamps only **arm** it, and what fires it is the one gesture the object
@@ -4665,8 +4646,7 @@ function watchLight() {
    *
    * A key that works every time is not a key, it is a switch you keep tripping: the
    * fader is also the light, and a reader who moves it to see the room would have the
-   * seventh screen thrown at them on every crossing. *"Quando a pessoa ativa o eclipse
-   * uma vez, mudar o crossfader não deve ativar a tela novamente."* After the first
+   * seventh screen thrown at them on every crossing. Once someone has triggered the eclipse, moving the crossfader should not bring that screen back. After the first
    * time the way back in is the mark in the Screen's header, which is a door rather
    * than a trap.
    */
@@ -4764,8 +4744,7 @@ function setVigil(v) {
  * The Decks have no button in them any more.
  *
  * `deckHubHit` used to make the painted boss a target: Moon-centre was Back and
- * Sun-centre opened. It went at Fernando's word — *"remova a necessidade de clique
- * das jogs por enquanto e quaisquer menções"* — and the reason is that a control
+ * Sun-centre opened. It went at Fernando's word — the instruction was to drop the click on the jogs for now, and every mention of it — and the reason is that a control
  * doing two unrelated jobs by radius is a control you have to be taught. Turning is
  * the whole of a wheel now.
  *
@@ -5050,7 +5029,7 @@ el.addEventListener('pointermove', e => {
     /* The sign is the hand's, not the maths'. `deckTurn` returns the cross product
        in screen space, where y runs *down* — so its positive direction is the mirror
        of what the eye calls clockwise, and the platter came out turning against the
-       drag. Fernando: *"ela tá girando inversamente ao arraste de mouse."* */
+       drag. Reported: it turned opposite to the mouse drag. */
     const d = deckTurn(d0.group, jogAt, now);
     jogAt = now;
     /**
@@ -5061,7 +5040,7 @@ el.addEventListener('pointermove', e => {
      * `group.rotation.y` positivo **desenha anti-horário** nesta câmera — renderizado
      * em 0 e em 0.55 e comparado quadro a quadro, não deduzido. Somar um no outro
      * fazia a roda girar contra a mão, que é a queixa que já tinha voltado uma vez:
-     * *"ela tá girando inversamente ao arraste de mouse."* A correção de então negou
+     * a roda girava ao contrário do arraste. A correção de então negou
      * `carry` em vez de `turn` — consertou o que não estava quebrado e inverteu a
      * lista.
      *
@@ -5076,8 +5055,7 @@ el.addEventListener('pointermove', e => {
      *
      * They were fed the same number, which is tidy and wrong: turning the wheel
      * **clockwise** has to walk *down* a list, the way a scroll wheel and a jog wheel
-     * both do — *"o menu está indo pra baixo quando giro a jog anti-horário, deve ser
-     * sentido horário."* Medido antes e depois: anti-horário andava 0 -> 6 e horário
+     * both do — the menu went down on an anticlockwise turn, and it should be clockwise. Medido antes e depois: anti-horário andava 0 -> 6 e horário
      * não saía do lugar. Com `turn` já corrigido acima, `carry` volta a andar no
      * mesmo sentido do sinal de tela, e horário desce — que é o que o CDJ faz, o que
      * a roda de scroll faz e o que o `docs/COMO-FUNCIONA.md` sempre afirmou.
@@ -5175,7 +5153,7 @@ addEventListener('keydown', e => {
 });
 /**
  * Fullscreen, because the browser's chrome is a third of a phone and a strip of
- * every desktop window — *"a parte do navegador ta deixando tudo mt pequeno."*
+ * every desktop window — the browser chrome was making everything too small.
  *
  * Prefixed call included: Safari on macOS still only has `webkitRequestFullscreen`,
  * and it is the browser the question was asked about. On iOS the API does not exist
@@ -5392,8 +5370,8 @@ eclipseBtn?.addEventListener('click', () => {
  *     what turning the Sun does;
  *   - **freecam on** — dolly, because then the wheel belongs to the camera.
  *
- * The last two are deliberately the same gesture: *"scroll normal do usuário"* and
- * *"usar scroll c mouse em cima do jog"* are the same intent arriving from different
+ * The last two are deliberately the same gesture: ordinary page scroll and
+ * the mouse wheel over a jog are the same intent arriving from different
  * places, and making the wheel mean something different a few pixels apart is how a
  * control becomes unpredictable.
  *
@@ -6295,8 +6273,7 @@ function visorDeveAparecer() {
  *
  * Numa estação a Unidade está fora do quadro e **nenhum controle é clicável**: o
  * `?trilho` destapava a bancada para servir de saída, o que é endereço de trabalho e
- * não de visitante. Ele pediu isto na segunda olhada: *"a gente precisa realmente ter
- * o botão de voltar, pro usuário poder voltar pra sessão"*.
+ * não de visitante. Ele pediu isto na segunda olhada: precisava haver um botão de voltar, para o visitante retornar.
  *
  * Dois níveis, e o rótulo diz qual: da pose fechada volta-se para a estação, da
  * estação volta-se para o Altar. É a mesma escada que o `moonBack` sobe na Tela, e
@@ -6335,8 +6312,7 @@ voltarEl?.addEventListener('click', () => {
 /**
  * O visor **opera** — e sem isso a viagem era um beco.
  *
- * Ele viu e disse a coisa exata: apertando PROJETOS a câmera vai para o acervo e *"não
- * tem mais o painel da lua, como é que eu vou girar ele?"*. Estava certo e a instrução
+ * Ele viu e disse a coisa exata: apertando PROJETOS a câmera vai para o acervo e sem o painel da Lua, não havia como girá-lo. Estava certo e a instrução
  * que eu tinha dado era impossível de seguir — numa estação a Unidade está fora do
  * quadro, e a roda da lua é uma malha dentro dela.
  *
@@ -6816,8 +6792,7 @@ let t0 = 0;
  *
  *     mean 55.6ms/frame, worst **963ms**, five rebuilds, 46 → 100 programs
  *
- * Those are the stalls Fernando hit — *"the performance on the vigil (going to
- * night) is affected a lot when one turns the jog"* — because turning a Deck drives
+ * Those are the stalls Fernando hit — the Vigil toward night slowed down badly whenever a jog was turned — because turning a Deck drives
  * the Vigil, and driving the Vigil walks straight through every one of them.
  *
  * They are also **one-time**. Programs are cached by that key, so a second sweep
@@ -6911,8 +6886,7 @@ function frame(t) {
    *
    * **They both drift.** They used to drift *against the Vigil* — the Sun at
    * `-.04 * (1 - vigil)` and the Moon at `.04 * vigil` — a nice idea that meant the
-   * Moon stood perfectly still all day, which is exactly what Fernando saw: *"devem
-   * girar sozinhos (sol está certo mas lua não)."* Both turn now; the Vigil only
+   * Moon stood perfectly still all day, which is exactly what Fernando saw: both were meant to turn on their own, and only the Sun did. Both turn now; the Vigil only
    * decides which one leads.
    *
    * **They coast.** A wheel thrown by the hand keeps its `spin` and bleeds it off
@@ -7061,8 +7035,7 @@ function frame(t) {
    * shaders, so it costs 100–140ms — and there are eight of them. Run from the first
    * frame, that is the better part of a second of stalled frames landing inside a
    * 5.2s boot animation, which does not read as "loading slowly". It reads as the
-   * opening playing, freezing, and starting again: *"the intro is loading the first
-   * module then snaps to the loading then to the first module again."*
+   * opening playing, freezing, and starting again: the intro showed the first Module, snapped back to loading, then showed it again.
    *
    * It waits for the opening to finish. Nothing is lost by that — the pre-warm
    * exists to keep the Crossfader smooth, the Crossfader is the only thing that

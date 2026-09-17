@@ -171,8 +171,7 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
    * The panel is dressed in the object's own faces.
    *
    * It used to be `ui-monospace` and Georgia — system defaults that said nothing and
-   * belonged to nothing: *"as fontes dessa tela do projeto aberto estão destoando do
-   * design da página."* They were right for a prototype answering "does the *move*
+   * belonged to nothing: the open-project panel's type did not belong to the rest of the page. They were right for a prototype answering "does the *move*
    * feel right", and wrong the moment the move stopped being the question.
    *
    * The three roles map onto the three the Screen already has, so opening a project
@@ -190,8 +189,7 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
    *
    * The ground is **blurred**, not merely darkened. The Unit behind is high-contrast
    * engraving and lit brass, and prose over a gradient of it was fighting the detail
-   * for the reader's eye — *"a tela no fundo deve ficar blurred ou algo pra dar
-   * leitura."* The blur keeps the object present as colour and light while taking its
+   * for the reader's eye — the background had to be blurred or otherwise quietened for the text to read. The blur keeps the object present as colour and light while taking its
    * edges away, which is exactly what a backdrop should be. Where `backdrop-filter`
    * is unsupported the gradient alone still darkens it, so the text stays legible.
    *
@@ -721,8 +719,7 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
      *
      * It used to be drawn on the Screen too, under the project list, where a 320x180
      * buffer had to carry five sections of prose at 12px and the reader met the case
-     * before choosing the project. Fernando: *"o texto explicativo do projeto deve
-     * apenas aparecer quando o usuário clica e a tela da zoom."* Right — this panel
+     * before choosing the project. The request was for the case text to appear only once a project is clicked and the view has zoomed in. Right — this panel
      * is real HTML at real size, which is the one place the case is comfortable, and
      * the Screen goes back to being an index.
      */
@@ -934,7 +931,7 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
    * The picture is a control now, and what it does is change its own size.
    *
    * It used to advance to the next still, which was the whole of what a visitor could
-   * do with a set and is the thing he called *"ruim"*. Stepping belongs to the strip,
+   * do with a set and is the thing he called a poor interaction. Stepping belongs to the strip,
    * which shows what it is stepping to; the picture keeps the gesture that its own
    * cursor advertises — zoom-in, then zoom-out.
    */
@@ -956,8 +953,7 @@ export function createFocus({ camera, mount, screen, alvo, onProgress, restore, 
    *
    * They stepped between Works, which put the panel's largest, most obvious control on
    * its least likely action — you open a project to read *that* project, and the set of
-   * stills is the thing you actually want to walk. Fernando: *"só removeria a seta pra
-   * trocar de projeto e deixaria ela pra scrollar a imagem dentro da página."*
+   * stills is the thing you actually want to walk. The ask was to drop the arrow that changes project and use it to step through the images inside the page instead.
    *
    * Changing project keeps the route it always had and the one that matches the object:
    * VOLTAR to the index, or the LUA, which is the wheel that selects on that index.

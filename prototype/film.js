@@ -39,7 +39,7 @@ const FPS = 30
  * so anything under about `dist` 4.7 crops the Screen at the sides — which is fine for
  * a texture shot and fatal for the one beat where the display has to be read. So every
  * shot lives between 4.5 and 5.0, steeply overhead, and the extra vertical goes to the
- * desk rather than to the room: *"evite mostrar muito do room e a vela também."*
+ * desk rather than to the room: the brief was to show little of the room and keep the candle out of frame.
  *
  * **The opening is cut short.** It is a fly-in from across the room, which is the one
  * part of the object that is *about* the room. The film takes the camera at 2.6s,

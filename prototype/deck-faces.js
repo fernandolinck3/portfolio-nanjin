@@ -13,8 +13,7 @@ import * as THREE from 'three'
  * pass at reproducing it in circle arithmetic got a three-fold figure that was
  * plainly in the same family and just as plainly not the same drawing; each pass
  * was closer in some measurable way and no closer at all in the way that counts.
- * Fernando, after four of them: *"its not similar to the design i gave to you at
- * all."* Right about the method, not the numbers. Following a reference this
+ * After four of them the verdict was that the drawing still did not resemble the reference at all. Right about the method, not the numbers. Following a reference this
  * specific means **using** it.
  *
  * So there is one image per wheel and the other two maps are derived from it.
@@ -44,8 +43,7 @@ import * as THREE from 'three'
  *
  * **The centre has to be found, not eyeballed.** The first cut was placed by eye
  * and the Moon's was 20px out — 8% of the radius — which is invisible in a still
- * and unmistakable the moment the platter turns: *"the arts are not centered on the
- * circle of the jogs, causing them do wobble."* Reading the edge off a screenshot
+ * and unmistakable the moment the platter turns: the art was off-centre on the platter, so it wobbled as it turned. Reading the edge off a screenshot
  * cannot do better than that, and edge-detection is worse — it locks onto the
  * Plate's own ornament outside the wheel.
  *
@@ -149,8 +147,7 @@ function recentre(ctx, [dx, dy]) {
  * that side of the reeding and a cast shadow down the other. Painted into a texture
  * on a platter, that lighting **turns with the platter**. The light source sweeps
  * around the wheel once per revolution, and an object whose highlight orbits it does
- * not read as spinning — it reads as tilting. Fernando, twice: *"the jog designs are
- * still wobbly."*
+ * not read as spinning — it reads as tilting. The wobble was reported twice more after that.
  *
  * A photograph of a lit thing cannot be spun. So the smooth part of the brightness —
  * the illumination field — is estimated with a wide blur and divided out, which is
@@ -304,7 +301,7 @@ function flatten(d) {
  * wheel comes out looking hammered rather than carved — the same failure as driving
  * `bumpScale` too hard, arriving by a different road.
  *
- * `strength` halved to 1.7 on Fernando's *"two much bevel and depth"*. The
+ * `strength` halved to 1.7 after the relief was judged too deep and too bevelled. The
  * temptation with a normal map is to set it by whether the relief is *visible*,
  * which lands far too high: these wheels are photographs of carved stone and the
  * carving is **already in the albedo**. The normal map's job is only to make that

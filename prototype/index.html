@@ -156,8 +156,7 @@
    *
    * The Unit is 1.82 wide and the display inside it is 16:9, so a portrait viewport
    * shrinks the object to a size nothing on it can be read at. The first pass put up
-   * a wall and asked the visitor to rotate. Fernando: *"não precisa girar a tela.
-   * Mantenha ela na horizontal (com o aviso)."* Right — a page that works beats a
+   * a wall and asked the visitor to rotate. The direction was not to demand rotation — keep the Unit landscape, with the notice. Right — a page that works beats a
    * page that makes a request, and no page can rely on an orientation lock anyway
    * (`screen.orientation.lock` needs fullscreen and iOS refuses it).
    *
@@ -212,7 +211,7 @@
   #avisos > *{pointer-events:auto}
 
   /* Browser chrome eats a third of a phone screen and a strip of every desktop
-     window — *"a parte do navegador ta deixando tudo mt pequeno."* Safari has no
+     window — the browser chrome was making everything too small. Safari has no
      fullscreen that leaves the page in charge, so the page offers one. Hidden where
      the API is missing rather than shown and inert. */
   #full{position:absolute;z-index:55;min-height:44px;min-width:44px;

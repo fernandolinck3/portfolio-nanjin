@@ -182,7 +182,7 @@ export const SCREEN_BUDGET = {
    *
    * Guardava linhas: o texto vinha quebrado à mão em 58 caracteres e o Screen
    * quebrava de novo no que coubesse na coluna. Duas quebras sobre o mesmo texto dão
-   * o que Fernando viu — *"a quebra de linhas também tá um pouco estranha"* — porque
+   * a quebra de linha estranha que apareceu na tela — — porque
    * a segunda quebra parte a primeira metade e deixa a segunda começando sozinha:
    * "Experimentos de ponta a ponta: da / pesquisa à / implementação e ao aprendizado."
    *
@@ -256,8 +256,7 @@ const ECLIPSE_PT = {
    * O prêmio existe, e não precisa de servidor para existir.
    *
    * A tela dizia que não havia nenhum, o que era verdade sobre a infraestrutura e
-   * mentira sobre a intenção — *"temos um prêmio though, a pessoa me mandar um print
-   * ou ir direto pro Instagram."* Um print mandado no direct é a prova; a pessoa
+   * mentira sobre a intenção — a ideia sempre foi ter um prêmio: a pessoa manda um print ou vai direto ao Instagram. Um print mandado no direct é a prova; a pessoa
    * carrega, ninguém precisa arbitrar, e o canal já existe.
    */
   note: ['Mande um print desta tela.'],

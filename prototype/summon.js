@@ -42,7 +42,7 @@ export function createSummoning(scene, works, { pouso }) {
    *
    * Ele foi construído com perfil torneado em 2026-09-06 e vivia dois metros ao lado
    * da credenza. Ruling dele no mesmo dia, olhando as três referências que trouxe:
-   * *"mata o plinto"*. E a razão é de composição, não de gosto — com a vitrola no
+   * a decisão foi tirar o plinto. E a razão é de composição, não de gosto — com a vitrola no
    * tampo havia **dois pedestais dizendo a mesma coisa** a dois metros um do outro, e
    * numa estação só cabe um lugar onde a obra acontece.
    *

@@ -164,9 +164,7 @@ export function sheetFor(work, index) {
  * A capa — 12 polegadas, quadrada, e assinada pelo trabalho.
  *
  * A primeira versão desenhou seis silhuetas geométricas: disco, eclipse, arco, barras,
- * losango, anel. Ele olhou e disse o que estava errado: *"as capas não podem ter essa
- * estética de simplesmente ter uns ícones, elas podem pegar algum elemento do site tal
- * como se fosse uma capa de álbum mesmo"*. Ele tem razão e o defeito é de fundo — um
+ * losango, anel. Ele olhou e disse o que estava errado: as capas não deviam ser ícones soltos, e sim pegar algum elemento do site, como uma capa de álbum de verdade. Ele tem razão e o defeito é de fundo — um
  * ícone genérico numa capa diz *"aqui vai um projeto"*, e uma capa de álbum diz **qual**.
  *
  * O recorte do site também falhou: palavras pela metade e sete composições sem uma

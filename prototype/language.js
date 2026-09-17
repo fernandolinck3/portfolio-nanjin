@@ -4,8 +4,7 @@
  * O site tem duas páginas desde o T-31 e, até este arquivo existir, **nenhuma rota
  * visível entre elas**. O link mora no espelho, que é recortado a 1px: um leitor de
  * tela o encontra, o Tab o revela porque o foco o tira do recorte, e um crawler o
- * segue. Quem chega de mouse não tinha nada. Ele perguntou exatamente isso — *"e como
- * o usuário recebe a versão ingles sem colocar o en"* — e a resposta era: não recebe.
+ * segue. Quem chega de mouse não tinha nada. Ele perguntou exatamente isso — como alguém chega à versão em inglês sem digitar o /en — e a resposta era: não recebe.
  *
  * ## Sugerir, nunca trocar
  *
