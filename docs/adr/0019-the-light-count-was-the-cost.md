@@ -11,8 +11,7 @@ the problem.**
 
 ## How this was found, after four rounds of not finding it
 
-Fernando, four times, in escalating words: *"its very heavy its getting stuck a lot"*, then *"its very
-heavy still, everything is laggy"*, then *"i dont understand"*.
+Four reports, escalating: heavy, stalling a lot, then still heavy, everything laggy, then not understanding why.
 
 That last one is the important one. Four rounds of confident, plausible, source-read diagnosis had
 produced four fixes and no improvement, and the explanations had got longer each time. The loop only

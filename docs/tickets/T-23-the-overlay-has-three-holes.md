@@ -9,8 +9,7 @@ instruction to click things that do not exist.
 
 ## What two reviews found
 
-**1. CONSTRUÇÃO falls below the first fold on Portfólio.** The brief asks for *"project, context and
-construction without scrolling."* Portfólio's sections are VISÃO GERAL · MOTIVO · REFERÊNCIAS ·
+**1. CONSTRUÇÃO falls below the first fold on Portfólio.** The brief asks for project, context and construction visible without scrolling. Portfólio's sections are VISÃO GERAL · MOTIVO · REFERÊNCIAS ·
 **CONSTRUÇÃO** · INTERAÇÃO. CONSTRUÇÃO is fourth. The session write-up names this exact hazard —
 *"hardcoding names would silently drop CONSTRUÇÃO below the fold on one of them"* — and then reports
 "3 sections in the first fold" as the success criterion. Three sections is not the requirement;
@@ -24,7 +23,7 @@ rail.hidden = !overflows || heads.length < 2
 
 A one-section case that genuinely overflows gets no rail — and no native scrollbar either, because
 `scrollbar-width:none` removed it. It scrolls with no indicator of any kind. The brief asked for
-*"an indicator in the object's own style rather than a white scrollbar."*
+a scroll indicator in the object's own style rather than a white scrollbar.
 
 **3. Portfólio opens on an empty 55% column.** `images: []` on case 001, so the media column renders
 black under a footer reading *"clique na imagem para ampliar · ← → para percorrer as imagens"* — an

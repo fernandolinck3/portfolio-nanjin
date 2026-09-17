@@ -44,7 +44,7 @@ the scroll offset had, which is the one part of ADR-0024 worth keeping.
 at all: the body could not use it while she stood in the column. A near-solid page over her keeps
 her present and keeps the text legible, and her speech bubble is suppressed, because bubble text at
 12% under body text at 100% is two paragraphs in one place — the failure ADR-0024 was already
-warned about in PROJETOS (*"a lyra atrás tá dificultando a leitura"*).
+warned about in PROJETOS (Lyra behind the text getting in the way of reading).
 
 ## What ADR-0009 gets back
 

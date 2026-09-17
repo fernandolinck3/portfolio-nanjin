@@ -10,8 +10,7 @@ Separately and permanently, **Lyra hangs on the wall** in a gilt frame with an e
 ## The constraint that forced this
 
 The Screen is a 1024x576 texture that draws around 590px on the Plate, seen at an angle, in four
-tones. Fernando: *"we need to consider that they cant be shown on a small display, there needs to be
-some kinda of interaction."*
+tones. The constraint as stated: the Works cannot be shown on a small display, so there has to be some interaction.
 
 He is right, and it kills the three options that were on the table before he said it — featured work,
 list of rows, Rack-absorbs-them — because all three kept the image on the Screen. Any of them shows
@@ -26,8 +25,7 @@ an assignment — it is a caption panel, and it is very good at that.
 **The Vigil acquires a job.** Until now darkness only changed how things looked, which is why
 ADR-0015 and ADR-0016 both had to keep arguing about whether the top of the Vigil's travel was worth
 reaching. Now you put the light out *in order to see something*, the way you kill the house lights
-for a slide. Fernando's framing: *"a vibe that the user is mixing some kinda of magic on the cdj and
-it appears on the wall or in some kind of pedestal."*
+for a slide. The framing asked for: the feeling of mixing some kind of magic on the CDJ and having it appear on the wall or on a pedestal.
 
 **The cost is that `CONTEXT.md` said there is no sub-navigation.** That is now false, and the ADR is
 here rather than a quiet edit because it is a real reversal. The defence is narrow and should stay
@@ -43,8 +41,7 @@ same number.
 
 ## Why the pedestal and not the wall
 
-Both were built and looked at. Fernando: *"I like the pedestal idea, but a painting on the wall like
-beatrice from umineko would be nice."*
+Both were built and looked at. The response was that the pedestal was liked, but a painting on the wall, in the manner of Beatrice in Umineko, would be nice too.
 
 The wall projection worked, but it wanted the wall for two incompatible things. A Work is called and
 dismissed; a portrait is a fixture. Had both lived on the wall, the summoning would have read as *the

@@ -20,12 +20,11 @@ anatomia que o quarto não tinha:
 - o móvel embaixo guarda o resto **de perfil** — é a coleção, não a exposição;
 - no tampo fica a **vitrola**, com o disco girando.
 
-E a ideia dele junto: *"os projetos podem ser discos em uma turntable que não é digital, onde o
-usuário ao transicionar pra ver a capa em mãos, abre a página de case"*.
+E a ideia dele junto: os projetos seriam discos numa vitrola analógica, e que pegar a capa na mão abrisse a página do case.
 
 ## Decisão
 
-**O plinto morre.** Ruling dele, em uma linha, no mesmo dia: *"mata o plinto"*. A razão é de
+**O plinto morre.** Ruling dele, em uma linha, no mesmo dia: tirar o plinto. A razão é de
 composição e não de gosto — com a vitrola no tampo havia **dois pedestais dizendo a mesma coisa**
 a dois metros um do outro, e numa estação só cabe um lugar onde a obra acontece.
 
@@ -115,6 +114,6 @@ amplificador, pilhas anônimas nem outra capa; seriam repetição, não vida.
   verdade. A vitrola procedural de fallback sai junto com a regra nova de só usar modelos.
   O fundo branco do quad original é transparência de material, não uma segunda malha.
 - **O que esta ADR não decide:** se o disco toca. O T-35 foi construído e revertido; uma vitrola
-  girando em silêncio é uma promessa por cumprir, e ele disse *"não sei"*.
+  girando em silêncio é uma promessa por cumprir, e ele disse que ainda não sabia.
 - A “capa em mãos” é o voo até a própria capa. O case continua no DOM porque é ali que texto e
   imagens chegam em resolução legível; não há outra arte 3D no meio do caminho.

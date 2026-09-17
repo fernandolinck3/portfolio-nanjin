@@ -11,8 +11,7 @@ touch ADR-0006: the lights still go out one at a time, on the same ramps, in the
 
 ## The brief
 
-Fernando, sending `roomexample.png` and then: *"the img is just a reference of how to populate the
-room and how it should look like (the models more quality wise and realistic)."*
+`roomexample.png` arrived with the note that it was a reference for how to populate the room and how it should look — higher-quality, more realistic models.
 
 So: not a shot to copy. A fidelity bar.
 
@@ -111,8 +110,7 @@ disturb the balance underneath it.
 
 ## Amendment, same day: the fitted level was wrong
 
-Fernando, on the first build: *"its too dark, the vigil is too dark and its very heavy its getting
-stuck a lot, also the result of the room isnt satisfying."*
+The verdict on the first build: too dark, the Vigil far too dark, heavy and stalling, and the room itself not satisfying.
 
 He is right, and the fault is in the target, not the fit. **The reference is a path-traced still.**
 It can sit at mean 21/255 and still read because it has global illumination filling its shadows,

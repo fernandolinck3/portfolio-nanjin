@@ -7,7 +7,7 @@ copper bars, centred credit column, sine scroller). A third, **Instrument** (VFD
 spectrum analyser), exists and is kept.
 
 Fernando picked the first two off the `display` are.na board and then asked for the choice itself to
-be a control: *"it can be a switch on the cdj and the user can change the design."*
+be a control: the ask was for the choice itself to be a switch on the CDJ, so the visitor can change the design.
 
 ## Why this is not scope creep
 

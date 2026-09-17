@@ -22,9 +22,8 @@ its own work is not doing its job. `Section` paging was the answer to that: the 
 one page at a time, so only one was ever on screen.
 
 Paging is not free, though. It cuts continuous prose into slides at points chosen by the writer
-rather than by the reader, and it hides how much is left. Fernando, on the first Portuguese build:
-
-> o texto tá muito cluttered também, podemos ter um scroll e um indicador de mais texto sem problemas
+rather than by the reader, and it hides how much is left. The note on the first Portuguese build:
+the text felt cluttered, and a scroll with a more-text indicator would be fine.
 
 ## Decision
 

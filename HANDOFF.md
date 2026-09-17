@@ -131,7 +131,7 @@ can drift**. `nanj.in` is canonical; if the Artifact is kept, republish it from 
 
 ## The goal he actually stated
 
-> *"i need a version online of my portfolio asap"*
+> An online version of the portfolio, as soon as possible.
 
 **That is done.** It is on his domain, over HTTPS, rebuilt on every push. What the work is *about*
 now is the object itself, and the standing brief for that is the long list under *Open*.

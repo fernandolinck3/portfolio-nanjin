@@ -6,7 +6,7 @@ camera's reach, and the furniture stands **against the sides**, running away fro
 
 ## The complaint
 
-Fernando, on the room as built: *"right now the room doesnt look great."*
+The verdict on the room as built was that it did not look good yet.
 
 He was right, and the reason I had not seen it is worth recording: **every screenshot taken of this
 project had been at the default camera**, `tilt: 28`, where the arithmetic in ADR-0018 already showed

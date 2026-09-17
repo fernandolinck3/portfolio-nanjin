@@ -9,9 +9,7 @@ has no switch. What changes is that the Vigil stops being the *only* thing that 
 
 ## The complaint
 
-Fernando, looking at the Screen: *"the progression from the grimoire to the other version needs to be
-a little bit more smooth, maybe we can have a sun on the display going to the moon and the character
-can slowly change colors and stuff."*
+Looking at the Screen, the ask was for a smoother progression from the grimoire to the other version — perhaps a sun on the display travelling to the moon, with the character slowly changing colour.
 
 He is describing a real fault that ADR-0015 predicted and under-weighted. That ADR flagged Cracktro
 occupying the top 6% of the Vigil as a *rarity* problem. It is worse than rare: for 94% of the

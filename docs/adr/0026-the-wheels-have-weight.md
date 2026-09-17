@@ -50,7 +50,7 @@ Four parts, and they only make sense together:
    *This part was also written the other way.* It said `turn - PULL * carry`, so the platter lagged
    the hand between notches and caught up as each was spent — a detent you could see. That is how a
    detent feels under a finger and not how it looks on a screen, where the only visible part is the
-   wheel failing to keep up with the cursor: **"remove the snaps please its looking laggy."** On a
+   wheel failing to keep up with the cursor: the snapping read as lag. On a
    screen the pointer *is* the hand, and anything that lags it is lag. There is no `PULL` constant.
 
 ## Amended the same day it was written
@@ -75,8 +75,8 @@ The principle was never "no momentum" — it was **no uncontrolled selection**, 
 - `group.rotation.y` is written in exactly one place. Anything that wants to move a Deck moves
   `turn`.
 - The ECLIPSE lost the position that opened it. The seventh detent past the end of the MOON's list
-  was reachable only by someone who already knew it was there, and Fernando could not find it:
-  *"não consegui fazer o eclipse funcionar."* The six lamps now **arm** it and the **light fires**
+  was reachable only by someone who already knew it was there, and in testing it
+  could not be found. The six lamps now **arm** it and the **light fires**
   it — taking the fader all the way across, with the direction choosing the face: night → day gives
   the SUN, day → night gives the MOON. The middle of the fader is not a band, so drifting around
   twilight cannot trip it.

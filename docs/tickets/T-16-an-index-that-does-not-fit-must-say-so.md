@@ -20,7 +20,7 @@ const n = Math.min(items.length, 3)  // drawNodes
 A fifth skill or a third TRAJETO node is drawn nowhere and reported nowhere, while `moveSelection`
 still lands the cursor on it: the reader turns the wheel onto a row that does not exist.
 
-Fernando's own line, quoted in the renderer: *"Nenhum item pode parecer cortado ou oculto."*
+Fernando's own rule, stated in the renderer: no item may look cut off or hidden.
 ADR-0025: *"the `+N` warning in the corner only ever reports a Module whose index does not fit —
 which is what it was for."* It cannot, today.
 

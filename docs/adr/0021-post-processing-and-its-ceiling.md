@@ -10,8 +10,7 @@ ADR-0004.
 
 ## Why
 
-Fernando: *"the 3d result isnt satisfying yet, why isnt it just like the given image, is it a
-limitation in your 3d production skills"*
+The question put was why the 3D result was not yet like the reference image, and whether that was a limit of the 3D production skills involved.
 
 Partly yes. The answer given, and worth keeping:
 
@@ -72,7 +71,7 @@ So this ADR is also the evidence for a decision that is still Fernando's:
 
 ## Amendment: occlusion and bloom are out of the chain
 
-Fernando: *"i dont know how, but it should be 60fps"*.
+The requirement: 60fps, however it is achieved.
 
 It is, and this is most of what it cost. **GTAO and UnrealBloom were removed from the composer**,
 leaving `RenderPass → OutputPass → grade`.

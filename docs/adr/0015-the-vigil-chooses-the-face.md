@@ -8,8 +8,8 @@ This reverses ADR-0012 on both of its claims.
 
 ## What ADR-0012 said, and why it is being undone
 
-It said the visitor switches Faces with a control on the Unit — quoting Fernando at the time,
-*"it can be a switch on the cdj and the user can change the design"* — and that Instrument
+It said the visitor switches Faces with a control on the Unit — on the request
+at the time that the visitor could change the design with a switch on the CDJ — and that Instrument
 *"exists and is kept."*
 
 The case for automatic switching is that it gives the Vigil a second job. The Vigil was already the

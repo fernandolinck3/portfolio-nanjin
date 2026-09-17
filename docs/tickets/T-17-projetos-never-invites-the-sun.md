@@ -8,8 +8,7 @@ The Module with the longest writing behind it tells the reader there is somethin
 
 ## What a review found
 
-`SOL ▸` — the invitation added because *"não fica claro que o usuário pode scrollar pra ler os
-textos"* — is gated on `pageMax > 0` (`prototype/screen/render.js`). And a few lines above:
+`SOL ▸` — the invitation added because it was not clear the visitor could scroll to read the text — is gated on `pageMax > 0` (`prototype/screen/render.js`). And a few lines above:
 
 ```js
 const sections = (item && m.id !== 'projects') ? item.sections : []

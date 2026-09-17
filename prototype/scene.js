@@ -679,7 +679,7 @@ const PLATE = { w: 5.94, d: 3.26 };      // 1.822 — the faceplate's own aspect
  *
  * Widening the Screen meant shrinking them — r .93 to .84 — because their outer
  * edge was already five hundredths off the Plate's edge and there was nowhere else
- * for the room to come from. Fernando, looking at it: "the faceplate is off now".
+ * for the room to come from. Looking at it, the faceplate read as switched off.
  * He is right, and it is worth writing down why: the Plate takes its proportions
  * from his own faceplate artwork, and the two circles are the largest shapes on it.
  * Shrinking them by a tenth reads immediately as the whole face being wrong, in a

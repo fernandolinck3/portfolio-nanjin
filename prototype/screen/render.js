@@ -541,7 +541,7 @@ function drawBubble(g, box, lines, ink, mid, bg) {
    * The bubble is opaque and it used to be laid out from her sprite alone, so on
    * any Module that stands her beside the body — WORKS puts her at x=46 with the
    * series starting at x=96 — it reached straight across and painted over the
-   * text. Fernando: "lyra is covering up parts of the texts".
+   * text. Reported: Lyra was covering parts of the text.
    *
    * She gets her own column and stays in it. The side she is on decides which
    * span is hers, her lines wrap to it, and the box is clamped to it. If that

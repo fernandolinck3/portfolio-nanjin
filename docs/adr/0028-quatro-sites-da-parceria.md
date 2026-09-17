@@ -72,8 +72,7 @@ dois e otimista nos outros dois.
 teste afirme o que cada layout mostra — feito aqui — e que **cada desenho conte no `overflow` o que
 não coube**. `drawGrid` e `drawNodes` continuam cortando em silêncio, e `moveSelection` continua
 podendo pousar o cursor numa linha que não foi desenhada. Nada hoje tem itens suficientes para isso
-morder, e o limite por layout impede que morda por acidente — mas a regra de Fernando, *"nenhum item
-pode parecer cortado ou oculto"*, ainda não é verdade por construção.
+morder, e o limite por layout impede que morda por acidente — mas a regra de Fernando, nenhum item pode parecer cortado ou oculto, ainda não é verdade por construção.
 
 **O texto dos quatro cases ainda espera revisão.** É checável linha a linha contra o que os sites
 fazem, e continua na fila de revisão junto com QUEM, CRITÉRIOS e as falas da LYRA.
