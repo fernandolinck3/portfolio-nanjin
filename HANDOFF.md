@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-16 · **Repo:** `~/dev/fernando-portfolio` · **Branch:** `lyra`
 **Remote:** https://github.com/fernandolinck3/portfolio-nanjin (public) · **Live:** https://nanj.in
-**What is live is `f607fe9` (03/09), not local `lyra`.** A push to `lyra` publishes; nothing else does.
+**What is live is `05794a8` (published 2026-09-16, Pages run 35168050556), not necessarily local `lyra`.** A push to `lyra` publishes; nothing else does.
 Count the gap yourself with `git rev-list --count origin/lyra..lyra` — every count written in this file
 went stale within a day.
 **Language:** Fernando writes EN and PT-BR, often in one message; the *product* is PT-BR.
